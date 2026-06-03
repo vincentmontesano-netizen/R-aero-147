@@ -50,11 +50,6 @@ export default function Legal() {
           <p>{t("legal.cookiesLine1")}</p>
         </Section>
 
-        <Section title={t("legal.fundingTitle")}>
-          <p>{t("legal.fundingLine1Pre")}<strong>{t("legal.fundingQualiopi")}</strong>{t("legal.fundingLine1Mid")}<strong>{t("legal.fundingCpf")}</strong>{t("legal.fundingLine1Or")}<strong>{t("legal.fundingOpco")}</strong>{t("legal.fundingLine1End")}</p>
-          <p>{t("legal.fundingLine2")}</p>
-        </Section>
-
         <Section title={t("legal.accessibilityTitle")}>
           <p>{t("legal.accessibilityLine1")}</p>
         </Section>

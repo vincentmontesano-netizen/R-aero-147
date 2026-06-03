@@ -28,7 +28,6 @@ export default function Glossary() {
     { term: "DGAC", def: t("glossary.defDgac") },
     { term: "OSAC", def: t("glossary.defOsac") },
     { term: "Qualiopi", def: t("glossary.defQualiopi") },
-    { term: "CPF", def: t("glossary.defCpf") },
     { term: "Récurrence", def: t("glossary.defRecurrence") },
     { term: "SCORM / xAPI", def: t("glossary.defScormXapi") },
   ];

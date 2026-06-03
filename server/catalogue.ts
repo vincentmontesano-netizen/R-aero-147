@@ -65,7 +65,7 @@ export async function generateCataloguePDF(): Promise<string | null> {
     // Footer note
     if (y > 730) { doc.addPage(); y = 60; }
     doc.font("Helvetica-Oblique").fontSize(8).fillColor("#5A6470")
-      .text("Formations éligibles à un financement (CPF / OPCO selon dispositifs). Contactez-nous pour un devis entreprise.", 50, y + 10, { width: W - 100 });
+      .text("Agrément EASA Part-147 en cours. Contactez-nous pour un devis entreprise.", 50, y + 10, { width: W - 100 });
 
     doc.end();
   });

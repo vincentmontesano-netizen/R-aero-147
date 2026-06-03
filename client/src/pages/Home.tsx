@@ -30,11 +30,11 @@ const COPY: Partial<Record<Lang, any>> = {
   en: {
     nav: { formations: "Trainings", platform: "Platform", companies: "Companies", pricing: "Pricing", faq: "FAQ", myspace: "My space", login: "Log in", demo: "Request a demo", demoShort: "Demo", catalogue: "Catalogue" },
     hero: {
-      badge: "EASA PART-147 APPROVED ORGANISATION",
+      badge: "EASA PART-147 — APPROVAL IN PROGRESS",
       titleMain: "Aircraft maintenance training,", titleAccent: "finally online.",
       sub: "E-learning catalogue (HF, FTS, EWIS, QT…), scheduled sessions and a recurrency-management platform for MROs, airlines and CAMOs. Instant purchase and access, verifiable certificates, guaranteed EASA compliance.",
       demo: "Request a demo", viewCatalogue: "View the catalogue",
-      t1: "Part-147 approved", t2: "Qualiopi certified", t3: "CPF / OPCO eligible",
+      t1: "EASA Part-147 in progress", t2: "Qualiopi certified", t3: "Verifiable certificates",
       stats: [{ v: "500+", l: "Learners trained" }, { v: "8", l: "Domains covered" }, { v: "100%", l: "EASA compliance" }],
     },
     trust: ["EASA Part-147", "Part-66 licences", "EN & FR", "Verifiable certificates"],
@@ -90,7 +90,7 @@ const COPY: Partial<Record<Lang, any>> = {
         { name: "Company", price: "per licence", desc: "For MROs, Part-145 and CAMOs.", features: ["Employee management + CSV import", "Training assignment", "Recurrency tracking", "CSV audit reporting", "Inter-company sessions"], cta: "Request a demo", href: "#demo", highlight: true },
         { name: "All-inclusive", price: "annual subscription", desc: "Unlimited access for the whole team.", features: ["Everything in Company", "Unlimited catalogue", "Automatic renewal", "Webinars included", "Dedicated account manager"], cta: "Contact us", href: "/devis", highlight: false },
       ] as PlanCopy[],
-      note: "Company pricing and volumes on quote. Trainings eligible for CPF / OPCO funding where applicable.",
+      note: "Company pricing and volumes on quote. EASA Part-147 approval in progress.",
     },
     test: {
       eyebrow: "TRUSTED BY", title: "Adopted by maintenance teams",
@@ -108,7 +108,6 @@ const COPY: Partial<Record<Lang, any>> = {
         { q: "What training formats do you offer?", a: "Self-paced e-learning, live virtual classes, webinars and inter-company classroom sessions. Some trainings combine several formats." },
         { q: "In which language are the trainings?", a: "The interface and content are available in English and French. The language switcher is at the top of the page." },
         { q: "How do recurrencies work?", a: "For each employee, the platform computes the next deadline of a recurrent training (e.g. HF every 24 months) and shows an OK / due-soon / overdue indicator, with export for your audits." },
-        { q: "Are trainings fundable (CPF / OPCO)?", a: "We are Qualiopi certified. Some trainings are eligible for CPF or OPCO funding. Contact us to review your funding options." },
         { q: "What happens to my data?", a: "Data is hosted in the European Union and processed in accordance with the GDPR. You have rights of access, rectification and erasure." },
       ],
     },
@@ -126,11 +125,11 @@ const COPY: Partial<Record<Lang, any>> = {
   fr: {
     nav: { formations: "Formations", platform: "Plateforme", companies: "Entreprises", pricing: "Tarifs", faq: "FAQ", myspace: "Mon espace", login: "Connexion", demo: "Demander une démo", demoShort: "Démo", catalogue: "Catalogue" },
     hero: {
-      badge: "ORGANISME AGRÉÉ EASA PART-147",
+      badge: "EASA PART-147 — AGRÉMENT EN COURS",
       titleMain: "La formation maintenance aéronautique,", titleAccent: "enfin en ligne.",
       sub: "Catalogue e-learning (HF, FTS, EWIS, QT…), sessions programmées et plateforme de gestion des récurrences pour MRO, compagnies et CAMO. Achat et accès instantanés, certificats vérifiables, conformité EASA garantie.",
       demo: "Demander une démo", viewCatalogue: "Voir le catalogue",
-      t1: "Agréé Part-147", t2: "Certifié Qualiopi", t3: "Éligible CPF / OPCO",
+      t1: "EASA Part-147 en cours", t2: "Certifié Qualiopi", t3: "Certificats vérifiables",
       stats: [{ v: "500+", l: "Apprenants formés" }, { v: "8", l: "Domaines couverts" }, { v: "100%", l: "Conformité EASA" }],
     },
     trust: ["EASA Part-147", "Licences Part-66", "FR & EN", "Certificats vérifiables"],
@@ -186,7 +185,7 @@ const COPY: Partial<Record<Lang, any>> = {
         { name: "Entreprise", price: "par licence", desc: "Pour les MRO, Part-145 et CAMO.", features: ["Gestion des employés + import CSV", "Attribution de formations", "Suivi des récurrences", "Reporting d'audit CSV", "Sessions inter-entreprises"], cta: "Demander une démo", href: "#demo", highlight: true },
         { name: "All-inclusive", price: "abonnement annuel", desc: "Accès illimité pour toute l'équipe.", features: ["Tout le plan Entreprise", "Catalogue illimité", "Renouvellement automatique", "Webinars inclus", "Account manager dédié"], cta: "Nous contacter", href: "/devis", highlight: false },
       ] as PlanCopy[],
-      note: "Tarifs entreprise et volumes sur devis. Formations éligibles à un financement CPF / OPCO selon dispositifs.",
+      note: "Tarifs entreprise et volumes sur devis. Agrément EASA Part-147 en cours.",
     },
     test: {
       eyebrow: "ILS NOUS FONT CONFIANCE", title: "Adopté par les équipes de maintenance",
@@ -204,7 +203,6 @@ const COPY: Partial<Record<Lang, any>> = {
         { q: "Quels formats de formation proposez-vous ?", a: "E-learning auto-rythmé, classes virtuelles en direct, webinars et sessions présentielles inter-entreprises. Certaines formations combinent plusieurs formats." },
         { q: "En quelle langue sont les formations ?", a: "L'interface et les contenus sont disponibles en français et en anglais. Le sélecteur de langue est accessible en haut de page." },
         { q: "Comment fonctionnent les récurrences ?", a: "Pour chaque employé, la plateforme calcule la prochaine échéance d'une formation récurrente (ex. HF tous les 24 mois) et affiche un indicateur OK / bientôt dû / en retard, avec export pour vos audits." },
-        { q: "Les formations sont-elles finançables (CPF / OPCO) ?", a: "Nous sommes certifiés Qualiopi. Certaines formations sont éligibles au CPF ou à une prise en charge OPCO. Contactez-nous pour étudier votre financement." },
         { q: "Que deviennent mes données ?", a: "Les données sont hébergées dans l'Union Européenne et traitées conformément au RGPD. Vous disposez d'un droit d'accès, de rectification et d'effacement." },
       ],
     },

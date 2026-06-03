@@ -86,7 +86,6 @@ export default function AdminSessions() {
                 <div><label className="text-xs" style={{ color: MUTED }}>{t("adminSessions.labelSeats")}</label><Input type="number" value={form.seats} onChange={(e) => set("seats", e.target.value)} /></div>
                 <div><label className="text-xs" style={{ color: MUTED }}>{t("adminSessions.labelPriceHt")}</label><Input type="number" value={form.priceHt} onChange={(e) => set("priceHt", e.target.value)} /></div>
               </div>
-              <label className="flex items-center gap-2 text-sm" style={{ color: MUTED }}><input type="checkbox" checked={form.cpfEligible} onChange={(e) => set("cpfEligible", e.target.checked)} /> {t("adminSessions.cpfEligible")}</label>
             </div>
             <div className="flex justify-end gap-2 mt-4">
               <Button variant="outline" onClick={() => setOpen(false)}>{t("adminSessions.cancel")}</Button>

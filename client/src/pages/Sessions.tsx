@@ -6,7 +6,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import PublicNav from "@/components/PublicNav";
 import BackButton from "@/components/BackButton";
 import { Button } from "@/components/ui/button";
-import { Calendar, MapPin, Users, Monitor, Video, Building2, BadgeCheck, Loader2 } from "lucide-react";
+import { Calendar, MapPin, Users, Monitor, Video, Building2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 const DEEP_BLUE = "oklch(19% 0.08 252)";
@@ -94,7 +94,6 @@ export default function Sessions() {
                           <span className="text-xs font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1" style={{ color: fmt.color, background: fmt.color + " / 0.1" }}>
                             <Icon className="w-3 h-3" /> {t(fmt.labelKey)}
                           </span>
-                          {s.cpfEligible && <span className="text-xs font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1" style={{ color: "oklch(45% 0.15 145)", background: "oklch(55% 0.18 145 / 0.1)" }}><BadgeCheck className="w-3 h-3" /> CPF</span>}
                         </div>
                         <h3 className="font-semibold" style={{ color: DEEP_BLUE }}>{s.title}</h3>
                         <div className="flex items-center gap-4 mt-1 text-xs flex-wrap" style={{ color: MUTED }}>
