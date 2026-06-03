@@ -42,6 +42,8 @@ import {
   getOrganizationManagers, addOrganizationManager, removeOrganizationManager,
   getOrganizationAffiliates, addOrganizationAffiliate, getAffiliationById,
   getPassportDocuments, createPassportDocument, deletePassportDocument, setPassportSharing,
+  getActiveOffers, getAllOffers, createOffer, updateOffer, deleteOffer,
+  getActiveFaq, getAllFaq, createFaqItem, updateFaqItem, deleteFaqItem,
   setSetting,
   getSlides, createSlide, updateSlide, deleteSlide, reorderSlides, createCourseWithSlides,
   getUpcomingSessions, getAllSessions, createSession, updateSession, deleteSession, registerForSession,
@@ -306,6 +308,14 @@ export const appRouter = router({
     categories: publicProcedure.query(() => getTrainingCategories()),
 
     webinars: publicProcedure.query(async () => getWebinars()),
+
+    // Landing-page content (admin-editable). Empty = the client falls back to its defaults.
+    offers: publicProcedure
+      .input(z.object({ language: z.string().optional() }).optional())
+      .query(({ input }) => getActiveOffers(input?.language ?? "fr")),
+    faq: publicProcedure
+      .input(z.object({ language: z.string().optional() }).optional())
+      .query(({ input }) => getActiveFaq(input?.language ?? "fr")),
 
     verifyCertificate: publicProcedure
       .input(z.object({ code: z.string() }))
@@ -1078,6 +1088,32 @@ export const appRouter = router({
           try { return await fetchMessage(input.uid); }
           catch (e: any) { throw new TRPCError({ code: "BAD_REQUEST", message: e?.message ?? "Lecture du message impossible." }); }
         }),
+    }),
+
+    // ── Offers (landing-page pricing) ──
+    offers: router({
+      list: adminProcedure.input(z.object({ language: z.string().optional() }).optional()).query(({ input }) => getAllOffers(input?.language)),
+      create: adminProcedure
+        .input(z.object({
+          language: z.string(), name: z.string().min(1), price: z.string().optional(), description: z.string().optional(),
+          features: z.array(z.string()).optional(), ctaLabel: z.string().optional(), ctaHref: z.string().optional(),
+          highlight: z.boolean().optional(), sortOrder: z.number().optional(), isActive: z.boolean().optional(),
+        }))
+        .mutation(({ input }) => createOffer(input)),
+      update: adminProcedure.input(z.object({ id: z.number() }).and(z.record(z.string(), z.unknown())))
+        .mutation(({ input }) => { const { id, ...data } = input as any; return updateOffer(id, data); }),
+      delete: adminProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => deleteOffer(input.id)),
+    }),
+
+    // ── FAQ (landing-page) ──
+    faq: router({
+      list: adminProcedure.input(z.object({ language: z.string().optional() }).optional()).query(({ input }) => getAllFaq(input?.language)),
+      create: adminProcedure
+        .input(z.object({ language: z.string(), question: z.string().min(1), answer: z.string().min(1), sortOrder: z.number().optional(), isActive: z.boolean().optional() }))
+        .mutation(({ input }) => createFaqItem(input)),
+      update: adminProcedure.input(z.object({ id: z.number() }).and(z.record(z.string(), z.unknown())))
+        .mutation(({ input }) => { const { id, ...data } = input as any; return updateFaqItem(id, data); }),
+      delete: adminProcedure.input(z.object({ id: z.number() })).mutation(({ input }) => deleteFaqItem(input.id)),
     }),
     userDetail: adminProcedure
       .input(z.object({ userId: z.number() }))

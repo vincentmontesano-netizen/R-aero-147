@@ -814,3 +814,35 @@ export const passportDocuments = pgTable("passport_documents", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
 });
 export type PassportDocument = typeof passportDocuments.$inferSelect;
+
+// ─── Landing-page content (admin-editable) ───────────────────────────────────
+// Pricing offers shown on the landing page. Bilingual via `language`.
+export const offers = pgTable("offers", {
+  id: serial("id").primaryKey(),
+  language: varchar("language", { length: 8 }).notNull().default("fr"), // "fr" | "en"
+  name: varchar("name", { length: 128 }).notNull(),
+  price: varchar("price", { length: 128 }),
+  description: text("description"),
+  features: jsonb("features").$type<string[]>().default([]),
+  ctaLabel: varchar("ctaLabel", { length: 128 }),
+  ctaHref: varchar("ctaHref", { length: 255 }).default("/devis"),
+  highlight: boolean("highlight").default(false),
+  sortOrder: integer("sortOrder").default(0),
+  isActive: boolean("isActive").default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+});
+export type Offer = typeof offers.$inferSelect;
+
+// FAQ entries shown on the landing page. Bilingual via `language`.
+export const faqItems = pgTable("faq_items", {
+  id: serial("id").primaryKey(),
+  language: varchar("language", { length: 8 }).notNull().default("fr"),
+  question: text("question").notNull(),
+  answer: text("answer").notNull(),
+  sortOrder: integer("sortOrder").default(0),
+  isActive: boolean("isActive").default(true),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+});
+export type FaqItem = typeof faqItems.$inferSelect;

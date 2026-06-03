@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import {
   Users, BookOpen, ShoppingCart, FileText, BarChart3, Award,
-  Plus, XCircle, GraduationCap, Download, CheckCircle, Clock, AlertCircle, Ban, Pencil, Trash2, Calendar, Newspaper, Layers, LifeBuoy, Megaphone, Building2, UserCog, Settings, ShieldCheck, Mail, Send, CreditCard
+  Plus, XCircle, GraduationCap, Download, CheckCircle, Clock, AlertCircle, Ban, Pencil, Trash2, Calendar, Newspaper, Layers, LifeBuoy, Megaphone, Building2, UserCog, Settings, ShieldCheck, Mail, Send, CreditCard, HelpCircle
 } from "lucide-react";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import TicketThread from "@/components/TicketThread";
@@ -18,6 +18,8 @@ import OrgFormDialog from "@/components/OrgFormDialog";
 import OrgManagersDialog from "@/components/OrgManagersDialog";
 import UserMenu from "@/components/UserMenu";
 import AdminInbox from "@/components/AdminInbox";
+import AdminOffers from "@/components/AdminOffers";
+import AdminFaq from "@/components/AdminFaq";
 import { toast } from "sonner";
 import { Link } from "wouter";
 import { Sparkles } from "lucide-react";
@@ -330,6 +332,8 @@ export default function AdminDashboard() {
               { key: "support", label: t("adminDashboard.navSupport"), icon: LifeBuoy },
               { key: "emails", label: t("adminDashboard.navEmails"), icon: Mail },
               { key: "stripe", label: t("adminDashboard.navStripe"), icon: CreditCard },
+              { key: "offers", label: t("adminDashboard.navOffers"), icon: Layers },
+              { key: "faq", label: t("adminDashboard.navFaq"), icon: HelpCircle },
               { key: "compliance", label: t("adminDashboard.navCompliance"), icon: BarChart3 },
               { key: "settings", label: t("adminDashboard.navSettings"), icon: Settings },
             ]} />
@@ -807,6 +811,12 @@ export default function AdminDashboard() {
               </div>
             </div>
           </TabsContent>
+
+          {/* Offers — landing-page pricing */}
+          <TabsContent value="offers"><AdminOffers /></TabsContent>
+
+          {/* FAQ — landing-page */}
+          <TabsContent value="faq"><AdminFaq /></TabsContent>
 
           {/* Settings — AI API keys */}
           <TabsContent value="settings">

@@ -10,6 +10,7 @@ import {
   examSessions, proctoringEvents, externalTrainings, roleRequirements,
   courseTemplates, contentRevisions, regulatoryChanges,
   affiliations, credentials, accessLogs, signoffs, appSettings, passportDocuments,
+  offers, faqItems,
   type InsertUser,
 } from "../drizzle/schema";
 import { sendEmail, expiryReminderEmail } from "./email";
@@ -1972,6 +1973,67 @@ export async function deletePassportDocument(id: number, personId: number): Prom
   const doc = (await db.select().from(passportDocuments).where(eq(passportDocuments.id, id)).limit(1))[0];
   if (!doc || doc.personId !== personId) return { ok: false };
   await db.delete(passportDocuments).where(eq(passportDocuments.id, id));
+  return { ok: true };
+}
+
+// ─── Offers (landing-page pricing, admin-editable) ───────────────────────────
+export async function getActiveOffers(language: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(offers).where(and(eq(offers.language, language), eq(offers.isActive, true))).orderBy(offers.sortOrder, offers.id);
+}
+export async function getAllOffers(language?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = language
+    ? await db.select().from(offers).where(eq(offers.language, language)).orderBy(offers.sortOrder, offers.id)
+    : await db.select().from(offers).orderBy(offers.sortOrder, offers.id);
+  return rows;
+}
+export async function createOffer(data: Record<string, unknown>) {
+  const db = await getDb(); if (!db) return null;
+  return (await db.insert(offers).values(data as any).returning())[0];
+}
+export async function updateOffer(id: number, data: Record<string, unknown>) {
+  const db = await getDb(); if (!db) return null;
+  const patch: Record<string, unknown> = {};
+  for (const k of ["language", "name", "price", "description", "features", "ctaLabel", "ctaHref", "highlight", "sortOrder", "isActive"]) if (data[k] !== undefined) patch[k] = data[k];
+  if (Object.keys(patch).length) await db.update(offers).set(patch).where(eq(offers.id, id));
+  return (await db.select().from(offers).where(eq(offers.id, id)).limit(1))[0];
+}
+export async function deleteOffer(id: number) {
+  const db = await getDb(); if (!db) return { ok: false };
+  await db.delete(offers).where(eq(offers.id, id));
+  return { ok: true };
+}
+
+// ─── FAQ (landing-page, admin-editable) ───────────────────────────────────────
+export async function getActiveFaq(language: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(faqItems).where(and(eq(faqItems.language, language), eq(faqItems.isActive, true))).orderBy(faqItems.sortOrder, faqItems.id);
+}
+export async function getAllFaq(language?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  return language
+    ? db.select().from(faqItems).where(eq(faqItems.language, language)).orderBy(faqItems.sortOrder, faqItems.id)
+    : db.select().from(faqItems).orderBy(faqItems.sortOrder, faqItems.id);
+}
+export async function createFaqItem(data: Record<string, unknown>) {
+  const db = await getDb(); if (!db) return null;
+  return (await db.insert(faqItems).values(data as any).returning())[0];
+}
+export async function updateFaqItem(id: number, data: Record<string, unknown>) {
+  const db = await getDb(); if (!db) return null;
+  const patch: Record<string, unknown> = {};
+  for (const k of ["language", "question", "answer", "sortOrder", "isActive"]) if (data[k] !== undefined) patch[k] = data[k];
+  if (Object.keys(patch).length) await db.update(faqItems).set(patch).where(eq(faqItems.id, id));
+  return (await db.select().from(faqItems).where(eq(faqItems.id, id)).limit(1))[0];
+}
+export async function deleteFaqItem(id: number) {
+  const db = await getDb(); if (!db) return { ok: false };
+  await db.delete(faqItems).where(eq(faqItems.id, id));
   return { ok: true };
 }
 

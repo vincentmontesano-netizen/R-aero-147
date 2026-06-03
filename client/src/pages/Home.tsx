@@ -354,6 +354,13 @@ export default function Home() {
   const c = COPY[lang] ?? COPY.fr;
   const { data: cartData } = trpc.cart.count.useQuery(undefined, { enabled: isAuthenticated, retry: false });
   const cartCount = cartData ?? 0;
+  // Admin-editable offers & FAQ (fall back to the built-in copy when none are defined).
+  const { data: dbOffers = [] } = trpc.public.offers.useQuery({ language: lang });
+  const { data: dbFaq = [] } = trpc.public.faq.useQuery({ language: lang });
+  const plans: PlanCopy[] = (dbOffers as any[]).length
+    ? (dbOffers as any[]).map((o) => ({ name: o.name, price: o.price ?? "", desc: o.description ?? "", features: o.features ?? [], cta: o.ctaLabel || c.price.plans[0]?.cta || "", href: o.ctaHref || "/devis", highlight: !!o.highlight }))
+    : c.price.plans;
+  const faqList = (dbFaq as any[]).length ? (dbFaq as any[]).map((f) => ({ q: f.question, a: f.answer })) : c.faq.items;
   const root = useRef<HTMLDivElement>(null);
   const [videoReady, setVideoReady] = useState(false);
 
@@ -575,7 +582,7 @@ export default function Home() {
         <div className="mx-auto max-w-[1280px] px-5">
           <div className="text-center max-w-2xl mx-auto mb-14"><SectionHead eyebrow={c.price.eyebrow} title={c.price.title} sub={c.price.sub} /></div>
           <div className="grid md:grid-cols-3 gap-6 items-stretch" data-stagger>
-            {c.price.plans.map((p: PlanCopy) => (
+            {plans.map((p: PlanCopy) => (
               <div key={p.name} className="rounded-2xl p-7 flex flex-col" style={{ background: p.highlight ? C.blue : C.ivory, border: `1px solid ${p.highlight ? C.blue : C.border}`, boxShadow: p.highlight ? "0 16px 40px rgba(0,37,84,0.18)" : "none", transform: p.highlight ? "scale(1.02)" : "none" }}>
                 {p.highlight && <span className="self-start text-[11px] font-bold px-2 py-0.5 rounded-full mb-3" style={{ background: C.gold, color: C.blue }}>{c.price.recommended}</span>}
                 <h3 className="text-xl font-bold" style={{ fontFamily: HEADING, color: p.highlight ? "#fff" : C.blue }}>{p.name}</h3>
@@ -625,7 +632,7 @@ export default function Home() {
         <div className="mx-auto max-w-3xl px-5">
           <div className="text-center mb-12"><SectionHead eyebrow={c.faq.eyebrow} title={c.faq.title} /></div>
           <div className="space-y-3" data-stagger>
-            {c.faq.items.map((f: any) => <FaqItem key={f.q} q={f.q} a={f.a} />)}
+            {faqList.map((f: any) => <FaqItem key={f.q} q={f.q} a={f.a} />)}
           </div>
         </div>
       </section>
