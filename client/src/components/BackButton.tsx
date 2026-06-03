@@ -1,10 +1,18 @@
 import { useLocation } from "wouter";
 import { ArrowLeft } from "lucide-react";
+import { useAuth } from "@/_core/hooks/useAuth";
 
-/** Consistent "back" button. Goes to the previous page, or to `fallback` if there's no history. */
+/** Consistent "back" button. For a signed-in user it returns to their own dashboard;
+ *  otherwise it goes back in history, falling back to `fallback`. */
 export default function BackButton({ fallback = "/", dark = false, label = "Retour" }: { fallback?: string; dark?: boolean; label?: string }) {
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
+  const roleHome = user
+    ? (user.role === "admin" ? "/admin" : user.role === "company_manager" ? "/entreprise" : "/dashboard")
+    : null;
   const goBack = () => {
+    // Signed-in users always come back to their space.
+    if (roleHome) { setLocation(roleHome); return; }
     if (typeof window !== "undefined" && window.history.length > 1) window.history.back();
     else setLocation(fallback);
   };

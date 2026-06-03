@@ -13,7 +13,7 @@ import { hashPassword } from "./auth";
 import {
   users, companies, employees, trainingCategories, trainings,
   trainingModules, quizQuestions, webinars, webinarRegistrations, recurrencies, slides, enrollments,
-  sessions, articles, learningObjectives, roleRequirements, courseTemplates,
+  sessions, articles, learningObjectives, roleRequirements, courseTemplates, offers,
 } from "../drizzle/schema";
 import { nanoid } from "nanoid";
 
@@ -46,6 +46,30 @@ async function ensureUser(opts: {
 // Idempotent — runs on BOTH the fresh and already-seeded paths. Links the demo
 // technician "Marc" to a PERSONAL login (INV-1: login ≠ pro email), then rebuilds the
 // affiliation edges from the legacy single-link model. Safe to re-run.
+// Seed the 3 default landing-page offers per language (idempotent — only when the
+// offers table has none for that language, so admin edits are never overwritten).
+async function ensureOffers() {
+  const db = (await getDb())!;
+  const sets: Record<string, any[]> = {
+    fr: [
+      { name: "Individuel", price: "à la formation", description: "Pour les techniciens et freelances.", features: ["Accès au catalogue e-learning", "Quiz & examen final", "Certificat PDF vérifiable", "Paiement sécurisé en ligne"], ctaLabel: "Voir le catalogue", ctaHref: "/catalogue", highlight: false, sortOrder: 1 },
+      { name: "Entreprise", price: "par licence", description: "Pour les MRO, Part-145 et CAMO.", features: ["Gestion des employés + import CSV", "Attribution de formations", "Suivi des récurrences", "Reporting d'audit CSV", "Sessions inter-entreprises"], ctaLabel: "Demander une démo", ctaHref: "#demo", highlight: true, sortOrder: 2 },
+      { name: "All-inclusive", price: "abonnement annuel", description: "Accès illimité pour toute l'équipe.", features: ["Tout le plan Entreprise", "Catalogue illimité", "Renouvellement automatique", "Webinars inclus", "Account manager dédié"], ctaLabel: "Nous contacter", ctaHref: "/devis", highlight: false, sortOrder: 3 },
+    ],
+    en: [
+      { name: "Individual", price: "per training", description: "For technicians and freelancers.", features: ["Access to the e-learning catalogue", "Quiz & final exam", "Verifiable PDF certificate", "Secure online payment"], ctaLabel: "View the catalogue", ctaHref: "/catalogue", highlight: false, sortOrder: 1 },
+      { name: "Company", price: "per licence", description: "For MROs, Part-145 and CAMOs.", features: ["Employee management + CSV import", "Training assignment", "Recurrency tracking", "CSV audit reporting", "Inter-company sessions"], ctaLabel: "Request a demo", ctaHref: "#demo", highlight: true, sortOrder: 2 },
+      { name: "All-inclusive", price: "annual subscription", description: "Unlimited access for the whole team.", features: ["Everything in Company", "Unlimited catalogue", "Automatic renewal", "Webinars included", "Dedicated account manager"], ctaLabel: "Contact us", ctaHref: "/devis", highlight: false, sortOrder: 3 },
+    ],
+  };
+  for (const [lang, items] of Object.entries(sets)) {
+    const existing = await db.select().from(offers).where(eq(offers.language, lang)).limit(1);
+    if (existing[0]) continue;
+    for (const it of items) await db.insert(offers).values({ language: lang, isActive: true, ...it });
+    console.log(`[seed] offres ${lang} créées (${items.length}).`);
+  }
+}
+
 async function ensureMemberAndAffiliations() {
   const db = (await getDb())!;
   if (!db) return;
@@ -387,6 +411,7 @@ async function main() {
   if (existingTrainings.length > 0) {
     console.log("[seed] Catalogue déjà présent — comptes vérifiés, seed terminé.");
     await ensureMemberAndAffiliations();
+    await ensureOffers();
     return;
   }
 
@@ -541,6 +566,7 @@ async function main() {
   await ensurePhase4();
 
   await ensureMemberAndAffiliations();
+  await ensureOffers();
 
   console.log("[seed] ✅ Terminé.");
   if (isProd) {
