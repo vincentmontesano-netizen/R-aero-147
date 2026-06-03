@@ -1,0 +1,59 @@
+import { useState } from "react";
+import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { getLoginUrl } from "@/const";
+import { Button } from "@/components/ui/button";
+import BackButton from "@/components/BackButton";
+import QuoteThread from "@/components/QuoteThread";
+import { ChevronDown, ChevronUp, LogIn } from "lucide-react";
+import { useI18n } from "@/i18n";
+
+const BLUE = "oklch(19% 0.08 252)";
+const MUTED = "oklch(45% 0.02 240)";
+const BORDER = "oklch(88% 0.015 88)";
+
+/** Client view of their own quotes + per-quote message thread (INV-agnostic B2B). */
+export default function MyQuotes() {
+  const { t } = useI18n();
+  const STATUS: Record<string, string> = { received: t("myQuotes.statusReceived"), in_progress: t("myQuotes.statusInProgress"), quote_sent: t("myQuotes.statusQuoteSent"), accepted: t("myQuotes.statusAccepted"), refused: t("myQuotes.statusRefused") };
+  const { user, isAuthenticated } = useAuth();
+  const { data: quotes = [], isLoading } = trpc.quotes.myList.useQuery(undefined, { enabled: !!user });
+  const [open, setOpen] = useState<number | null>(null);
+
+  if (!isAuthenticated) {
+    return (
+      <div className="container py-20 text-center">
+        <p className="mb-4" style={{ color: MUTED }}>{t("myQuotes.loginPrompt")}</p>
+        <a href={getLoginUrl()}><Button style={{ background: "oklch(68% 0.1 78)", color: BLUE }}><LogIn className="w-4 h-4 mr-1" /> {t("myQuotes.login")}</Button></a>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container py-8 max-w-3xl">
+      <BackButton />
+      <h1 className="text-2xl font-bold mb-1 mt-2" style={{ color: BLUE }}>{t("myQuotes.title")}</h1>
+      <p className="text-sm mb-6" style={{ color: MUTED }}>{t("myQuotes.subtitle")}</p>
+      {isLoading ? (
+        <div className="h-24 animate-pulse rounded-xl" style={{ background: "oklch(88% 0.015 88)" }} />
+      ) : quotes.length === 0 ? (
+        <p className="text-sm" style={{ color: MUTED }}>{t("myQuotes.empty")} <a href="/devis" className="underline" style={{ color: BLUE }}>{t("myQuotes.requestQuote")}</a>.</p>
+      ) : (
+        <div className="space-y-3">
+          {quotes.map((q: any) => (
+            <div key={q.id} className="rounded-xl overflow-hidden" style={{ border: `1px solid ${BORDER}`, background: "white" }}>
+              <button onClick={() => setOpen(open === q.id ? null : q.id)} className="w-full flex items-center justify-between p-4 text-left">
+                <div>
+                  <div className="font-semibold" style={{ color: BLUE }}>{q.companyName}</div>
+                  <div className="text-xs" style={{ color: MUTED }}>{STATUS[q.status] ?? q.status} · {new Date(q.createdAt).toLocaleDateString("fr-FR")}{q.trainingTypes ? ` · ${q.trainingTypes}` : ""}</div>
+                </div>
+                {open === q.id ? <ChevronUp className="w-4 h-4" style={{ color: MUTED }} /> : <ChevronDown className="w-4 h-4" style={{ color: MUTED }} />}
+              </button>
+              {open === q.id && <div className="px-4 pb-4"><QuoteThread quoteId={q.id} meId={user?.id} /></div>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

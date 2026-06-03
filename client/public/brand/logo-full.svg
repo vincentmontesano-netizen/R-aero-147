@@ -1,0 +1,16 @@
+<svg width="560" height="200" viewBox="0 0 560 200" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="R-AERO Training Academy">
+  <g transform="translate(0 4) scale(0.96)">
+    <circle cx="100" cy="100" r="96" fill="#002554"/>
+    <g fill="#C9A55A">
+      <path d="M96 130 C73 119 52 119 33 128 C55 122 74 126 92 137 Z" opacity="0.95"/>
+      <path d="M96 122 C71 107 48 105 27 114 C52 106 74 110 94 127 Z"/>
+      <path d="M96 114 C73 97 52 95 35 102 C57 95 76 99 94 116 Z" opacity="0.92"/>
+    </g>
+    <text x="88" y="138" font-family="Georgia, 'Times New Roman', serif" font-size="116" font-weight="700" fill="#C9A55A" text-anchor="middle">R</text>
+    <path d="M118 146 C138 118 148 92 164 66" stroke="#C9A55A" stroke-width="4" stroke-linecap="round" fill="none"/>
+    <g fill="#C9A55A" transform="translate(148 48) rotate(38)"><path d="M0 -10 L3 -2 L15 2 L3 4 L2 13 L-1 6 L-6 8 L-3 2 L-3 -2 Z"/></g>
+  </g>
+  <text x="220" y="92" font-family="Georgia, 'Times New Roman', serif" font-size="48" font-weight="700" fill="#002554">R-AERO</text>
+  <text x="222" y="124" font-family="'Helvetica Neue', Arial, sans-serif" font-size="20" letter-spacing="6" fill="#0A6E8A">TRAINING ACADEMY</text>
+  <text x="222" y="150" font-family="'Helvetica Neue', Arial, sans-serif" font-size="12" letter-spacing="2" fill="#C9A55A">ORGANISME AGRÉÉ EASA PART-147</text>
+</svg>

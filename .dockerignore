@@ -1,0 +1,15 @@
+node_modules
+dist
+.git
+.github
+.claude
+storage
+*.log
+.env
+.env.*
+client/dist
+npm-debug.log*
+pnpm-debug.log*
+.DS_Store
+coverage
+.vscode

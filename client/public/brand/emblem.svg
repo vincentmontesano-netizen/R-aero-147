@@ -1,0 +1,17 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="R-AERO Training Academy">
+  <circle cx="100" cy="100" r="100" fill="#002554"/>
+  <!-- layered wing (lower-left) -->
+  <g fill="#C9A55A">
+    <path d="M96 132 C72 120 50 120 30 130 C54 124 74 128 92 140 Z" opacity="0.95"/>
+    <path d="M96 124 C70 108 46 106 24 116 C50 108 74 112 94 130 Z"/>
+    <path d="M96 116 C72 98 50 96 32 104 C56 96 76 100 94 118 Z" opacity="0.92"/>
+    <path d="M96 108 C76 92 58 90 44 96 C64 90 80 94 94 110 Z" opacity="0.85"/>
+  </g>
+  <!-- serif R monogram -->
+  <text x="86" y="140" font-family="Georgia, 'Times New Roman', serif" font-size="120" font-weight="700" fill="#C9A55A" text-anchor="middle">R</text>
+  <!-- rising flight path + airplane (top-right), echoing the R's leg -->
+  <path d="M118 150 C140 120 150 92 168 64" stroke="#C9A55A" stroke-width="4" stroke-linecap="round" fill="none"/>
+  <g fill="#C9A55A" transform="translate(150 44) rotate(38)">
+    <path d="M0 -11 L3 -2 L16 2 L3 4 L2 14 L-1 6 L-7 9 L-3 2 L-3 -2 Z"/>
+  </g>
+</svg>
