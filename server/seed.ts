@@ -13,7 +13,7 @@ import { hashPassword } from "./auth";
 import {
   users, companies, employees, trainingCategories, trainings,
   trainingModules, quizQuestions, webinars, webinarRegistrations, recurrencies, slides, enrollments,
-  sessions, articles, learningObjectives, roleRequirements, courseTemplates, offers,
+  sessions, articles, learningObjectives, roleRequirements, courseTemplates, offers, faqItems,
 } from "../drizzle/schema";
 import { nanoid } from "nanoid";
 
@@ -67,6 +67,35 @@ async function ensureOffers() {
     if (existing[0]) continue;
     for (const it of items) await db.insert(offers).values({ language: lang, isActive: true, ...it });
     console.log(`[seed] offres ${lang} créées (${items.length}).`);
+  }
+}
+
+// Seed the default landing-page FAQ per language (idempotent — only when none exist
+// for that language). Part-147 worded as "in progress" (approval not yet granted).
+async function ensureFaq() {
+  const db = (await getDb())!;
+  const sets: Record<string, { question: string; answer: string }[]> = {
+    fr: [
+      { question: "Vos formations sont-elles reconnues EASA ?", answer: "L'agrément EASA Part-147 de R-AERO Training Academy est en cours. Nos formations sont alignées sur les exigences réglementaires en vigueur (Part-145, Part-66) et chaque certificat est numéroté et vérifiable." },
+      { question: "Quels formats de formation proposez-vous ?", answer: "E-learning auto-rythmé, classes virtuelles en direct, webinars et sessions présentielles inter-entreprises. Certaines formations combinent plusieurs formats." },
+      { question: "En quelle langue sont les formations ?", answer: "L'interface et les contenus sont disponibles en français et en anglais. Le sélecteur de langue est accessible en haut de page." },
+      { question: "Comment fonctionnent les récurrences ?", answer: "Pour chaque employé, la plateforme calcule la prochaine échéance d'une formation récurrente (ex. HF tous les 24 mois) et affiche un indicateur OK / bientôt dû / en retard, avec export pour vos audits." },
+      { question: "Que deviennent mes données ?", answer: "Les données sont hébergées dans l'Union Européenne et traitées conformément au RGPD. Vous disposez d'un droit d'accès, de rectification et d'effacement." },
+    ],
+    en: [
+      { question: "Are your trainings EASA-recognised?", answer: "R-AERO Training Academy's EASA Part-147 approval is in progress. Our trainings align with current requirements (Part-145, Part-66) and each certificate is numbered and verifiable." },
+      { question: "What training formats do you offer?", answer: "Self-paced e-learning, live virtual classes, webinars and inter-company classroom sessions. Some trainings combine several formats." },
+      { question: "In which language are the trainings?", answer: "The interface and content are available in English and French. The language switcher is at the top of the page." },
+      { question: "How do recurrencies work?", answer: "For each employee, the platform computes the next deadline of a recurrent training (e.g. HF every 24 months) and shows an OK / due-soon / overdue indicator, with export for your audits." },
+      { question: "What happens to my data?", answer: "Data is hosted in the European Union and processed in accordance with the GDPR. You have rights of access, rectification and erasure." },
+    ],
+  };
+  for (const [lang, items] of Object.entries(sets)) {
+    const existing = await db.select().from(faqItems).where(eq(faqItems.language, lang)).limit(1);
+    if (existing[0]) continue;
+    let i = 1;
+    for (const it of items) { await db.insert(faqItems).values({ language: lang, isActive: true, sortOrder: i++, ...it }); }
+    console.log(`[seed] FAQ ${lang} créée (${items.length}).`);
   }
 }
 
@@ -412,6 +441,7 @@ async function main() {
     console.log("[seed] Catalogue déjà présent — comptes vérifiés, seed terminé.");
     await ensureMemberAndAffiliations();
     await ensureOffers();
+    await ensureFaq();
     return;
   }
 
@@ -567,6 +597,7 @@ async function main() {
 
   await ensureMemberAndAffiliations();
   await ensureOffers();
+  await ensureFaq();
 
   console.log("[seed] ✅ Terminé.");
   if (isProd) {
