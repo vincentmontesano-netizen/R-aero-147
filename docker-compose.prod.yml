@@ -1,0 +1,57 @@
+# ─── R-AERO Training Academy — PRODUCTION (image pré-construite, Hostinger) ───
+# Ce compose NE construit RIEN : il tire l'image déjà publiée sur GHCR par la CI
+# GitHub Actions (.github/workflows/docker-publish.yml). C'est la bonne version à
+# utiliser dans le « Docker Manager » de Hostinger (qui n'a pas ton code source).
+#
+#   Hostinger → VPS → Docker → Créer un projet → Coller ce fichier
+#   Renseigne les variables d'environnement (voir .env.production.example)
+#
+# Pré-requis : le package GHCR doit être PUBLIC (une seule fois, voir docs), ou
+# fournir des identifiants de registre dans Hostinger.
+services:
+  app:
+    image: ghcr.io/vincentmontesano-netizen/r-aero-147:latest
+    pull_policy: always
+    container_name: r-aero-academy
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      STORAGE_DIR: /app/storage
+      VITE_APP_ID: r-aero-training-academy
+      # Laisser vide → l'entrypoint génère un secret fort et le persiste dans le volume.
+      JWT_SECRET: ${JWT_SECRET:-}
+      APP_ORIGIN: ${APP_ORIGIN:-}
+      # ── Compte admin (seed) ──
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      # ── Stripe ── (unset = mode démo)
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      VITE_STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
+      # ── IA (Mistral : texte + image + voix) ──
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # ── Email (SMTP envoi + IMAP réception) ──
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      ADMIN_NOTIFY_EMAIL: ${ADMIN_NOTIFY_EMAIL:-}
+      IMAP_HOST: ${IMAP_HOST:-imap.hostinger.com}
+      IMAP_PORT: ${IMAP_PORT:-993}
+    volumes:
+      - raero-db:/var/lib/postgresql/data
+      - raero-storage:/app/storage
+
+volumes:
+  raero-db:
+    driver: local
+  raero-storage:
+    driver: local
