@@ -6,6 +6,48 @@ L'application est **un seul container** (front + back + PostgreSQL). Ce guide la
 
 ---
 
+## ⭐ Méthode A — Docker Manager Hostinger (image GHCR) — règle « Deployment failed »
+
+> **Pourquoi ça plantait :** le Docker Manager de Hostinger **ne construit pas
+> d'image**, il ne fait que la *tirer*. Or `docker-compose.yml` contient
+> `build: context: .` et Hostinger n'a pas ton code source → « Deployment failed ».
+> Solution : une image pré-construite publiée sur GHCR + `docker-compose.prod.yml`
+> (qui fait `image:` au lieu de `build:`).
+
+**1. Laisser la CI publier l'image (automatique).** À chaque push sur `main`, le
+workflow `.github/workflows/docker-publish.yml` build et pousse :
+```
+ghcr.io/vincentmontesano-netizen/r-aero-147:latest
+```
+➡️ GitHub → onglet **Actions** → attends que « Publish Docker image » soit ✅
+(≈ 5-10 min la 1ʳᵉ fois).
+
+**2. Rendre le package public (une seule fois).** Pour que Hostinger tire l'image
+sans identifiants : GitHub → ton profil → **Packages** → `r-aero-147` →
+**Package settings** → *Danger Zone* → **Change visibility → Public**.
+*(Alternative privée : configurer dans Hostinger des identifiants registre
+`ghcr.io` = login GitHub + un PAT avec le scope `read:packages`.)*
+
+**3. Déployer.** hPanel → **VPS → Docker → Créer un projet / Compose** →
+**colle le contenu de `docker-compose.prod.yml`** (⚠️ pas `docker-compose.yml`).
+Renseigne les variables d'environnement (voir `.env.production.example`) :
+`ADMIN_EMAIL`, `ADMIN_PASSWORD`, `APP_ORIGIN=https://ton-domaine.com`,
+`STRIPE_*`, `MISTRAL_API_KEY`, `SMTP_*` (host `smtp.hostinger.com`, port `465`),
+`JWT_SECRET` **laissé vide** (auto-généré et persisté). L'app écoute sur `3000`.
+
+**4. Domaine + HTTPS** : voir §5 ci-dessous (reverse proxy → port 3000).
+
+**5. Mises à jour** : nouveau push `main` → la CI republie `:latest` → dans
+Hostinger **recrée** le projet (`pull_policy: always` tire la nouvelle image).
+Les volumes `raero-db` / `raero-storage` conservent base et fichiers.
+
+---
+
+## Méthode B — Build directement sur le VPS (SSH)
+
+> À utiliser si tu as un accès SSH et ≥ 2 Go de RAM, et que tu préfères ne pas
+> passer par GHCR. Utilise `docker-compose.yml` (build local).
+
 ## 1. Prérequis
 
 - Un **VPS Hostinger** (Ubuntu 22.04+ recommandé), accès SSH.
