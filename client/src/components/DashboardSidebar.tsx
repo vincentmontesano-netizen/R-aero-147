@@ -7,7 +7,7 @@ const GOLD = "oklch(68% 0.1 78)";
 const MUTED = "oklch(45% 0.02 240)";
 const BORDER = "oklch(88% 0.015 88)";
 
-export type SidebarItem = { key: string; label: string; icon: LucideIcon; badge?: number | string };
+export type SidebarItem = { key: string; label: string; icon: LucideIcon; badge?: number | string; section?: string };
 
 /** Responsive navigation for the connected dashboards.
  *  - Desktop (md+): vertical, sticky, collapsible sidebar (icons-only when collapsed).
@@ -38,11 +38,15 @@ export default function DashboardSidebar({ items, active, onSelect, heading }: {
         </button>
       </div>
       <nav className="flex md:flex-col gap-1 p-2 overflow-x-auto md:overflow-visible">
-        {items.map((it) => {
+        {items.map((it, i) => {
           const on = active === it.key;
+          const showSection = !!it.section && it.section !== items[i - 1]?.section;
           return (
+            <div key={it.key} className="contents">
+            {showSection && !collapsed && (
+              <div className="hidden md:block text-[10px] font-semibold tracking-widest px-2 pt-3 pb-1 first:pt-1" style={{ color: MUTED }}>{it.section}</div>
+            )}
             <button
-              key={it.key}
               onClick={() => onSelect(it.key)}
               title={it.label}
               className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors shrink-0 md:w-full justify-start ${collapsed ? "md:justify-center" : ""}`}
@@ -58,6 +62,7 @@ export default function DashboardSidebar({ items, active, onSelect, heading }: {
                 <span className={`text-[10px] px-1.5 rounded-full ${collapsed ? "md:hidden" : ""}`} style={{ background: `${GOLD}22`, color: BLUE }}>{it.badge}</span>
               )}
             </button>
+            </div>
           );
         })}
       </nav>

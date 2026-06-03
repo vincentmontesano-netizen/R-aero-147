@@ -322,20 +322,26 @@ export default function AdminDashboard() {
         <Tabs value={tab} onValueChange={setTab}>
           <div className="flex flex-col md:flex-row gap-4 md:gap-6 md:items-start">
             <DashboardSidebar active={tab} onSelect={setTab} heading={t("adminDashboard.sidebarHeading")} items={[
-              { key: "trainings", label: t("adminDashboard.navTrainings"), icon: BookOpen },
-              { key: "news", label: t("adminDashboard.navNews"), icon: Newspaper },
-              { key: "users", label: t("adminDashboard.navUsers"), icon: Users },
-              { key: "organizations", label: t("adminDashboard.navOrganizations"), icon: Building2 },
-              { key: "admins", label: t("adminDashboard.navAdmins"), icon: ShieldCheck },
-              { key: "orders", label: t("adminDashboard.navOrders"), icon: ShoppingCart },
-              { key: "quotes", label: t("adminDashboard.navQuotes"), icon: FileText },
-              { key: "support", label: t("adminDashboard.navSupport"), icon: LifeBuoy },
-              { key: "emails", label: t("adminDashboard.navEmails"), icon: Mail },
-              { key: "stripe", label: t("adminDashboard.navStripe"), icon: CreditCard },
-              { key: "offers", label: t("adminDashboard.navOffers"), icon: Layers },
-              { key: "faq", label: t("adminDashboard.navFaq"), icon: HelpCircle },
-              { key: "compliance", label: t("adminDashboard.navCompliance"), icon: BarChart3 },
-              { key: "settings", label: t("adminDashboard.navSettings"), icon: Settings },
+              // Contenu & site
+              { key: "trainings", label: t("adminDashboard.navTrainings"), icon: BookOpen, section: t("adminDashboard.secContent") },
+              { key: "news", label: t("adminDashboard.navNews"), icon: Newspaper, section: t("adminDashboard.secContent") },
+              { key: "offers", label: t("adminDashboard.navOffers"), icon: Layers, section: t("adminDashboard.secContent") },
+              { key: "faq", label: t("adminDashboard.navFaq"), icon: HelpCircle, section: t("adminDashboard.secContent") },
+              // Ventes
+              { key: "orders", label: t("adminDashboard.navOrders"), icon: ShoppingCart, section: t("adminDashboard.secSales") },
+              { key: "quotes", label: t("adminDashboard.navQuotes"), icon: FileText, section: t("adminDashboard.secSales") },
+              // Utilisateurs
+              { key: "users", label: t("adminDashboard.navUsers"), icon: Users, section: t("adminDashboard.secPeople") },
+              { key: "organizations", label: t("adminDashboard.navOrganizations"), icon: Building2, section: t("adminDashboard.secPeople") },
+              { key: "admins", label: t("adminDashboard.navAdmins"), icon: ShieldCheck, section: t("adminDashboard.secPeople") },
+              // Communication
+              { key: "support", label: t("adminDashboard.navSupport"), icon: LifeBuoy, section: t("adminDashboard.secComms") },
+              { key: "emails", label: t("adminDashboard.navEmails"), icon: Mail, section: t("adminDashboard.secComms") },
+              // Conformité
+              { key: "compliance", label: t("adminDashboard.navCompliance"), icon: BarChart3, section: t("adminDashboard.secCompliance") },
+              // Configuration
+              { key: "stripe", label: t("adminDashboard.navStripe"), icon: CreditCard, section: t("adminDashboard.secConfig") },
+              { key: "settings", label: t("adminDashboard.navSettings"), icon: Settings, section: t("adminDashboard.secConfig") },
             ]} />
             <div className="flex-1 min-w-0">
 
