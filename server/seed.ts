@@ -280,8 +280,9 @@ async function main() {
   const adminPass = process.env.ADMIN_PASSWORD || (isProd ? nanoid(24) : "raero@2026!");
 
   console.log("[seed] Comptes de démonstration…");
+  const adminEmail = (process.env.ADMIN_EMAIL || "contact@r-aero-academy.com").trim().toLowerCase();
   const admin = await ensureUser({
-    email: "contact@r-aero-academy.com", password: adminPass, name: "Administrateur R-AERO",
+    email: adminEmail, password: adminPass, name: "Administrateur R-AERO",
     role: "admin", jobTitle: "Responsable formation Part-147",
   });
   if (isProd) console.log(process.env.ADMIN_PASSWORD ? "[seed] admin password from ADMIN_PASSWORD." : "[seed] ⚠ admin password randomised — set ADMIN_PASSWORD then use 'forgot password', or reset via DB.");

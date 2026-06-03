@@ -1,9 +1,9 @@
 # ─── R-AERO Training Academy — single all-in-one container ───────────────────
 # Front-end + back-end + PostgreSQL embedded in one image.
-#   docker compose up --build
-# Then open http://localhost:3000
-#   Admin     : admin@r-aero.academy / Admin1234!
-#   Apprenant : jean.dupont@example.com / Learner1234!
+#   1) cp .env.production.example .env   then fill it in
+#   2) docker compose up -d --build
+# Compose auto-reads the .env file in this directory for the ${VAR} values below.
+# Admin credentials are set via ADMIN_EMAIL / ADMIN_PASSWORD in your .env.
 services:
   app:
     build:
@@ -16,21 +16,36 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      # Leave empty to auto-generate a stable secret persisted in the volume; or set your own.
-      JWT_SECRET: ${JWT_SECRET:-}
+      STORAGE_DIR: /app/storage
       VITE_APP_ID: r-aero-training-academy
-      # ── Optional integrations (left empty = demo mode) ──
-      # Stripe — if unset, checkout runs in demo mode (access granted instantly).
+      # Session secret. Leave empty → the entrypoint auto-generates a strong one and
+      # persists it in the volume (stable across restarts). Or set your own.
+      JWT_SECRET: ${JWT_SECRET:-}
+      APP_ORIGIN: ${APP_ORIGIN:-}
+      # ── Admin account (created/used by the seed) ──
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      # ── Stripe ── (unset = demo mode)
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
-      VITE_STRIPE_PUBLISHABLE_KEY: ${VITE_STRIPE_PUBLISHABLE_KEY:-}
-      # AI e-learning maker — set any/all. Text: all 4. Image+voice: OpenAI or Google.
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      VITE_STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
+      # ── AI (e-learning maker). Mistral does text + image + voice. ──
       MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # ── Email (SMTP send + IMAP reception). Unset = emails are logged only. ──
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      ADMIN_NOTIFY_EMAIL: ${ADMIN_NOTIFY_EMAIL:-}
+      IMAP_HOST: ${IMAP_HOST:-imap.hostinger.com}
+      IMAP_PORT: ${IMAP_PORT:-993}
     volumes:
-      # Persist the embedded database and generated PDFs across restarts.
+      # Persist the embedded database and generated/uploaded files across restarts.
       - raero-db:/var/lib/postgresql/data
       - raero-storage:/app/storage
 
