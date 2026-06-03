@@ -284,7 +284,10 @@ export const appRouter = router({
         timezone: z.string().optional(),
         marketingOptIn: z.boolean().optional(),
       }))
-      .mutation(({ ctx, input }) => updateUserProfile(ctx.user.id, input)),
+      .mutation(async ({ ctx, input }) => {
+        const u = await updateUserProfile(ctx.user.id, input);
+        return u ? sanitizeUser(u) : null;
+      }),
   }),
 
   // ─── Public ────────────────────────────────────────────────────────────────
@@ -1306,7 +1309,7 @@ export const appRouter = router({
         role: z.enum(["user", "admin", "instructor", "company_manager"]).optional(),
         jobTitle: z.string().optional(), licenseNumber: z.string().optional(), licenseCategories: z.string().optional(),
       }))
-      .mutation(({ input }) => { const { id, ...data } = input; return adminUpdateUser(id, data); }),
+      .mutation(async ({ input }) => { const { id, ...data } = input; const u = await adminUpdateUser(id, data); return u ? sanitizeUser(u) : null; }),
 
     // ── Organizations module (companies + their MANAGER affiliations) ──
     organizations: router({

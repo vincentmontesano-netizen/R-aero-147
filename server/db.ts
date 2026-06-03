@@ -724,7 +724,7 @@ export async function getAdminUsers() {
   const compName = new Map(comps.map((c) => [c.id, c.name]));
   const affByPerson = new Map<number, typeof affs[number]>();
   for (const a of affs) if (!affByPerson.has(a.personId)) affByPerson.set(a.personId, a);
-  return rows.map(({ passwordHash, ...rest }) => {
+  return rows.map(({ passwordHash, resetToken, resetTokenExpiresAt, twoFactorCode, twoFactorExpiresAt, ...rest }) => {
     const a = affByPerson.get(rest.id);
     const orgId = a?.orgId ?? rest.companyId ?? null;
     return { ...rest, organizationName: orgId ? compName.get(orgId) ?? null : null, affiliationRole: a?.role ?? null };
@@ -1629,7 +1629,7 @@ export async function getAdminUserDetail(userId: number) {
   if (!db) return null;
   const userRows = await db.select().from(users).where(eq(users.id, userId)).limit(1);
   if (!userRows[0]) return null;
-  const { passwordHash: _ph, ...user } = userRows[0];
+  const { passwordHash: _ph, resetToken: _rt, resetTokenExpiresAt: _rte, twoFactorCode: _2fc, twoFactorExpiresAt: _2fe, ...user } = userRows[0];
   const userOrders = await db.select().from(orders).where(eq(orders.userId, userId)).orderBy(desc(orders.createdAt));
   const userEnrollments = await db.select().from(enrollments).where(eq(enrollments.userId, userId)).orderBy(desc(enrollments.createdAt));
   const userCerts = await db.select().from(certificates).where(eq(certificates.userId, userId)).orderBy(desc(certificates.issuedAt));
