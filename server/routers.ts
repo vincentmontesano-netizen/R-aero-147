@@ -55,6 +55,7 @@ import {
 import { createCheckoutSession, confirmCheckoutPayment, createQuoteCheckout } from "./stripe";
 import { sendEmail, isEmailConfigured, adminNotifyEmail, simpleEmail, passwordResetEmail, twoFactorCodeEmail } from "./email";
 import { fetchInbox, fetchMessage, isInboxConfigured } from "./inbox";
+import { rateLimit, rateLimitReset } from "./ratelimit";
 import { createSubscriptionCheckoutSession, createBillingPortalSession, confirmSubscription } from "./subscription";
 import {
   getLiveAccess, joinLiveRoom, getParticipants, postLiveMessage, getLiveMessages, setMessageAnswered,
@@ -194,12 +195,17 @@ export const appRouter = router({
     login: publicProcedure
       .input(z.object({ email: z.string().email(), password: z.string() }))
       .mutation(async ({ ctx, input }) => {
+        // Anti brute-force: max 5 attempts / 15 min per IP+email.
+        const rlKey = `login:${ipFromReq(ctx.req) ?? "?"}:${input.email.trim().toLowerCase()}`;
+        const rl = rateLimit(rlKey, 5, 15 * 60 * 1000);
+        if (!rl.ok) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: `Trop de tentatives. Réessayez dans ${Math.ceil(rl.retryAfterSec / 60)} min.` });
         let user;
         try {
           user = await loginUser(input.email, input.password);
         } catch (err: any) {
           throw new TRPCError({ code: "UNAUTHORIZED", message: err.message });
         }
+        rateLimitReset(rlKey);
         // Email 2FA (opt-in): if enabled AND email delivery is possible, send a code and
         // require a second step. If SMTP is down, fall back to direct login (no lockout).
         if ((user as any).twoFactorEnabled && isEmailConfigured()) {
@@ -217,9 +223,13 @@ export const appRouter = router({
     verifyTwoFactor: publicProcedure
       .input(z.object({ email: z.string().email(), code: z.string().min(4) }))
       .mutation(async ({ ctx, input }) => {
+        const rlKey = `2fa:${ipFromReq(ctx.req) ?? "?"}:${input.email.trim().toLowerCase()}`;
+        const rl = rateLimit(rlKey, 8, 15 * 60 * 1000);
+        if (!rl.ok) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: `Trop de tentatives. Réessayez dans ${Math.ceil(rl.retryAfterSec / 60)} min.` });
         let user;
         try { user = await verifyTwoFactorCode(input.email, input.code); }
         catch (err: any) { throw new TRPCError({ code: "UNAUTHORIZED", message: err.message }); }
+        rateLimitReset(rlKey);
         const token = await sdk.createSessionToken(user.openId, { name: user.name ?? "", expiresInMs: ONE_YEAR_MS });
         ctx.res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(ctx.req), maxAge: ONE_YEAR_MS });
         return sanitizeUser(user);
@@ -239,7 +249,9 @@ export const appRouter = router({
     // ── Password reset (email link sent from the configured SMTP sender) ──
     requestPasswordReset: publicProcedure
       .input(z.object({ email: z.string().email(), origin: z.string().optional() }))
-      .mutation(async ({ input }) => {
+      .mutation(async ({ ctx, input }) => {
+        // Throttle by IP to prevent reset-email bombing (response stays neutral).
+        if (!rateLimit(`reset:${ipFromReq(ctx.req) ?? "?"}`, 5, 15 * 60 * 1000).ok) return { ok: true };
         const reset = await createPasswordReset(input.email);
         // Never reveal whether the email exists; only send when it does + SMTP is set.
         if (reset && isEmailConfigured()) {

@@ -30,6 +30,11 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 async function startServer() {
+  // Security gate: in production a strong JWT_SECRET is mandatory. An empty/weak secret
+  // makes session tokens forgeable (auth bypass), so refuse to boot.
+  if (process.env.NODE_ENV === "production" && (process.env.JWT_SECRET ?? "").trim().length < 32) {
+    throw new Error("[security] JWT_SECRET must be set to a strong random value (>= 32 chars) in production. Generate one with: openssl rand -hex 32");
+  }
   // Load admin-configured settings (e.g. AI API keys) into process.env before serving.
   await loadSettingsIntoEnv().catch((e) => console.warn("[settings] load failed:", e?.message));
   const app = express();

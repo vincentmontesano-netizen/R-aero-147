@@ -52,7 +52,7 @@ async function ensureMemberAndAffiliations() {
   let marcEmp = (await db.select().from(employees).where(eq(employees.email, "marc.lefebvre@demo.example")).limit(1))[0];
   if (marcEmp && marcEmp.userId == null) {
     const memberUser = await ensureUser({
-      email: "marc.perso@example.com", password: "Member1234!", name: "Marc Lefebvre",
+      email: "marc.perso@example.com", password: process.env.NODE_ENV === "production" ? nanoid(24) : "Member1234!", name: "Marc Lefebvre",
       role: "user", jobTitle: "Technicien B1", licenseNumber: "FR.66.222111", licenseCategories: "B1.1",
     });
     if (memberUser) {
@@ -271,14 +271,23 @@ async function main() {
   const db = await getDb();
   if (!db) throw new Error("DATABASE_URL non configuré.");
 
+  // In production, the demo accounts must NOT keep their published passwords. They are
+  // still created (for demo data integrity) but with a random, unknown password — login
+  // with the known credentials is therefore impossible. The admin password comes from
+  // ADMIN_PASSWORD in production.
+  const isProd = process.env.NODE_ENV === "production";
+  const demoPass = (known: string) => (isProd ? nanoid(24) : known);
+  const adminPass = process.env.ADMIN_PASSWORD || (isProd ? nanoid(24) : "raero@2026!");
+
   console.log("[seed] Comptes de démonstration…");
   const admin = await ensureUser({
-    email: "contact@r-aero-academy.com", password: "raero@2026!", name: "Administrateur R-AERO",
+    email: "contact@r-aero-academy.com", password: adminPass, name: "Administrateur R-AERO",
     role: "admin", jobTitle: "Responsable formation Part-147",
   });
+  if (isProd) console.log(process.env.ADMIN_PASSWORD ? "[seed] admin password from ADMIN_PASSWORD." : "[seed] ⚠ admin password randomised — set ADMIN_PASSWORD then use 'forgot password', or reset via DB.");
 
   const learner = await ensureUser({
-    email: "jean.dupont@example.com", password: "Learner1234!", name: "Jean Dupont",
+    email: "jean.dupont@example.com", password: demoPass("Learner1234!"), name: "Jean Dupont",
     role: "user", jobTitle: "Technicien B1", licenseNumber: "FR.66.123456", licenseCategories: "B1.1, B1.3",
   });
 
@@ -294,7 +303,7 @@ async function main() {
   }
 
   const manager = await ensureUser({
-    email: "manager@demo.example", password: "Manager1234!", name: "Sophie Martin",
+    email: "manager@demo.example", password: demoPass("Manager1234!"), name: "Sophie Martin",
     role: "company_manager", jobTitle: "Training Manager", companyId: company.id,
   });
   if (!manager.companyId) await db.update(users).set({ companyId: company.id }).where(eq(users.id, manager.id));
@@ -533,10 +542,15 @@ async function main() {
   await ensureMemberAndAffiliations();
 
   console.log("[seed] ✅ Terminé.");
-  console.log("   Admin    : contact@r-aero-academy.com / raero@2026!");
-  console.log("   Apprenant: jean.dupont@example.com / Learner1234!");
-  console.log("   Manager  : manager@demo.example / Manager1234!");
-  console.log("   Membre   : marc.perso@example.com / Member1234! (affilié, technicien B1)");
+  if (isProd) {
+    console.log("   (production) Comptes démo créés avec des mots de passe ALÉATOIRES — identifiants connus inutilisables.");
+    console.log("   Admin : contact@r-aero-academy.com" + (process.env.ADMIN_PASSWORD ? " / (ADMIN_PASSWORD)" : " / (mot de passe aléatoire — utilisez « mot de passe oublié »)"));
+  } else {
+    console.log("   Admin    : contact@r-aero-academy.com / raero@2026!");
+    console.log("   Apprenant: jean.dupont@example.com / Learner1234!");
+    console.log("   Manager  : manager@demo.example / Manager1234!");
+    console.log("   Membre   : marc.perso@example.com / Member1234! (affilié, technicien B1)");
+  }
 }
 
 main()

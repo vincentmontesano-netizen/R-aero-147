@@ -242,13 +242,13 @@ export default function AdminDashboard() {
     onSuccess: () => toast.success(t("adminDashboard.toastTestSent")), onError: (e) => toast.error(e.message),
   });
   // Stripe keys (secret left empty = keep the stored one).
-  const [stripe, setStripe] = useState({ publishableKey: "", secretKey: "" });
+  const [stripe, setStripe] = useState({ publishableKey: "", secretKey: "", webhookSecret: "" });
   const [stripeLoaded, setStripeLoaded] = useState(false);
   useEffect(() => {
-    if (settings?.stripe && !stripeLoaded) { setStripe({ publishableKey: settings.stripe.publishableKey ?? "", secretKey: "" }); setStripeLoaded(true); }
+    if (settings?.stripe && !stripeLoaded) { setStripe({ publishableKey: settings.stripe.publishableKey ?? "", secretKey: "", webhookSecret: "" }); setStripeLoaded(true); }
   }, [settings, stripeLoaded]);
   const saveStripe = trpc.admin.settings.setStripe.useMutation({
-    onSuccess: () => { toast.success(t("adminDashboard.toastStripeSaved")); setStripe((s) => ({ ...s, secretKey: "" })); utils.admin.settings.get.invalidate(); }, onError: (e) => toast.error(e.message),
+    onSuccess: () => { toast.success(t("adminDashboard.toastStripeSaved")); setStripe((s) => ({ ...s, secretKey: "", webhookSecret: "" })); utils.admin.settings.get.invalidate(); }, onError: (e) => toast.error(e.message),
   });
 
   const exportComplianceCSV = () => {
@@ -796,6 +796,11 @@ export default function AdminDashboard() {
                 <div>
                   <label className="text-[11px]" style={{ color: "oklch(45% 0.02 240)" }}>{t("adminDashboard.stripeSecret")}</label>
                   <Input type="password" value={stripe.secretKey} onChange={(e) => setStripe((s) => ({ ...s, secretKey: e.target.value }))} placeholder={settings?.stripe?.secretSet ? "••••••••" : "sk_live_… / sk_test_…"} className="font-mono" />
+                </div>
+                <div>
+                  <label className="text-[11px]" style={{ color: "oklch(45% 0.02 240)" }}>{t("adminDashboard.stripeWebhook")} {(settings as any)?.stripe?.webhookSet ? <span style={{ color: "oklch(55% 0.18 145)" }}>✓</span> : null}</label>
+                  <Input type="password" value={stripe.webhookSecret} onChange={(e) => setStripe((s) => ({ ...s, webhookSecret: e.target.value }))} placeholder={(settings as any)?.stripe?.webhookSet ? "••••••••" : "whsec_…"} className="font-mono" />
+                  <p className="text-[11px] mt-1" style={{ color: "oklch(45% 0.02 240)" }}>{t("adminDashboard.stripeWebhookHint")}</p>
                 </div>
                 <Button disabled={saveStripe.isPending} onClick={() => saveStripe.mutate(stripe)} style={{ background: "oklch(19% 0.08 252)", color: "white" }}>{t("adminDashboard.btnSaveSetting")}</Button>
                 <p className="text-[11px]" style={{ color: "oklch(45% 0.02 240)" }}>{t("adminDashboard.stripeStorageNote")}</p>
