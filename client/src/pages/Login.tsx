@@ -1,5 +1,9 @@
-import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { loginDestination } from "@shared/loginReturn";
+import { announceSessionChange } from '@/lib/sessionChange';
+import { useQueryClient } from '@tanstack/react-query';
+import { clearSessionCache } from '@/lib/sessionCache';
+import { useRef, useState } from "react";
+import { Link, useLocation, useSearch } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,20 +19,25 @@ const IVORY = "oklch(97% 0.01 88)";
 export default function Login() {
   const { t } = useI18n();
   const [, setLocation] = useLocation();
+  const search = useSearch();
   const utils = trpc.useUtils();
+  const queryClient = useQueryClient();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const [forgot, setForgot] = useState(false);
+  const resetSending = useRef(false);
+  const [resetNotice, setResetNotice] = useState<"accepted" | "uncertain" | null>(null);
   const [twoFA, setTwoFA] = useState(false);
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
 
   const finishLogin = async (user: any) => {
-    await utils.auth.me.invalidate();
+    await clearSessionCache(queryClient);
     utils.auth.me.setData(undefined, user);
+    announceSessionChange();
     toast.success(t("login.loginSuccess"));
-    setLocation(user.role === "admin" ? "/admin" : "/dashboard");
+    setLocation(loginDestination(search, user.role));
   };
 
   const login = trpc.auth.login.useMutation({
@@ -45,8 +54,9 @@ export default function Login() {
   });
 
   const requestReset = trpc.auth.requestPasswordReset.useMutation({
-    onSuccess: () => { toast.success(t("login.resetSent")); setForgot(false); },
-    onError: () => toast.success(t("login.resetSent")), // never reveal whether the email exists
+    onSuccess: () => setResetNotice("accepted"),
+    onError: () => setResetNotice("uncertain"),
+    onSettled: () => { resetSending.current = false; },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -57,8 +67,11 @@ export default function Login() {
 
   const handleReset = (e: React.FormEvent) => {
     e.preventDefault();
+    if (resetSending.current || requestReset.isPending) return;
     if (!email.trim()) return toast.error(t("login.emailLabel"));
-    requestReset.mutate({ email, origin: window.location.origin });
+    resetSending.current = true;
+    setResetNotice(null);
+    requestReset.mutate({ email: email.trim() });
   };
 
   const handleVerify = (e: React.FormEvent) => {
@@ -107,17 +120,18 @@ export default function Login() {
               <button type="button" onClick={() => { setTwoFA(false); setCode(""); }} className="w-full text-sm hover:underline" style={{ color: GOLD }}>{t("login.backToLogin")}</button>
             </form>
           ) : forgot ? (
-            <form onSubmit={handleReset} className="space-y-4">
+            <form onSubmit={handleReset} className="space-y-4" aria-busy={requestReset.isPending}>
               <p className="text-sm" style={{ color: "oklch(45% 0.02 240)" }}>{t("login.resetIntro")}</p>
               <div>
-                <label className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("login.emailLabel")}</label>
-                <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t("login.emailPlaceholder")} autoComplete="email" />
+                <label htmlFor="reset-email" className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("login.emailLabel")}</label>
+                <Input id="reset-email" type="email" required disabled={requestReset.isPending} value={email} onChange={(e) => { setEmail(e.target.value); setResetNotice(null); }} placeholder={t("login.emailPlaceholder")} autoComplete="email" />
               </div>
+              {resetNotice && <p role={resetNotice === "uncertain" ? "alert" : "status"} className="text-sm" style={{ color: DEEP_BLUE }}>{t(resetNotice === "accepted" ? "login.resetSent" : "login.resetUncertain")}</p>}
               <Button type="submit" disabled={requestReset.isPending} className="w-full" style={{ background: DEEP_BLUE, color: IVORY }}>
                 {requestReset.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                 {t("login.resetSubmit")}
               </Button>
-              <button type="button" onClick={() => setForgot(false)} className="w-full text-sm hover:underline" style={{ color: GOLD }}>{t("login.backToLogin")}</button>
+              <button type="button" disabled={requestReset.isPending} onClick={() => { setForgot(false); setResetNotice(null); }} className="w-full text-sm hover:underline" style={{ color: GOLD }}>{t("login.backToLogin")}</button>
             </form>
           ) : (
             <>

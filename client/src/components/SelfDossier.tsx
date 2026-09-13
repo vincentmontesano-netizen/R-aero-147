@@ -1,3 +1,9 @@
+import { useQueryClient } from '@tanstack/react-query';
+import { clearSessionCache } from '@/lib/sessionCache';
+import { announceSessionChange } from '@/lib/sessionChange';
+import {supportRequestLabels} from "../../../shared/supportRequest";
+import {useState} from "react";
+import CredentialSharing from "./CredentialSharing";
 import { trpc } from "@/lib/trpc";
 import { useI18n } from "@/i18n";
 import { Button } from "@/components/ui/button";
@@ -14,7 +20,10 @@ const GREEN = "oklch(55% 0.18 145)";
  *  surfacing). The learner sees exactly what each employer sees of them, plus their
  *  full private layer, and controls which prior/external acquis they expose. */
 export default function SelfDossier() {
-  const { t } = useI18n();
+  const queryClient = useQueryClient();
+  const { t,lang } = useI18n();
+  const [closingPassword,setClosingPassword]=useState('');
+  const closure=lang==='fr'?{title:'Fermer mon compte',description:'Votre accès sera révoqué et les informations de votre profil seront retirées. Les certificats, examens, factures, preuves et historiques seront conservés. Cette action ne constitue pas un effacement complet des données personnelles.',password:'Mot de passe actuel',button:'Fermer mon compte',confirm:'Fermer définitivement votre compte et retirer les informations de votre profil ? Les justificatifs et historiques seront conservés.',success:'Compte fermé.'}:lang==='ar'?{title:'إغلاق حسابي',description:'سيُلغى وصولك وتُزال معلومات ملفك الشخصي. ستُحفظ الشهادات والاختبارات والفواتير والأدلة والسجلات. لا يمثل هذا الإجراء محواً كاملاً للبيانات الشخصية.',password:'كلمة المرور الحالية',button:'إغلاق حسابي',confirm:'هل تريد إغلاق حسابك نهائياً وإزالة معلومات ملفك الشخصي؟ ستُحفظ المستندات والسجلات.',success:'تم إغلاق الحساب.'}:{title:'Close my account',description:'Your access will be revoked and your profile information removed. Certificates, exams, invoices, evidence and histories will be retained. This does not fully erase personal data.',password:'Current password',button:'Close my account',confirm:'Permanently close your account and remove your profile information? Evidence and histories will be retained.',success:'Account closed.'};
   const utils = trpc.useUtils();
   const { data, isLoading } = trpc.me.selfView.useQuery();
   const invalidate = () => utils.me.selfView.invalidate();
@@ -23,7 +32,7 @@ export default function SelfDossier() {
     onError: (e) => toast.error(e.message),
   });
   const erase = trpc.me.eraseAccount.useMutation({
-    onSuccess: () => { toast.success(t("selfDossier.toastAccountErased")); setTimeout(() => { window.location.href = "/"; }, 800); },
+    onSuccess: async () => { setClosingPassword(''); await clearSessionCache(queryClient); utils.auth.me.setData(undefined, null); announceSessionChange(); toast.success(closure.success); window.location.assign("/"); },
     onError: (e) => toast.error(e.message),
   });
   const downloadData = async () => {
@@ -64,6 +73,9 @@ export default function SelfDossier() {
         )}
       </div>
 
+      <CredentialSharing data={data} />
+      <a href="/support?request=privacy" className="inline-block underline text-sm">{supportRequestLabels[lang].link}</a>
+
       {/* Person consent — share the whole ID module (documents) with affiliated orgs */}
       <div className="rounded-xl p-4" style={{ border: `1px solid ${BORDER}`, background: "white" }}>
         <div className="flex items-center justify-between gap-3">
@@ -92,12 +104,13 @@ export default function SelfDossier() {
 
       {/* INV-7 — right to erasure (reconciled with org retention of frozen proof) */}
       <div className="rounded-xl p-4" style={{ border: "1px solid oklch(80% 0.12 27)", background: "oklch(98% 0.02 27)" }}>
-        <h4 className="text-sm font-semibold mb-1" style={{ color: "oklch(45% 0.18 27)" }}>{t("selfDossier.eraseTitle")}</h4>
-        <p className="text-xs mb-3" style={{ color: MUTED }}>{t("selfDossier.eraseDescription")}</p>
-        <Button size="sm" variant="outline" disabled={erase.isPending}
-          onClick={() => { if (window.confirm(t("selfDossier.eraseConfirm"))) erase.mutate(); }}
+        <h4 className="text-sm font-semibold mb-1" style={{ color: "oklch(45% 0.18 27)" }}>{closure.title}</h4>
+        <p className="text-sm mb-3" style={{ color: MUTED }}>{closure.description}</p>
+        <label className="block text-sm mb-3">{closure.password}<input type="password" autoComplete="current-password" maxLength={1024} value={closingPassword} disabled={erase.isPending} onChange={e=>setClosingPassword(e.target.value)} className="block mt-1 w-full rounded-md border bg-white p-2" /></label>
+        <Button size="sm" variant="outline" disabled={erase.isPending||!closingPassword}
+          onClick={() => { if (window.confirm(closure.confirm)) erase.mutate({password:closingPassword}); }}
           style={{ borderColor: "oklch(60% 0.2 27)", color: "oklch(45% 0.18 27)" }}>
-          {t("selfDossier.eraseButton")}
+          {closure.button}
         </Button>
       </div>
     </div>

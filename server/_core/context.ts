@@ -28,7 +28,7 @@ export async function createContext(
     const session = await sdk.verifySession(cookies[COOKIE_NAME]);
     if (session?.openId) {
       const found = await getUserByOpenId(session.openId);
-      if (found && found.status !== "suspended") {
+      if (found && found.status === "active" && found.sessionVersion === session.sessionVersion) {
         user = found;
         affiliations = await getActiveAffiliations(found.id);
       }

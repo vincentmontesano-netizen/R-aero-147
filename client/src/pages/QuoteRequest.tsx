@@ -1,4 +1,6 @@
-import { useState } from "react";
+import {requestId} from "@/lib/requestId";
+import {quoteRequestInput} from "../../../shared/quoteRequestInput";
+import { useState, useRef } from "react";
 import { trpc } from "@/lib/trpc";
 import { useI18n } from "@/i18n";
 import BackButton from "@/components/BackButton";
@@ -7,25 +9,36 @@ import { Input } from "@/components/ui/input";
 import { CheckCircle, Building2, Users, FileText, Mail } from "lucide-react";
 import { toast } from "sonner";
 
+const emptyQuoteForm = {
+    companyName: "", siret: "", contactName: "", contactEmail: "",
+    contactPhone: "", employeeCount: "", trainingTypes: "", message: "",
+  };
+
 export default function QuoteRequest() {
   const { t } = useI18n();
   const [submitted, setSubmitted] = useState(false);
-  const [form, setForm] = useState({
-    companyName: "", siret: "", contactName: "", contactEmail: "",
-    contactPhone: "", employeeCount: "", trainingTypes: "", message: "",
-  });
+  const [reference, setReference] = useState<number | null>(null);
+  const [invalid, setInvalid] = useState(false);
+  const [form, setForm] = useState(emptyQuoteForm);
+
+  const sending = useRef(false);
+  const pendingCreation = useRef<{signature:string; requestId:string} | null>(null);
 
   const createQuote = trpc.quotes.create.useMutation({
-    onSuccess: () => { setSubmitted(true); toast.success(t("quoteRequest.toastSuccess")); },
+    onSuccess: result => { setReference(result.quoteId); setSubmitted(true); toast.success(t("quoteRequest.toastSuccess")); },
     onError: () => toast.error(t("quoteRequest.toastError")),
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    createQuote.mutate({
-      ...form,
-      employeeCount: form.employeeCount ? parseInt(form.employeeCount) : undefined,
-    });
+    if (sending.current) return;
+    const parsed = quoteRequestInput.safeParse({...form,employeeCount:form.employeeCount ? Number(form.employeeCount) : undefined});
+    setInvalid(!parsed.success);
+    if (!parsed.success) return;
+    const signature = JSON.stringify(parsed.data);
+    if (pendingCreation.current?.signature !== signature) pendingCreation.current = {signature, requestId:requestId()};
+    sending.current = true;
+    void createQuote.mutateAsync({...parsed.data,requestId:pendingCreation.current.requestId}).catch(() => {}).finally(() => { sending.current = false; });
   };
 
   if (submitted) {
@@ -39,7 +52,8 @@ export default function QuoteRequest() {
           <p className="text-base mb-6" style={{ color: "oklch(45% 0.02 240)" }}>
             {t("quoteRequest.successMessage")}
           </p>
-          <Button onClick={() => setSubmitted(false)} variant="outline">{t("quoteRequest.newRequest")}</Button>
+          {reference && <p className="text-sm mb-6">{t("quoteRequest.reference", { id: reference })}</p>}
+          <Button onClick={() => { pendingCreation.current = null; setForm(emptyQuoteForm); setReference(null); setInvalid(false); createQuote.reset(); setSubmitted(false); }} variant="outline">{t("quoteRequest.newRequest")}</Button>
         </div>
       </div>
     );
@@ -64,20 +78,21 @@ export default function QuoteRequest() {
           {/* Form */}
           <div className="lg:col-span-2">
             <form onSubmit={handleSubmit} className="rounded-xl p-8 space-y-6" style={{ background: "oklch(100% 0 0)", border: "1px solid oklch(88% 0.015 88)" }}>
+              <fieldset disabled={createQuote.isPending} className="space-y-6 min-w-0">
               <div>
                 <h2 className="font-semibold text-lg mb-4" style={{ color: "oklch(19% 0.08 252)" }}>{t("quoteRequest.companySectionTitle")}</h2>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2">
-                    <label className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("quoteRequest.companyNameLabel")}</label>
-                    <Input required value={form.companyName} onChange={(e) => setForm((f) => ({ ...f, companyName: e.target.value }))} placeholder={t("quoteRequest.companyNamePlaceholder")} />
+                    <label htmlFor="quote-companyName" className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("quoteRequest.companyNameLabel")}</label>
+                    <Input required id="quote-companyName" maxLength={255} value={form.companyName} onChange={(e) => setForm((f) => ({ ...f, companyName: e.target.value }))} placeholder={t("quoteRequest.companyNamePlaceholder")} />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("quoteRequest.siretLabel")}</label>
-                    <Input value={form.siret} onChange={(e) => setForm((f) => ({ ...f, siret: e.target.value }))} placeholder="XXX XXX XXX XXXXX" />
+                    <label htmlFor="quote-siret" className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("quoteRequest.siretLabel")}</label>
+                    <Input id="quote-siret" maxLength={20} value={form.siret} onChange={(e) => setForm((f) => ({ ...f, siret: e.target.value }))} placeholder="XXX XXX XXX XXXXX" />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("quoteRequest.employeeCountLabel")}</label>
-                    <Input type="number" value={form.employeeCount} onChange={(e) => setForm((f) => ({ ...f, employeeCount: e.target.value }))} placeholder="25" min="1" />
+                    <label htmlFor="quote-employeeCount" className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("quoteRequest.employeeCountLabel")}</label>
+                    <Input type="number" id="quote-employeeCount" step="1" max="2147483647" value={form.employeeCount} onChange={(e) => setForm((f) => ({ ...f, employeeCount: e.target.value }))} placeholder="25" min="1" />
                   </div>
                 </div>
               </div>
@@ -86,16 +101,16 @@ export default function QuoteRequest() {
                 <h2 className="font-semibold text-lg mb-4" style={{ color: "oklch(19% 0.08 252)" }}>{t("quoteRequest.contactSectionTitle")}</h2>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2">
-                    <label className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("quoteRequest.contactNameLabel")}</label>
-                    <Input required value={form.contactName} onChange={(e) => setForm((f) => ({ ...f, contactName: e.target.value }))} placeholder="Marie Dupont" />
+                    <label htmlFor="quote-contactName" className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("quoteRequest.contactNameLabel")}</label>
+                    <Input required id="quote-contactName" maxLength={128} value={form.contactName} onChange={(e) => setForm((f) => ({ ...f, contactName: e.target.value }))} placeholder="Marie Dupont" />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("quoteRequest.emailLabel")}</label>
-                    <Input required type="email" value={form.contactEmail} onChange={(e) => setForm((f) => ({ ...f, contactEmail: e.target.value }))} placeholder="m.dupont@mro.com" />
+                    <label htmlFor="quote-contactEmail" className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("quoteRequest.emailLabel")}</label>
+                    <Input required type="email" id="quote-contactEmail" maxLength={320} value={form.contactEmail} onChange={(e) => setForm((f) => ({ ...f, contactEmail: e.target.value }))} placeholder="m.dupont@mro.com" />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("quoteRequest.phoneLabel")}</label>
-                    <Input type="tel" value={form.contactPhone} onChange={(e) => setForm((f) => ({ ...f, contactPhone: e.target.value }))} placeholder={t("quoteRequest.phonePlaceholder")} />
+                    <label htmlFor="quote-contactPhone" className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("quoteRequest.phoneLabel")}</label>
+                    <Input type="tel" id="quote-contactPhone" maxLength={32} value={form.contactPhone} onChange={(e) => setForm((f) => ({ ...f, contactPhone: e.target.value }))} placeholder={t("quoteRequest.phonePlaceholder")} />
                   </div>
                 </div>
               </div>
@@ -104,12 +119,12 @@ export default function QuoteRequest() {
                 <h2 className="font-semibold text-lg mb-4" style={{ color: "oklch(19% 0.08 252)" }}>{t("quoteRequest.trainingSectionTitle")}</h2>
                 <div className="space-y-4">
                   <div>
-                    <label className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("quoteRequest.trainingTypesLabel")}</label>
-                    <Input value={form.trainingTypes} onChange={(e) => setForm((f) => ({ ...f, trainingTypes: e.target.value }))} placeholder={t("quoteRequest.trainingTypesPlaceholder")} />
+                    <label htmlFor="quote-trainingTypes" className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("quoteRequest.trainingTypesLabel")}</label>
+                    <Input id="quote-trainingTypes" maxLength={512} value={form.trainingTypes} onChange={(e) => setForm((f) => ({ ...f, trainingTypes: e.target.value }))} placeholder={t("quoteRequest.trainingTypesPlaceholder")} />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("quoteRequest.messageLabel")}</label>
-                    <textarea
+                    <label htmlFor="quote-message" className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("quoteRequest.messageLabel")}</label>
+                    <textarea id="quote-message" maxLength={10000}
                       value={form.message}
                       onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
                       className="w-full rounded-md border px-3 py-2 text-sm h-28 resize-none"
@@ -120,6 +135,8 @@ export default function QuoteRequest() {
                 </div>
               </div>
 
+              {invalid && <p role="alert" className="text-sm text-red-700">{t("quoteRequest.invalidFields")}</p>}
+              {createQuote.isError && <p role="alert" className="text-sm text-red-700">{t("quoteRequest.unconfirmed")}</p>}
               <Button
                 type="submit"
                 size="lg"
@@ -129,6 +146,7 @@ export default function QuoteRequest() {
               >
                 {createQuote.isPending ? t("quoteRequest.submitting") : t("quoteRequest.submit")}
               </Button>
+              </fieldset>
             </form>
           </div>
 

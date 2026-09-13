@@ -10,10 +10,12 @@ import {
 import { toast } from "sonner";
 
 export default function TrainingDetail() {
-  const { t } = useI18n();
+  const { t,lang } = useI18n();
   const { slug } = useParams<{ slug: string }>();
   const { isAuthenticated } = useAuth();
-  const { data: training, isLoading } = trpc.public.trainingBySlug.useQuery({ slug: slug ?? "" });
+  const query = trpc.public.trainingBySlug.useQuery({ slug: slug ?? "" });
+  const {data:training,isLoading}=query;
+  const utils=trpc.useUtils();
 
   const TYPE_LABELS: Record<string, string> = {
     elearning: t("trainingDetail.typeElearning"), webinar: t("trainingDetail.typeWebinar"), qt: t("trainingDetail.typeQt"),
@@ -28,10 +30,11 @@ export default function TrainingDetail() {
   };
 
   const addToCart = trpc.cart.add.useMutation({
-    onSuccess: () => toast.success(t("trainingDetail.toastAddedToCart")),
-    onError: () => toast.error(t("trainingDetail.toastLoginRequired")),
+    onSuccess: async () => {toast.success(t("trainingDetail.toastAddedToCart"));await utils.cart.invalidate();},
+    onError: error => toast.error(t(error.data?.code==="UNAUTHORIZED"?"trainingDetail.toastLoginRequired":"catalogue.cartError")),
   });
 
+  if(query.isError)return <div className="container py-24 text-center"><p role="alert" className="mb-4">{t("trainingDetail.unavailable")}</p><Button variant="outline" disabled={query.isFetching} onClick={()=>void query.refetch()}>{t("quoteThread.retry")}</Button><Link href="/catalogue" className="block mt-4 underline">{t("trainingDetail.backToCatalogue")}</Link></div>;
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: "oklch(97% 0.01 88)" }}>
@@ -85,11 +88,12 @@ export default function TrainingDetail() {
             {/* Price card */}
             <div className="rounded-xl p-6 min-w-64" style={{ background: "oklch(97% 0.01 88 / 0.07)", border: "1px solid oklch(97% 0.01 88 / 0.15)" }}>
               <div className="font-serif text-3xl font-bold text-white mb-1">
-                {training.priceTtc ? `${Number(training.priceTtc).toFixed(0)} €` : t("trainingDetail.onQuote")}
+                {training.priceTtc ? Number(training.priceTtc).toLocaleString(lang,{style:"currency",currency:"EUR"}) : t("trainingDetail.onQuote")}
               </div>
               {training.priceHt && (
-                <div className="text-xs text-white/50 mb-4">{t("trainingDetail.priceHtVat", { amount: Number(training.priceHt).toFixed(2) })}</div>
+                <div className="text-xs text-white/50 mb-4">{t("trainingDetail.priceHtVat", { amount: Number(training.priceHt).toLocaleString(lang,{minimumFractionDigits:2,maximumFractionDigits:2}) })}</div>
               )}
+              {addToCart.isError&&<p role="alert" className="text-sm text-white mb-3">{t(addToCart.error.data?.code==="UNAUTHORIZED"?"trainingDetail.toastLoginRequired":"catalogue.cartError")}</p>}
               {training.priceTtc ? (
                 <Button
                   size="lg"
@@ -110,7 +114,7 @@ export default function TrainingDetail() {
               )}
               {training.priceEnterprise && (
                 <div className="text-xs text-center text-white/50">
-                  {t("trainingDetail.enterprisePrice", { amount: Number(training.priceEnterprise).toFixed(0) })}
+                  {t("trainingDetail.enterprisePrice", { amount: Number(training.priceEnterprise).toLocaleString(lang,{minimumFractionDigits:2,maximumFractionDigits:2}) })}
                 </div>
               )}
             </div>
@@ -126,7 +130,7 @@ export default function TrainingDetail() {
             {training.description && (
               <div className="rounded-xl p-6" style={{ background: "oklch(100% 0 0)", border: "1px solid oklch(88% 0.015 88)" }}>
                 <h2 className="font-semibold text-lg mb-3" style={{ color: "oklch(19% 0.08 252)" }}>{t("trainingDetail.descriptionTitle")}</h2>
-                <p className="text-sm leading-relaxed" style={{ color: "oklch(45% 0.02 240)" }}>{training.description}</p>
+                <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: "oklch(45% 0.02 240)" }}>{training.description}</p>
               </div>
             )}
 
@@ -134,7 +138,7 @@ export default function TrainingDetail() {
             {training.objectives && (
               <div className="rounded-xl p-6" style={{ background: "oklch(100% 0 0)", border: "1px solid oklch(88% 0.015 88)" }}>
                 <h2 className="font-semibold text-lg mb-3" style={{ color: "oklch(19% 0.08 252)" }}>{t("trainingDetail.objectivesTitle")}</h2>
-                <p className="text-sm leading-relaxed" style={{ color: "oklch(45% 0.02 240)" }}>{training.objectives}</p>
+                <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: "oklch(45% 0.02 240)" }}>{training.objectives}</p>
               </div>
             )}
 
@@ -142,7 +146,7 @@ export default function TrainingDetail() {
             {training.prerequisites && (
               <div className="rounded-xl p-6" style={{ background: "oklch(100% 0 0)", border: "1px solid oklch(88% 0.015 88)" }}>
                 <h2 className="font-semibold text-lg mb-3" style={{ color: "oklch(19% 0.08 252)" }}>{t("trainingDetail.prerequisitesTitle")}</h2>
-                <p className="text-sm leading-relaxed" style={{ color: "oklch(45% 0.02 240)" }}>{training.prerequisites}</p>
+                <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: "oklch(45% 0.02 240)" }}>{training.prerequisites}</p>
               </div>
             )}
 
@@ -150,7 +154,7 @@ export default function TrainingDetail() {
             {training.targetAudience && (
               <div className="rounded-xl p-6" style={{ background: "oklch(100% 0 0)", border: "1px solid oklch(88% 0.015 88)" }}>
                 <h2 className="font-semibold text-lg mb-3" style={{ color: "oklch(19% 0.08 252)" }}>{t("trainingDetail.targetAudienceTitle")}</h2>
-                <p className="text-sm leading-relaxed" style={{ color: "oklch(45% 0.02 240)" }}>{training.targetAudience}</p>
+                <p className="text-sm leading-relaxed whitespace-pre-line" style={{ color: "oklch(45% 0.02 240)" }}>{training.targetAudience}</p>
               </div>
             )}
 
@@ -182,9 +186,9 @@ export default function TrainingDetail() {
               <div className="space-y-3">
                 {[
                   { icon: Clock, label: t("trainingDetail.durationLabel"), value: training.durationHours ? `${training.durationHours}h` : "—" },
-                  { icon: Globe, label: t("trainingDetail.languageLabel"), value: training.language === "fr" ? t("trainingDetail.languageFr") : t("trainingDetail.languageEn") },
-                  { icon: BarChart2, label: t("trainingDetail.levelLabel"), value: LEVEL_LABELS[training.level ?? "intermediate"] ?? "—" },
-                  { icon: Users, label: t("trainingDetail.domainLabel"), value: DOMAIN_LABELS[training.domain ?? "general"] ?? "—" },
+                  { icon: Globe, label: t("trainingDetail.languageLabel"), value: training.language === "fr" ? t("trainingDetail.languageFr") : training.language === "en" ? t("trainingDetail.languageEn") : training.language === "ar" ? t("catalogue.langAr") : training.language || t("trainingDetail.unspecified") },
+                  { icon: BarChart2, label: t("trainingDetail.levelLabel"), value: training.level ? LEVEL_LABELS[training.level] ?? training.level : t("trainingDetail.unspecified") },
+                  { icon: Users, label: t("trainingDetail.domainLabel"), value: training.domain ? DOMAIN_LABELS[training.domain] ?? training.domain : t("trainingDetail.unspecified") },
                   { icon: FileText, label: t("trainingDetail.typeLabel"), value: TYPE_LABELS[training.type] ?? training.type },
                 ].map((item) => (
                   <div key={item.label} className="flex items-center gap-3">

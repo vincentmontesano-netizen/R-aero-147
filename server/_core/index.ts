@@ -1,4 +1,8 @@
+import { preventApiCaching } from "./apiCache";
+import { processPendingAiVideos } from "../aiVideoJobs";
 import "dotenv/config";
+import { trustedProxies } from "./proxy";
+import { registerHealthRoutes } from "./health";
 import express from "express";
 import { createServer } from "http";
 import net from "net";
@@ -8,7 +12,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { registerWebhooks } from "../webhooks";
-import { loadSettingsIntoEnv } from "../db";
+import { finalizeExpiredExams, loadSettingsIntoEnv } from "../db";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -30,6 +34,7 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 async function startServer() {
+  const proxies = trustedProxies();
   // Security gate: in production a strong JWT_SECRET is mandatory. An empty/weak secret
   // makes session tokens forgeable (auth bypass), so refuse to boot.
   if (process.env.NODE_ENV === "production" && (process.env.JWT_SECRET ?? "").trim().length < 32) {
@@ -37,13 +42,30 @@ async function startServer() {
   }
   // Load admin-configured settings (e.g. AI API keys) into process.env before serving.
   await loadSettingsIntoEnv().catch((e) => console.warn("[settings] load failed:", e?.message));
+  let finalizingExams = false;
+  const finalizeExams = async () => {
+    if (finalizingExams) return;
+    finalizingExams = true;
+    try { const result = await finalizeExpiredExams(); if (result.failed) console.warn(`[exams] ${result.failed} expired sessions require review`); } catch { console.error("[exams] Expiry processing unavailable"); }
+    finally { finalizingExams = false; }
+  };
+  void finalizeExams();
+  setInterval(finalizeExams, 30000).unref();
+  let collectingVideos=false;
+  const collectVideos=async()=>{
+    if(collectingVideos)return;collectingVideos=true;
+    try{const result=await processPendingAiVideos();if(result.failed)console.warn(`[video] ${result.failed} pending videos could not be collected`);}catch{console.error("[video] Collection unavailable");}
+    finally{collectingVideos=false;}
+  };
+  void collectVideos();
+  setInterval(collectVideos,30000).unref();
   const app = express();
-  // Behind Hostinger's reverse proxy (TLS terminated upstream): trust X-Forwarded-* so
-  // secure cookies and req.protocol are detected correctly over HTTPS.
-  app.set("trust proxy", true);
+  app.set("trust proxy", proxies);
   const server = createServer(app);
+  registerHealthRoutes(app);
   // Register Stripe webhooks BEFORE express.json() (raw body required)
   registerWebhooks(app);
+  app.use("/api/trpc", preventApiCaching);
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
@@ -75,4 +97,7 @@ async function startServer() {
   });
 }
 
-startServer().catch(console.error);
+startServer().catch(error => {
+  console.error(error);
+  process.exitCode = 1;
+});

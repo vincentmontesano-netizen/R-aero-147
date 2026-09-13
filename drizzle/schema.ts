@@ -1,3 +1,5 @@
+import type {SignoffSnapshot} from "../shared/signoffSnapshot";
+import { sql } from "drizzle-orm";
 import {
   boolean,
   integer,
@@ -9,6 +11,10 @@ import {
   timestamp,
   varchar,
   jsonb,
+  index,
+  unique,
+  uniqueIndex,
+  check,
 } from "drizzle-orm/pg-core";
 
 // ─── ENUMS ──────────────────────────────────────────────────────────────────
@@ -39,13 +45,17 @@ export const users = pgTable("users", {
   lastName: varchar("lastName", { length: 128 }),    // passport "Général" — last name
   bio: text("bio"),                                  // passport "Général" — free description
   passportShared: boolean("passportShared").default(false), // person consent: expose the whole ID module (documents) to affiliated orgs
-  resetToken: varchar("resetToken", { length: 64 }),          // password reset token (random)
+  resetToken: varchar("resetToken", { length: 64 }),          // SHA-256 digest of the random password reset token
   resetTokenExpiresAt: timestamp("resetTokenExpiresAt"),       // reset token expiry
   twoFactorEnabled: boolean("twoFactorEnabled").default(false), // email 2FA opt-in
-  twoFactorCode: varchar("twoFactorCode", { length: 12 }),      // current login OTP
+  twoFactorCode: varchar("twoFactorCode", { length: 64 }),      // HMAC digest of current login OTP
+  twoFactorAttempts: integer("twoFactorAttempts").notNull().default(0),
+  twoFactorSentAt: timestamp("twoFactorSentAt"),
+  twoFactorPurpose: varchar("twoFactorPurpose", { length: 16 }).notNull().default("login"),
   twoFactorExpiresAt: timestamp("twoFactorExpiresAt"),          // OTP expiry
   email: varchar("email", { length: 320 }).unique(),
   passwordHash: varchar("passwordHash", { length: 255 }),
+  sessionVersion: integer("sessionVersion").notNull().default(0),
   loginMethod: varchar("loginMethod", { length: 64 }),
   // INV-1: the login email MUST be the person's personal email (durable, survives
   // employer changes). Flagged so the invariant can be audited/enforced.
@@ -71,6 +81,13 @@ export const users = pgTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
+export const accountClosures=pgTable("account_closures",{
+  personId:integer("personId").primaryKey().references(()=>users.id),
+  actorId:integer("actorId").notNull().references(()=>users.id),
+  retainedCredentials:integer("retainedCredentials").notNull(),
+  createdAt:timestamp("createdAt").defaultNow().notNull(),
+});
+
 // ─── COMPANIES (B2B) ─────────────────────────────────────────────────────────
 export const companies = pgTable("companies", {
   id: serial("id").primaryKey(),
@@ -88,6 +105,7 @@ export const companies = pgTable("companies", {
   subscriptionType: subscriptionTypeEnum("subscriptionType").default("none"),
   subscriptionStatus: varchar("subscriptionStatus", { length: 32 }),
   subscriptionExpiresAt: timestamp("subscriptionExpiresAt"),
+  subscriptionQuantity: integer("subscriptionQuantity"),
   stripeCustomerId: varchar("stripeCustomerId", { length: 64 }),
   stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -134,6 +152,8 @@ export type TrainingCategory = typeof trainingCategories.$inferSelect;
 // ─── TRAININGS (CATALOGUE) ───────────────────────────────────────────────────
 export const trainings = pgTable("trainings", {
   id: serial("id").primaryKey(),
+  publishedVersionId: integer("publishedVersionId"),
+  archivedAt: timestamp("archivedAt"),
   title: varchar("title", { length: 255 }).notNull(),
   slug: varchar("slug", { length: 255 }).notNull().unique(),
   description: text("description"),
@@ -149,6 +169,8 @@ export const trainings = pgTable("trainings", {
   priceHt: numeric("priceHt", { precision: 10, scale: 2 }),
   priceTtc: numeric("priceTtc", { precision: 10, scale: 2 }),
   priceEnterprise: numeric("priceEnterprise", { precision: 10, scale: 2 }),
+  ownerUserId: integer("ownerUserId"),
+  ownerOrgId: integer("ownerOrgId"),
   part147Reference: varchar("part147Reference", { length: 128 }),
   isPublished: boolean("isPublished").default(false),
   isFeatured: boolean("isFeatured").default(false),
@@ -162,18 +184,20 @@ export const trainings = pgTable("trainings", {
   examQuestionCount: integer("examQuestionCount"),
   randomizeQuestions: boolean("randomizeQuestions").default(false),
   examTimeLimitMin: integer("examTimeLimitMin"),
-  reviewStatus: varchar("reviewStatus", { length: 24 }).default("approved"),
+  reviewStatus: varchar("reviewStatus", { length: 24 }).default("draft"),
   version: integer("version").default(1),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
-});
+}, table => [index("training_owner_user_idx").on(table.ownerUserId), index("training_owner_org_idx").on(table.ownerOrgId)]);
 
 export type Training = typeof trainings.$inferSelect;
 export type InsertTraining = typeof trainings.$inferInsert;
 
 // ─── TRAINING MODULES ────────────────────────────────────────────────────────
 export const trainingModules = pgTable("training_modules", {
+  revision: integer('revision').default(0).notNull(),
   id: serial("id").primaryKey(),
+  archivedAt: timestamp("archivedAt"),
   trainingId: integer("trainingId").notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
@@ -183,6 +207,9 @@ export const trainingModules = pgTable("training_modules", {
   durationMinutes: integer("durationMinutes"),
   sortOrder: integer("sortOrder").default(0),
   isRequired: boolean("isRequired").default(true),
+  quizPassingScore: integer("quizPassingScore").notNull().default(75),
+  quizMaxAttempts: integer("quizMaxAttempts").notNull().default(3),
+  quizTimeLimitMin: integer("quizTimeLimitMin"),
   objectiveId: integer("objectiveId"),
 });
 
@@ -191,7 +218,9 @@ export type InsertTrainingModule = typeof trainingModules.$inferInsert;
 
 // ─── LEARNING OBJECTIVES (Part-66 sub-modules) ───────────────────────────────
 export const learningObjectives = pgTable("learning_objectives", {
+  revision: integer("revision").default(0).notNull(),
   id: serial("id").primaryKey(),
+  archivedAt: timestamp("archivedAt"),
   trainingId: integer("trainingId").notNull(),
   moduleId: integer("moduleId"),
   code: varchar("code", { length: 32 }),
@@ -210,6 +239,8 @@ export type InsertLearningObjective = typeof learningObjectives.$inferInsert;
 // ─── SLIDES (AI-authored slide-based courses) ────────────────────────────────
 export const slides = pgTable("slides", {
   id: serial("id").primaryKey(),
+  revision: integer('revision').default(0).notNull(),
+  archivedAt: timestamp("archivedAt"),
   trainingId: integer("trainingId").notNull(),
   moduleId: integer("moduleId"),
   objectiveId: integer("objectiveId"),
@@ -236,7 +267,9 @@ export type InsertSlide = typeof slides.$inferInsert;
 
 // ─── QUIZ QUESTIONS ──────────────────────────────────────────────────────────
 export const quizQuestions = pgTable("quiz_questions", {
+  revision: integer('revision').default(0).notNull(),
   id: serial("id").primaryKey(),
+  archivedAt: timestamp("archivedAt"),
   trainingId: integer("trainingId").notNull(),
   moduleId: integer("moduleId"),
   objectiveId: integer("objectiveId"),
@@ -252,11 +285,49 @@ export const quizQuestions = pgTable("quiz_questions", {
   sortOrder: integer("sortOrder").default(0),
 });
 
+export const questionCreationRequests = pgTable('question_creation_requests', {
+  id: serial('id').primaryKey(),
+  actorId: integer('actorId').notNull().references(() => users.id),
+  requestId: varchar('requestId', { length: 36 }).notNull(),
+  questionId: integer('questionId').notNull().unique().references(() => quizQuestions.id),
+  fingerprint: varchar('fingerprint', { length: 64 }).notNull(),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+}, table => [uniqueIndex('question_creation_actor_request_key').on(table.actorId, table.requestId)]);
+
+export const moduleCreationRequests = pgTable('module_creation_requests', {
+  id: serial('id').primaryKey(),
+  actorId: integer('actorId').notNull().references(() => users.id),
+  requestId: varchar('requestId', { length: 36 }).notNull(),
+  moduleId: integer('moduleId').notNull().unique().references(() => trainingModules.id),
+  fingerprint: varchar('fingerprint', { length: 64 }).notNull(),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+}, table => [uniqueIndex('module_creation_actor_request_key').on(table.actorId, table.requestId)]);
+
+export const objectiveCreationRequests = pgTable('objective_creation_requests', {
+  id: serial('id').primaryKey(),
+  actorId: integer('actorId').notNull().references(() => users.id),
+  requestId: varchar('requestId', { length: 36 }).notNull(),
+  objectiveId: integer('objectiveId').notNull().unique().references(() => learningObjectives.id),
+  fingerprint: varchar('fingerprint', { length: 64 }).notNull(),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+}, table => [uniqueIndex('objective_creation_actor_request_key').on(table.actorId, table.requestId)]);
+
+export const slideCreationRequests = pgTable('slide_creation_requests', {
+  id: serial('id').primaryKey(),
+  actorId: integer('actorId').notNull().references(() => users.id),
+  requestId: varchar('requestId', { length: 36 }).notNull(),
+  slideId: integer('slideId').notNull().unique().references(() => slides.id),
+  fingerprint: varchar('fingerprint', { length: 64 }).notNull(),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+}, table => [uniqueIndex('slide_creation_actor_request_key').on(table.actorId, table.requestId)]);
+
 export type QuizQuestion = typeof quizQuestions.$inferSelect;
 export type InsertQuizQuestion = typeof quizQuestions.$inferInsert;
 
 // ─── ORDERS ──────────────────────────────────────────────────────────────────
 export const orders = pgTable("orders", {
+  refundedAmountCents: integer("refundedAmountCents").notNull().default(0),
+  fulfilledAt: timestamp("fulfilledAt"),
   id: serial("id").primaryKey(),
   userId: integer("userId").notNull(),
   companyId: integer("companyId"),
@@ -280,6 +351,7 @@ export type InsertOrder = typeof orders.$inferInsert;
 
 // ─── ORDER ITEMS ─────────────────────────────────────────────────────────────
 export const orderItems = pgTable("order_items", {
+  trainingVersionId: integer("trainingVersionId"),
   id: serial("id").primaryKey(),
   orderId: integer("orderId").notNull(),
   trainingId: integer("trainingId").notNull(),
@@ -294,6 +366,11 @@ export type OrderItem = typeof orderItems.$inferSelect;
 export const enrollments = pgTable("enrollments", {
   id: serial("id").primaryKey(),
   userId: integer("userId").notNull(),
+  trainingLicenseId: integer("trainingLicenseId"),
+  assignedOrgId: integer("assignedOrgId"),
+  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 255 }),
+  assignedBy: integer("assignedBy"),
+  trainingVersionId: integer("trainingVersionId"),
   trainingId: integer("trainingId").notNull(),
   orderId: integer("orderId"),
   employeeId: integer("employeeId"),
@@ -305,7 +382,7 @@ export const enrollments = pgTable("enrollments", {
   lastAccessedAt: timestamp("lastAccessedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
-});
+}, table => [unique("enrollment_license_unique").on(table.trainingLicenseId)]);
 
 export type Enrollment = typeof enrollments.$inferSelect;
 export type InsertEnrollment = typeof enrollments.$inferInsert;
@@ -337,12 +414,14 @@ export type ObjectiveProgress = typeof objectiveProgress.$inferSelect;
 export const quizAttempts = pgTable("quiz_attempts", {
   id: serial("id").primaryKey(),
   enrollmentId: integer("enrollmentId").notNull(),
+  moduleId: integer("moduleId"),
   userId: integer("userId").notNull(),
   trainingId: integer("trainingId").notNull(),
   score: integer("score"),
   maxScore: integer("maxScore"),
   isPassed: boolean("isPassed").default(false),
   answers: jsonb("answers").$type<Record<number, number[]>>(),
+  feedback: jsonb("feedback").$type<Array<{ questionId: number; question?: string; isCorrect: boolean; explanation?: string | null }>>(),
   startedAt: timestamp("startedAt").defaultNow().notNull(),
   completedAt: timestamp("completedAt"),
   attemptNumber: integer("attemptNumber").default(1),
@@ -362,7 +441,7 @@ export const certificates = pgTable("certificates", {
   issuedAt: timestamp("issuedAt").defaultNow().notNull(),
   expiresAt: timestamp("expiresAt"),
   isValid: boolean("isValid").default(true),
-});
+}, table => [index("certificates_enrollment_idx").on(table.enrollmentId)]);
 
 export type Certificate = typeof certificates.$inferSelect;
 
@@ -393,6 +472,7 @@ export type Recurrency = typeof recurrencies.$inferSelect;
 
 // ─── QUOTE REQUESTS ──────────────────────────────────────────────────────────
 export const quoteRequests = pgTable("quote_requests", {
+  revision: integer("revision").default(0).notNull(),
   id: serial("id").primaryKey(),
   companyName: varchar("companyName", { length: 255 }).notNull(),
   siret: varchar("siret", { length: 20 }),
@@ -408,6 +488,23 @@ export const quoteRequests = pgTable("quote_requests", {
   companyId: integer("companyId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+});
+
+export const quoteStatusEvents = pgTable('quote_status_events', {
+ id:serial('id').primaryKey(),
+ quoteId:integer('quoteId').notNull().references(()=>quoteRequests.id),
+ actorId:integer('actorId').references(()=>users.id),
+ previousStatus:quoteStatusEnum('previousStatus').notNull(),
+ status:quoteStatusEnum('status').notNull(),
+ revision:integer('revision').notNull(),
+ createdAt:timestamp('createdAt').defaultNow().notNull(),
+});
+
+export const quoteCreationRequests = pgTable('quote_creation_requests', {
+  requestId: varchar('requestId', {length:36}).primaryKey(),
+  quoteId: integer('quoteId').notNull().unique().references(()=>quoteRequests.id),
+  fingerprint: varchar('fingerprint', {length:64}).notNull(),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
 });
 
 export type QuoteRequest = typeof quoteRequests.$inferSelect;
@@ -426,10 +523,25 @@ export const messages = pgTable("messages", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+export const quoteMessageRequests = pgTable('quote_message_requests', {
+ requestId:varchar('requestId',{length:36}).primaryKey(),
+ messageId:integer('messageId').notNull().unique().references(()=>messages.id),
+ fingerprint:varchar('fingerprint',{length:64}).notNull(),
+ createdAt:timestamp('createdAt').defaultNow().notNull(),
+});
+
+export const supportMessageRequests = pgTable('support_message_requests', {
+ requestId:varchar('requestId',{length:36}).primaryKey(),
+ messageId:integer('messageId').notNull().unique().references(()=>messages.id),
+ fingerprint:varchar('fingerprint',{length:64}).notNull(),
+ createdAt:timestamp('createdAt').defaultNow().notNull(),
+});
+
 export type Message = typeof messages.$inferSelect;
 
 // ─── SUPPORT TICKETS ─────────────────────────────────────────────────────────
 export const supportTickets = pgTable("support_tickets", {
+  requestKind:varchar("requestKind",{length:24}).$type<"GENERAL"|"DATA_ACCESS"|"RECTIFICATION"|"ERASURE">().notNull().default("GENERAL"),
   id: serial("id").primaryKey(),
   userId: integer("userId").notNull(),
   subject: varchar("subject", { length: 255 }).notNull(),
@@ -438,6 +550,18 @@ export const supportTickets = pgTable("support_tickets", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
 });
+export const supportCreationRequests = pgTable('support_creation_requests', {
+ requestId:varchar('requestId',{length:36}).primaryKey(),
+ ticketId:integer('ticketId').notNull().unique().references(()=>supportTickets.id),
+ fingerprint:varchar('fingerprint',{length:64}).notNull(),
+ createdAt:timestamp('createdAt').defaultNow().notNull(),
+});
+export const supportStatusEvents=pgTable("support_status_events",{
+ id:serial("id").primaryKey(),ticketId:integer("ticketId").notNull().references(()=>supportTickets.id),
+ actorId:integer("actorId").notNull().references(()=>users.id),actorName:text("actorName"),
+ previousStatus:varchar("previousStatus",{length:16}),status:varchar("status",{length:16}).notNull(),reason:varchar("reason",{length:2000}),
+ createdAt:timestamp("createdAt").defaultNow().notNull(),
+},table=>[index("support_status_ticket_page").on(table.ticketId,table.id.desc())]);
 export type SupportTicket = typeof supportTickets.$inferSelect;
 
 // ─── WEBINARS ────────────────────────────────────────────────────────────────
@@ -452,6 +576,7 @@ export const webinars = pgTable("webinars", {
   maxParticipants: integer("maxParticipants"),
   meetingUrl: varchar("meetingUrl", { length: 512 }),
   replayUrl: varchar("replayUrl", { length: 512 }),
+  replayRevision: integer("replayRevision").notNull().default(0),
   liveRoom: varchar("liveRoom", { length: 128 }),
   status: webinarStatusEnum("status").default("scheduled"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -487,6 +612,7 @@ export const sessions = pgTable("sessions", {
   cpfEligible: boolean("cpfEligible").default(false),
   meetingUrl: varchar("meetingUrl", { length: 512 }),
   replayUrl: varchar("replayUrl", { length: 512 }),
+  replayRevision: integer("replayRevision").notNull().default(0),
   liveRoom: varchar("liveRoom", { length: 128 }),
   status: sessionStatusEnum("status").default("scheduled").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -534,6 +660,37 @@ export const cartItems = pgTable("cart_items", {
 export type CartItem = typeof cartItems.$inferSelect;
 
 // ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
+export const broadcastRuns = pgTable('broadcast_runs', {
+  id: serial('id').primaryKey(), actorId: integer('actorId').notNull().references(() => users.id),
+  title: varchar('title', {length: 255}).notNull(), audience: varchar('audience', {length: 64}), userId: integer('userId'),
+  recipients: integer('recipients').notNull(), sent: integer('sent').notNull(), emailRequested: boolean('emailRequested').notNull(),
+  requestId: varchar('requestId', {length: 36}), fingerprint: varchar('fingerprint', {length: 64}),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+}, table => [uniqueIndex('broadcast_actor_request_key').on(table.actorId, table.requestId)]);
+export const broadcastOutcomes = pgTable('broadcast_outcomes', {
+  runId: integer('runId').primaryKey().references(() => broadcastRuns.id),
+  accepted: integer('accepted').notNull(), failed: integer('failed').notNull(), skipped: integer('skipped').notNull(),
+  completedAt: timestamp('completedAt').defaultNow().notNull(),
+});
+
+export const broadcastRecipients = pgTable('broadcast_recipients', {
+  id: serial('id').primaryKey(), runId: integer('runId').notNull().references(() => broadcastRuns.id),
+  userId: integer('userId').notNull().references(() => users.id),
+}, table => [uniqueIndex('broadcast_run_recipient_key').on(table.runId, table.userId), index('broadcast_recipient_page_idx').on(table.runId, table.id)]);
+export const broadcastRecipientOutcomes = pgTable('broadcast_recipient_outcomes', {
+  recipientId: integer('recipientId').primaryKey().references(() => broadcastRecipients.id),
+  status: varchar('status', {length: 32}).$type<'accepted' | 'unconfirmed' | 'skipped_configuration' | 'skipped_missing_email' | 'skipped_access' | 'not_requested'>().notNull(),
+  recordedAt: timestamp('recordedAt').defaultNow().notNull(),
+});
+
+export const broadcastPayloads = pgTable('broadcast_payloads', {
+  runId: integer('runId').primaryKey().references(() => broadcastRuns.id), body: text('body').notNull(), link: varchar('link',{length:512}),
+});
+export const broadcastRetries = pgTable('broadcast_retries', {
+  sourceRecipientId: integer('sourceRecipientId').primaryKey().references(() => broadcastRecipients.id),
+  runId: integer('runId').notNull().unique().references(() => broadcastRuns.id), scopeOrgId: integer('scopeOrgId'),
+});
+
 export const notifications = pgTable("notifications", {
   id: serial("id").primaryKey(),
   userId: integer("userId").notNull(),
@@ -560,10 +717,16 @@ export const processedWebhookEvents = pgTable("processed_webhook_events", {
 export const examSessions = pgTable("exam_sessions", {
   id: serial("id").primaryKey(),
   enrollmentId: integer("enrollmentId").notNull(),
+  moduleId: integer("moduleId"),
   userId: integer("userId").notNull(),
   trainingId: integer("trainingId").notNull(),
   attemptNumber: integer("attemptNumber").default(1),
   questionIds: jsonb("questionIds").$type<number[]>(),
+  questionSnapshot: jsonb("questionSnapshot").$type<QuizQuestion[]>(),
+  passingScoreSnapshot: integer("passingScoreSnapshot"),
+  savedAnswers: jsonb("savedAnswers").$type<Record<string, unknown>>(),
+  answerRevision: integer("answerRevision").notNull().default(0),
+  answersSavedAt: timestamp("answersSavedAt"),
   startedAt: timestamp("startedAt").defaultNow().notNull(),
   expiresAt: timestamp("expiresAt"),
   submittedAt: timestamp("submittedAt"),
@@ -596,6 +759,9 @@ export const externalTrainings = pgTable("external_trainings", {
   certNumber: varchar("certNumber", { length: 128 }),
   docUrl: varchar("docUrl", { length: 1024 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
+  archivedAt: timestamp("archivedAt"),
+  archivedBy: integer("archivedBy").references(() => users.id),
+  archiveReason: text("archiveReason"),
 });
 
 export type ExternalTraining = typeof externalTrainings.$inferSelect;
@@ -612,7 +778,10 @@ export const roleRequirements = pgTable("role_requirements", {
   licenseCategoryContains: varchar("licenseCategoryContains", { length: 64 }),
   trainingId: integer("trainingId").notNull(),
   periodMonths: integer("periodMonths").notNull(),
+  createdBy: integer("createdBy").references(() => users.id),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
+  archivedAt: timestamp("archivedAt"),
+  archivedBy: integer("archivedBy").references(() => users.id),
 });
 
 export type RoleRequirement = typeof roleRequirements.$inferSelect;
@@ -663,6 +832,7 @@ export type LiveParticipant = typeof liveParticipants.$inferSelect;
 
 export const liveMessages = pgTable("live_messages", {
   id: serial("id").primaryKey(),
+  requestId: varchar("requestId", { length: 36 }),
   roomType: varchar("roomType", { length: 16 }).notNull(),
   roomId: integer("roomId").notNull(),
   userId: integer("userId").notNull(),
@@ -671,7 +841,7 @@ export const liveMessages = pgTable("live_messages", {
   isAnswered: boolean("isAnswered").default(false),
   answeredByUserId: integer("answeredByUserId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, table => [uniqueIndex('live_messages_user_request_key').on(table.userId, table.requestId)]);
 export type LiveMessage = typeof liveMessages.$inferSelect;
 
 export const livePolls = pgTable("live_polls", {
@@ -746,6 +916,16 @@ export const credentials = pgTable("credentials", {
 export type Credential = typeof credentials.$inferSelect;
 export type InsertCredential = typeof credentials.$inferInsert;
 
+export const credentialSharingEvents=pgTable("credential_sharing_events",{
+  id:serial("id").primaryKey(),
+  personId:integer("personId").notNull().references(()=>users.id),
+  credentialId:integer("credentialId").notNull().references(()=>credentials.id),
+  orgId:integer("orgId").references(()=>companies.id),
+  action:varchar("action",{length:16}).notNull(),
+  proofLabel:text("proofLabel"),orgName:text("orgName"),
+  createdAt:timestamp("createdAt").defaultNow().notNull(),
+},table=>[index("credential_sharing_person_page").on(table.personId,table.id.desc())]);
+
 // AccessLog — every read of personal data is logged with justification (INV-8);
 // god-mode operator (admin) and public certificate verification included.
 export const accessLogs = pgTable("access_logs", {
@@ -777,9 +957,12 @@ export const signoffs = pgTable("signoffs", {
   scope: varchar("scope", { length: 64 }),               // "COMPETENCE" | "RECURRENCY" ...
   decision: varchar("decision", { length: 16 }).notNull().default("VALIDATED"), // "VALIDATED" | "REJECTED"
   note: text("note"),
+  snapshot:jsonb("snapshot").$type<SignoffSnapshot>(),
+  requestId:varchar("requestId",{length:36}),
+  requestFingerprint:text("requestFingerprint"),
   signedAt: timestamp("signedAt").defaultNow().notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+},table=>[unique("signoff_manager_request").on(table.managerPersonId,table.requestId)]);
 export type Signoff = typeof signoffs.$inferSelect;
 export type InsertSignoff = typeof signoffs.$inferInsert;
 
@@ -798,6 +981,9 @@ export type AppSetting = typeof appSettings.$inferSelect;
 // here. `kind` is a varchar + Zod (NOT a pgEnum) per the project's enum discipline.
 export const passportDocuments = pgTable("passport_documents", {
   id: serial("id").primaryKey(),
+  requestId: varchar("requestId", { length: 36 }),
+  archivedAt: timestamp("archivedAt"),
+  sha256: varchar("sha256", { length: 64 }),
   personId: integer("personId").notNull(),                 // → users.id (owner)
   kind: varchar("kind", { length: 32 }).notNull(),         // ID|PASSPORT|DIPLOMA|CERTIFICATE|LICENSE|LOGBOOK|EXPERIENCE|OTHER
   title: varchar("title", { length: 255 }).notNull(),
@@ -812,7 +998,7 @@ export const passportDocuments = pgTable("passport_documents", {
   fileSize: integer("fileSize"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
-});
+}, table => [uniqueIndex("passport_documents_person_request_key").on(table.personId, table.requestId)]);
 export type PassportDocument = typeof passportDocuments.$inferSelect;
 
 // ─── Landing-page content (admin-editable) ───────────────────────────────────
@@ -846,3 +1032,251 @@ export const faqItems = pgTable("faq_items", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
 });
 export type FaqItem = typeof faqItems.$inferSelect;
+
+// ─── KYC / KYB: internal documentary review, separate from training approvals ───
+export const verificationCases = pgTable("verification_cases", {
+  revision: integer("revision").default(0).notNull(),
+  id: serial("id").primaryKey(),
+  subjectKey: varchar("subjectKey", { length: 80 }).notNull().unique(),
+  kind: varchar("kind", { length: 8 }).notNull(),
+  personId: integer("personId").notNull(),
+  companyId: integer("companyId"),
+  status: varchar("status", { length: 24 }).notNull().default("draft"),
+  legalName: varchar("legalName", { length: 255 }).notNull(),
+  country: varchar("country", { length: 2 }).notNull(),
+  registrationNumber: varchar("registrationNumber", { length: 128 }),
+  address: text("address").notNull(),
+  reviewNote: text("reviewNote"),
+  reviewedBy: integer("reviewedBy"),
+  submittedAt: timestamp("submittedAt"),
+  reviewedAt: timestamp("reviewedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+}, table => [index("verification_cases_status_id_idx").on(table.status, table.id)]);
+export const verificationDocuments = pgTable("verification_documents", {
+  id: serial("id").primaryKey(),
+  caseId: integer("caseId").notNull(),
+  kind: varchar("kind", { length: 32 }).notNull(),
+  fileUrl: varchar("fileUrl", { length: 1024 }).notNull(),
+  fileName: varchar("fileName", { length: 255 }).notNull(),
+  contentType: varchar("contentType", { length: 128 }).notNull(),
+  uploadedBy: integer("uploadedBy").notNull(),
+  requestId: varchar("requestId", { length: 36 }),
+  sha256: varchar("sha256", { length: 64 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  archivedAt: timestamp("archivedAt"),
+}, table => [index("verification_documents_case_idx").on(table.caseId), index("verification_documents_url_idx").on(table.fileUrl), uniqueIndex("verification_documents_uploader_request_key").on(table.uploadedBy, table.requestId)]);
+export const verificationEvents = pgTable("verification_events", {
+  id: serial("id").primaryKey(),
+  caseId: integer("caseId").notNull(),
+  actorId: integer("actorId").notNull(),
+  action: varchar("action", { length: 32 }).notNull(),
+  previous: jsonb("previous").$type<Record<string, unknown>>(),
+  current: jsonb("current").$type<Record<string, unknown>>(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("verification_events_case_idx").on(table.caseId)]);
+
+export const raeroMigrations = pgTable("raero_migrations", {
+  name: text("name").primaryKey(), checksum: text("checksum").notNull(),
+  appliedAt: timestamp("applied_at").defaultNow().notNull(),
+});
+
+// Operator approval register — administrator-only, independent of customer KYB.
+export const operatorApproval = pgTable("operator_approval", {
+  revision: integer("revision").default(0).notNull(),
+  id: integer("id").primaryKey(),
+  legalName: varchar("legalName", { length: 255 }).notNull(),
+  authority: varchar("authority", { length: 255 }).notNull(),
+  reference: varchar("reference", { length: 128 }),
+  approvalDocumentId: integer("approvalDocumentId"), mtoeDocumentId: integer("mtoeDocumentId"),
+  status: varchar("status", { length: 24 }).notNull().default("preparation"),
+  scope: text("scope").notNull(),
+  locations: text("locations").notNull(),
+  accountableManagerId: integer("accountableManagerId").notNull(),
+  trainingManagerId: integer("trainingManagerId").notNull(),
+  qualityManagerId: integer("qualityManagerId").notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+}, table => [check("operator_responsibilities_independent", sql`${table.trainingManagerId} <> ${table.qualityManagerId}`)]);
+export const approvalDocuments = pgTable("approval_documents", {
+  requestId: varchar("requestId", {length:36}),
+  fingerprint: varchar("fingerprint", {length:64}),
+  id: serial("id").primaryKey(), kind: varchar("kind", { length: 24 }).notNull(),
+  title: varchar("title", { length: 255 }).notNull(), revision: varchar("revision", { length: 64 }).notNull(),
+  fileUrl: varchar("fileUrl", { length: 1024 }).notNull(), fileName: varchar("fileName", { length: 255 }).notNull(),
+  uploadedBy: integer("uploadedBy").notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export const approvalFindings = pgTable("approval_findings", {
+  revision: integer("revision").default(0).notNull(),
+  id: serial("id").primaryKey(), title: varchar("title", { length: 255 }).notNull(),
+  reference: varchar("reference", { length: 128 }).notNull(), severity: varchar("severity", { length: 24 }).notNull(),
+  description: text("description").notNull(), ownerId: integer("ownerId").notNull(), dueAt: timestamp("dueAt").notNull(),
+  status: varchar("status", { length: 24 }).notNull().default("open"),
+  rootCause: text("rootCause"), correctiveAction: text("correctiveAction"), evidenceId: integer("evidenceId"),
+  closureNote: text("closureNote"), closedBy: integer("closedBy"), closedAt: timestamp("closedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(), updatedAt: timestamp("updatedAt").defaultNow().notNull().$onUpdate(() => new Date()),
+});
+export const approvalEvents = pgTable("approval_events", {
+  id: serial("id").primaryKey(), actorId: integer("actorId").notNull(),
+  action: varchar("action", { length: 32 }).notNull(), entityId: integer("entityId").notNull(),
+  previous: jsonb("previous").$type<Record<string, unknown>>(), current: jsonb("current").$type<Record<string, unknown>>(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const contentEvents = pgTable("content_events", {
+  id: serial("id").primaryKey(), trainingId: integer("trainingId").notNull(), actorId: integer("actorId"),
+  entityType: varchar("entityType", { length: 32 }).notNull(), entityId: integer("entityId").notNull(), action: varchar("action", { length: 32 }).notNull(),
+  beforeState: jsonb("beforeState").$type<Record<string, unknown>>(), afterState: jsonb("afterState").$type<Record<string, unknown>>(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("content_events_training_idx").on(table.trainingId)]);
+
+export type CurriculumSnapshot = { training: Training; modules: TrainingModule[]; questions: QuizQuestion[]; slides: Slide[]; objectives: LearningObjective[] };
+export const trainingVersions = pgTable("training_versions", {
+ reviewId: integer("reviewId"),
+ id: serial("id").primaryKey(), trainingId: integer("trainingId").notNull(), version: integer("version").notNull(),
+ snapshot: jsonb("snapshot").$type<CurriculumSnapshot>().notNull(), publishedBy: integer("publishedBy"), createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [unique("training_versions_trainingId_version_key").on(table.trainingId, table.version)]);
+
+export const trainingLicenses = pgTable("training_licenses", {
+ id: serial("id").primaryKey(), orderId: integer("orderId").notNull(), orderItemId: integer("orderItemId").notNull(), seatIndex: integer("seatIndex").notNull(),
+ trainingId: integer("trainingId").notNull(), trainingVersionId: integer("trainingVersionId").notNull(), ownerUserId: integer("ownerUserId").notNull(), ownerOrgId: integer("ownerOrgId"),
+ assignedUserId: integer("assignedUserId"), assignedBy: integer("assignedBy"), enrollmentId: integer("enrollmentId"), assignedAt: timestamp("assignedAt"), revokedAt: timestamp("revokedAt"), createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [unique("training_licenses_orderItemId_seatIndex_key").on(table.orderItemId, table.seatIndex)]);
+
+export const refundObservations = pgTable("refund_observations", {
+ eventId: varchar("eventId", { length: 128 }).primaryKey(), paymentIntentId: varchar("paymentIntentId", { length: 128 }).notNull(), chargeId: varchar("chargeId", { length: 128 }).notNull(),
+ amountCents: integer("amountCents").notNull(), refundedCents: integer("refundedCents").notNull(), currency: varchar("currency", { length: 8 }).notNull(), fullyRefunded: boolean("fullyRefunded").notNull(), eventCreated: integer("eventCreated").notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("refund_observations_intent_idx").on(table.paymentIntentId)]);
+
+// Frozen Stripe request: retries must use exactly the same parameters and key.
+export const checkoutAttempts = pgTable("checkout_attempts", {
+  orderId: integer("orderId").primaryKey(),
+  fingerprint: varchar("fingerprint", { length: 64 }).notNull(),
+  requestKey: varchar("requestKey", { length: 128 }).notNull().unique(),
+  payload: jsonb("payload").$type<import("stripe").default.Checkout.SessionCreateParams>().notNull(),
+  retryUntil: timestamp("retryUntil").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, t => [index("checkout_attempts_fingerprint_idx").on(t.fingerprint)]);
+
+export const paymentReconciliations = pgTable("payment_reconciliations", {
+  id: serial("id").primaryKey(),
+  orderId: integer("orderId").notNull(),
+  actorId: integer("actorId").notNull(),
+  sessionId: varchar("sessionId", { length: 255 }).notNull(),
+  sessionStatus: varchar("sessionStatus", { length: 32 }).notNull(),
+  paymentStatus: varchar("paymentStatus", { length: 32 }).notNull(),
+  amountCents: integer("amountCents").notNull(),
+  currency: varchar("currency", { length: 8 }).notNull(),
+  previousOrderStatus: varchar("previousOrderStatus", { length: 32 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, t => [index("payment_reconciliations_order_idx").on(t.orderId, t.id)]);
+
+export const passportEvents = pgTable("passport_events", {
+  id: serial("id").primaryKey(), personId: integer("personId").notNull(), documentId: integer("documentId"), actorId: integer("actorId").notNull(),
+  action: varchar("action", { length: 32 }).notNull(), data: jsonb("data").$type<Record<string, unknown>>().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, t => [index("passport_events_person_idx").on(t.personId, t.id)]);
+
+export const livePresenceIntervals = pgTable("live_presence_intervals", {
+  id: serial("id").primaryKey(), roomType: varchar("roomType", { length: 16 }).notNull(), roomId: integer("roomId").notNull(), userId: integer("userId").notNull(),
+  startedAt: timestamp("startedAt").notNull(), endedAt: timestamp("endedAt").notNull(), creditedMilliseconds: integer("creditedMilliseconds").notNull(),
+}, t => [index("live_presence_room_idx").on(t.roomType, t.roomId, t.id)]);
+
+export const sessionAdmissionEvents = pgTable("session_admission_events", {
+ id: serial("id").primaryKey(), sessionId: integer("sessionId").notNull(), registrationId: integer("registrationId").notNull(), userId: integer("userId").notNull(),
+ action: varchar("action", { length: 32 }).notNull(), previousStatus: varchar("previousStatus", { length: 32 }), nextStatus: varchar("nextStatus", { length: 32 }).notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, t => [index("session_admission_events_user_idx").on(t.userId, t.id)]);
+
+export const examFinalizationFailures = pgTable("exam_finalization_failures", {
+ id: serial("id").primaryKey(), examSessionId: integer("examSessionId").notNull(), errorCode: varchar("errorCode", { length: 64 }).notNull(), retryAfter: timestamp("retryAfter").notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, t => [index("exam_finalization_failures_retry_idx").on(t.examSessionId, t.retryAfter)]);
+
+export const pedagogicalReviews = pgTable("pedagogical_reviews", {
+ id: serial("id").primaryKey(), trainingId: integer("trainingId").notNull(), requestedBy: integer("requestedBy").notNull(), fingerprint: varchar("fingerprint", { length: 64 }).notNull(), snapshot: jsonb("snapshot").$type<CurriculumSnapshot>().notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, t => [index("pedagogical_reviews_course_idx").on(t.trainingId, t.id)]);
+export const pedagogicalDecisions = pgTable("pedagogical_decisions", {
+ id: serial("id").primaryKey(), reviewId: integer("reviewId").notNull().unique(), reviewedBy: integer("reviewedBy").notNull(), decision: varchar("decision", { length: 16 }).notNull(), note: text("note").notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const pedagogicalWithdrawals = pgTable("pedagogical_withdrawals", {
+ id: serial("id").primaryKey(), reviewId: integer("reviewId").notNull().unique(), withdrawnBy: integer("withdrawnBy").notNull(), reason: text("reason").notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const subscriptionCheckouts = pgTable("subscription_checkouts", {
+  id: varchar("id", { length: 64 }).primaryKey(), companyId: integer("companyId").notNull(), requestedBy: integer("requestedBy"),
+  plan: varchar("plan", { length: 32 }).notNull(), quantity: integer("quantity").notNull(),
+  payload: jsonb("payload").$type<import("stripe").default.Checkout.SessionCreateParams>().notNull(),
+  requestKey: varchar("requestKey", { length: 128 }).notNull().unique(), retryUntil: timestamp("retryUntil").notNull(),
+  sessionId: varchar("sessionId", { length: 255 }).unique(), status: varchar("status", { length: 16 }).default("pending").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const subscriptionCheckoutClosures = pgTable("subscription_checkout_closures", {
+  attemptId: varchar("attemptId", { length: 64 }).primaryKey(), requestedBy: integer("requestedBy").notNull(),
+  observedStatus: varchar("observedStatus", { length: 16 }).notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const courseMedia = pgTable("course_media", {
+  origin: varchar("origin", { length: 16 }).default("generated").notNull(),
+  id: serial("id").primaryKey(), trainingId: integer("trainingId").notNull(), createdBy: integer("createdBy").notNull(),
+  storageKey: varchar("storageKey", { length: 1024 }).notNull().unique(), contentType: varchar("contentType", { length: 128 }).notNull(),
+  byteSize: integer("byteSize").notNull(), sha256: varchar("sha256", { length: 64 }).notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const legacyCourseMediaLinks = pgTable("legacy_course_media_links", {
+  storageKey: varchar("storageKey", { length: 1024 }).notNull(), trainingId: integer("trainingId").notNull(),
+  capturedAt: timestamp("capturedAt").defaultNow().notNull(),
+}, table => [unique("legacy_media_course_unique").on(table.storageKey, table.trainingId)]);
+
+export const courseTemplateUses = pgTable("course_template_uses", {
+  trainingId: integer("trainingId").primaryKey(), templateId: integer("templateId").notNull(), createdBy: integer("createdBy").notNull(),
+  snapshot: jsonb("snapshot").$type<CourseTemplate>().notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const liveVideoTickets = pgTable("live_video_tickets", {
+  id: varchar("id", { length: 64 }).primaryKey(), userId: integer("userId").notNull(), roomType: varchar("roomType", { length: 16 }).notNull(),
+  roomId: integer("roomId").notNull(), moderator: boolean("moderator").notNull(), expiresAt: timestamp("expiresAt").notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const courseCopies = pgTable("course_copies", {
+  trainingId: integer("trainingId").primaryKey(), sourceTrainingId: integer("sourceTrainingId").notNull(),
+  createdBy: integer("createdBy").notNull(), snapshot: jsonb("snapshot").notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export const copiedCourseMedia = pgTable("copied_course_media", {
+  trainingId: integer("trainingId").notNull(), storageKey: varchar("storageKey",{length:1024}).notNull(),
+}, table => [unique("copied_media_unique").on(table.trainingId,table.storageKey)]);
+
+export const liveInstructorAssignments = pgTable("live_instructor_assignments", {
+ id:serial("id").primaryKey(),roomType:varchar("roomType",{length:10}).notNull(),roomId:integer("roomId").notNull(),userId:integer("userId").notNull(),active:boolean("active").notNull(),
+},table=>[unique("live_instructor_assignment_unique").on(table.roomType,table.roomId,table.userId)]);
+
+export const aiOutlineDrafts=pgTable("ai_outline_drafts",{
+ id:serial("id").primaryKey(),requestId:varchar("requestId",{length:36}).notNull().unique(),ownerUserId:integer("ownerUserId").notNull(),ownerOrgId:integer("ownerOrgId"),language:varchar("language",{length:8}).notNull(),output:jsonb("output").$type<unknown>().notNull(),trainingId:integer("trainingId"),createdAt:timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const aiVideoJobs=pgTable("ai_video_jobs",{
+ id:varchar("id",{length:36}).primaryKey(),userId:integer("userId").notNull(),trainingId:integer("trainingId").notNull(),ownerOrgId:integer("ownerOrgId"),model:varchar("model",{length:100}).notNull(),input:jsonb("input").$type<{prompt:string;aspectRatio:'16:9'|'9:16';durationSeconds:4|6|8}>().notNull(),status:varchar("status",{length:12}).notNull().default('submitting'),operationName:varchar("operationName",{length:300}),mediaId:integer("mediaId"),createdAt:timestamp("createdAt").notNull().defaultNow(),checkedAt:timestamp("checkedAt"),
+});
+
+export const invoiceCounters=pgTable('invoice_counters',{year:integer('year').primaryKey(),value:integer('value').notNull()});
+export const invoiceArchives=pgTable('invoice_archives',{id:serial('id').primaryKey(),orderId:integer('orderId').notNull().unique(),userId:integer('userId').notNull(),number:varchar('number',{length:32}).notNull().unique(),snapshot:jsonb('snapshot').notNull(),storageKey:varchar('storageKey',{length:512}).notNull().unique(),sha256:varchar('sha256',{length:64}).notNull(),byteSize:integer('byteSize').notNull(),issuedAt:timestamp('issuedAt').notNull().defaultNow()});
+
+export const certificateArchives=pgTable('certificate_archives',{
+ certificateId:integer('certificateId').primaryKey(),
+ snapshot:jsonb('snapshot').$type<{language?:'fr'|'en'|'ar';learnerName:string;training:{title:string;part147Reference:string|null;durationHours:string|null};completedAt:string;trainingVersionId:number|null;passedAttemptId:number;verificationUrl:string;objectives:Array<{id:number;title:string;code:string|null}>}>().notNull(),
+ storageKey:varchar('storageKey',{length:512}).notNull().unique(),sha256:varchar('sha256',{length:64}).notNull(),byteSize:integer('byteSize').notNull(),createdAt:timestamp('createdAt').notNull().defaultNow(),
+});
+
+export const certificateRevocations=pgTable('certificate_revocations',{certificateId:integer('certificateId').primaryKey(),actorId:integer('actorId').notNull(),reason:varchar('reason',{length:2000}).notNull(),createdAt:timestamp('createdAt').defaultNow().notNull()});
+
+
+export const liveReplayEvents = pgTable("live_replay_events", {
+ id: serial("id").primaryKey(), roomType: varchar("roomType", {length:10}).notNull(), roomId: integer("roomId").notNull(),
+ actorId: integer("actorId").notNull().references(()=>users.id), previousStatus: varchar("previousStatus", {length:32}), status: varchar("status", {length:32}).notNull(),
+ previousUrl: varchar("previousUrl", {length:1024}), url: varchar("url", {length:1024}).notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table=>[index("live_replay_events_room_idx").on(table.roomType,table.roomId,table.id)]);
+
+export const supportNotificationOutbox=pgTable('support_notification_outbox',{
+ id:serial('id').primaryKey(),key:varchar('key',{length:64}).notNull().unique(),ticketId:integer('ticketId').notNull().references(()=>supportTickets.id),
+ messageId:integer('messageId').references(()=>messages.id),audience:varchar('audience',{length:10}).notNull(),state:varchar('state',{length:16}).notNull().default('pending'),
+ claimedBy:integer('claimedBy').references(()=>users.id),recipient:varchar('recipient',{length:320}),createdAt:timestamp('createdAt').notNull().defaultNow(),claimedAt:timestamp('claimedAt'),finishedAt:timestamp('finishedAt'),
+},table=>[index('support_notification_outbox_pending_idx').on(table.state,table.id)]);

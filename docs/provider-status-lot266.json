@@ -1,0 +1,36 @@
+{
+  "observedAt": "2026-09-13T16:06:16.153886+00:00",
+  "stripe": {
+    "configured": false,
+    "webhookSet": false
+  },
+  "smtpConfigured": false,
+  "ai": {
+    "openai": {
+      "text": false,
+      "image": false,
+      "tts": false
+    },
+    "anthropic": {
+      "text": false,
+      "image": false,
+      "tts": false
+    },
+    "google": {
+      "text": false,
+      "image": false,
+      "tts": false
+    },
+    "mistral": {
+      "text": false,
+      "image": false,
+      "tts": false
+    }
+  },
+  "initialContainerEnvironmentPresent": {
+    "JAAS_APP_ID": false,
+    "JAAS_API_KEY_ID": false,
+    "JAAS_PRIVATE_KEY": false,
+    "INVOICE_ISSUER_JSON": false
+  }
+}

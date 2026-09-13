@@ -1,0 +1,31 @@
+import {beforeAll,describe,it,expect} from 'vitest';
+import {randomUUID} from 'node:crypto';
+import {eq} from 'drizzle-orm';
+import {getDb} from './db';
+import {orgScopedViewForSubject} from './access';
+import {revokeCertificate} from './certificateRevocation';
+import {users,companies,employees,affiliations,trainings,recurrencies,certificates,credentials} from '../drizzle/schema';
+const url=process.env.RAERO_TEST_DATABASE_URL;
+describe.skipIf(!url)('current company evidence · PostgreSQL',()=>{
+ beforeAll(()=>{process.env.DATABASE_URL=url!;});
+ it('removes revoked certificate coverage from the company view while preserving historical records',async()=>{
+  const db=(await getDb())!;
+  const [admin]=await db.insert(users).values({openId:randomUUID(),role:'admin'}).returning();
+  const [holder]=await db.insert(users).values({openId:randomUUID(),name:'Evidence fixture'}).returning();
+  const [org]=await db.insert(companies).values({name:'Evidence company'}).returning();
+  const [employee]=await db.insert(employees).values({companyId:org.id,userId:holder.id,firstName:'Test',lastName:'Holder',email:`${randomUUID()}@example.test`}).returning();
+  const [aff]=await db.insert(affiliations).values({orgId:org.id,personId:holder.id,employeeId:employee.id,role:'MEMBER'}).returning();
+  const [course]=await db.insert(trainings).values({title:'Required course',slug:randomUUID()}).returning();
+  await db.insert(recurrencies).values({employeeId:employee.id,companyId:org.id,trainingId:course.id,periodMonths:12,lastCompletedAt:new Date(),nextDueAt:new Date(Date.now()+86400000*100)});
+  const [cert]=await db.insert(certificates).values({userId:holder.id,trainingId:course.id,enrollmentId:-holder.id,certificateNumber:randomUUID(),verificationCode:randomUUID().replaceAll('-',''),isValid:true}).returning();
+  const [proof]=await db.insert(credentials).values({personId:holder.id,trainingId:course.id,certificateId:cert.id,affiliationId:aff.id,origin:'ORG_ASSIGNED',part66Coverage:[101],state:'LIVING'}).returning();
+  const before=await orgScopedViewForSubject(org.id,holder.id);
+  expect(before.part66Coverage).toEqual([101]);expect(before.requiredModules[0].hasValidCertificate).toBe(true);
+  await revokeCertificate(admin.id,{certificateNumber:cert.certificateNumber,reason:'Synthetic invalidated evidence'});
+  const after=await orgScopedViewForSubject(org.id,holder.id);
+  expect(after.part66Coverage).toEqual([]);expect(after.requiredModules[0].hasValidCertificate).toBe(false);expect(after.requiredModules[0].certificateNumber).toBeNull();
+  expect(after.requiredModules[0].lastCompletedAt).not.toBeNull();
+  expect(await db.select().from(credentials).where(eq(credentials.id,proof.id))).toHaveLength(1);
+  expect(await db.select().from(certificates).where(eq(certificates.id,cert.id))).toHaveLength(1);
+ });
+});

@@ -14,12 +14,16 @@ const BORDER = "oklch(88% 0.015 88)";
 
 /** Client view of their own quotes + per-quote message thread (INV-agnostic B2B). */
 export default function MyQuotes() {
-  const { t } = useI18n();
+  const { t,lang } = useI18n();
   const STATUS: Record<string, string> = { received: t("myQuotes.statusReceived"), in_progress: t("myQuotes.statusInProgress"), quote_sent: t("myQuotes.statusQuoteSent"), accepted: t("myQuotes.statusAccepted"), refused: t("myQuotes.statusRefused") };
-  const { user, isAuthenticated } = useAuth();
-  const { data: quotes = [], isLoading } = trpc.quotes.myList.useQuery(undefined, { enabled: !!user });
+  const { user, isAuthenticated, loading, error, refresh } = useAuth();
+  const [beforeId,setBeforeId]=useState<number>();
+  const query = trpc.quotes.myList.useQuery({beforeId}, { enabled: isAuthenticated });
+  const quotes=query.data?.entries??[];
   const [open, setOpen] = useState<number | null>(null);
 
+  if (loading) return <div className="container py-20" role="status">{t("common.loading")}</div>;
+  if (error) return <div className="container py-20"><p role="alert">{t("myQuotes.unavailable")}</p><Button variant="outline" onClick={()=>void refresh()}>{t("quoteThread.retry")}</Button></div>;
   if (!isAuthenticated) {
     return (
       <div className="container py-20 text-center">
@@ -34,26 +38,31 @@ export default function MyQuotes() {
       <BackButton />
       <h1 className="text-2xl font-bold mb-1 mt-2" style={{ color: BLUE }}>{t("myQuotes.title")}</h1>
       <p className="text-sm mb-6" style={{ color: MUTED }}>{t("myQuotes.subtitle")}</p>
-      {isLoading ? (
-        <div className="h-24 animate-pulse rounded-xl" style={{ background: "oklch(88% 0.015 88)" }} />
+      <p className="text-xs mb-2">{t("myQuotes.orderHint")}</p>
+      <Button className="mb-4" variant="outline" disabled={query.isFetching} onClick={()=>{if(beforeId){setBeforeId(undefined);setOpen(null);}else void query.refetch();}}>{t("myQuotes.firstPage")}</Button>
+      {query.isError ? (
+        <div><p role="alert">{t("myQuotes.unavailable")}</p><Button variant="outline" disabled={query.isFetching} onClick={()=>void query.refetch()}>{t("quoteThread.retry")}</Button></div>
+      ) : query.isPending ? (
+        <div role="status" aria-label={t("common.loading")} className="h-24 animate-pulse rounded-xl" style={{ background: "oklch(88% 0.015 88)" }} />
       ) : quotes.length === 0 ? (
-        <p className="text-sm" style={{ color: MUTED }}>{t("myQuotes.empty")} <a href="/devis" className="underline" style={{ color: BLUE }}>{t("myQuotes.requestQuote")}</a>.</p>
+        <p className="text-sm" style={{ color: MUTED }}>{t(beforeId?"myQuotes.pageEmpty":"myQuotes.empty")} <a href="/devis" className="underline" style={{ color: BLUE }}>{t("myQuotes.requestQuote")}</a>.</p>
       ) : (
         <div className="space-y-3">
           {quotes.map((q: any) => (
             <div key={q.id} className="rounded-xl overflow-hidden" style={{ border: `1px solid ${BORDER}`, background: "white" }}>
-              <button onClick={() => setOpen(open === q.id ? null : q.id)} className="w-full flex items-center justify-between p-4 text-left">
+              <button aria-expanded={open===q.id} onClick={() => setOpen(open === q.id ? null : q.id)} className="w-full flex items-center justify-between p-4 text-start">
                 <div>
                   <div className="font-semibold" style={{ color: BLUE }}>{q.companyName}</div>
-                  <div className="text-xs" style={{ color: MUTED }}>{STATUS[q.status] ?? q.status} · {new Date(q.createdAt).toLocaleDateString("fr-FR")}{q.trainingTypes ? ` · ${q.trainingTypes}` : ""}</div>
+                  <div className="text-xs" style={{ color: MUTED }}>{STATUS[q.status] ?? q.status} · {new Date(q.createdAt).toLocaleDateString(lang)}{q.trainingTypes ? ` · ${q.trainingTypes}` : ""}</div>
                 </div>
                 {open === q.id ? <ChevronUp className="w-4 h-4" style={{ color: MUTED }} /> : <ChevronDown className="w-4 h-4" style={{ color: MUTED }} />}
               </button>
-              {open === q.id && <div className="px-4 pb-4"><QuoteThread quoteId={q.id} meId={user?.id} /></div>}
+              {open === q.id && <div className="px-4 pb-4">{q.status === "accepted" && <a href="/dashboard" className="inline-block mb-3"><Button variant="outline" size="sm">{t("checkout.resume")}</Button></a>}<QuoteThread quoteId={q.id} meId={user?.id} /></div>}
             </div>
           ))}
         </div>
       )}
+      {!query.isError&&query.data?.nextBeforeId&&<Button className="mt-4" variant="outline" disabled={query.isFetching} onClick={()=>{setBeforeId(query.data!.nextBeforeId!);setOpen(null);}}>{t("myQuotes.more")}</Button>}
     </div>
   );
 }

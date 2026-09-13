@@ -8,6 +8,7 @@ vi.mock("./db", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./db")>();
   const chain: any = {
     from: () => chain,
+    innerJoin: () => chain,
     where: () => chain,
     limit: () => Promise.resolve([]),
     then: (resolve: any, reject: any) => Promise.resolve([]).then(resolve, reject),
@@ -39,14 +40,14 @@ function buildView() {
     matchedRules: [{ trainingId: 1, periodMonths: 24, trainingTitle: "Human Factors" }],
     recurrencies: [{ trainingId: 1, nextDueAt: inOneYear, lastCompletedAt: new Date() }],
     certificates: [
-      { trainingId: 1, isValid: true, certificateNumber: "RAERO-REQUIRED", expiresAt: null, issuedAt: new Date() },
-      { trainingId: 99, isValid: true, certificateNumber: "RAERO-ELECTIVE", expiresAt: null, issuedAt: new Date() }, // not required → excluded
-      { trainingId: 1, isValid: false, certificateNumber: "RAERO-REVOKED", expiresAt: null, issuedAt: new Date() }, // invalid → excluded
+      { id:1,trainingId: 1, isValid: true, certificateNumber: "RAERO-REQUIRED", expiresAt: null, issuedAt: new Date() },
+      { id:2,trainingId: 99, isValid: true, certificateNumber: "RAERO-ELECTIVE", expiresAt: null, issuedAt: new Date() }, // not required → excluded
+      { id:3,trainingId: 1, isValid: false, certificateNumber: "RAERO-REVOKED", expiresAt: null, issuedAt: new Date() }, // invalid → excluded
     ],
     credentials: [
-      { trainingId: 1, origin: "ORG_ASSIGNED", surfacedByPersonAt: null, part66Coverage: [10, 11] }, // visible
-      { trainingId: 1, origin: "INDEPENDENT", surfacedByPersonAt: null, part66Coverage: [50] }, // unsurfaced independent → hidden
-      { trainingId: 1, origin: "INDEPENDENT", surfacedByPersonAt: new Date(), part66Coverage: [12] }, // surfaced → visible
+      { certificateId:null,state:'LIVING',expiresAt:null,trainingId: 1, origin: "ORG_ASSIGNED", surfacedByPersonAt: null, part66Coverage: [10, 11] }, // visible
+      { certificateId:null,state:'LIVING',expiresAt:null,trainingId: 1, origin: "INDEPENDENT", surfacedByPersonAt: null, part66Coverage: [50] }, // unsurfaced independent → hidden
+      { certificateId:null,state:'LIVING',expiresAt:null,trainingId: 1, origin: "INDEPENDENT", surfacedByPersonAt: new Date(), part66Coverage: [12] }, // surfaced → visible
     ],
   });
 }
@@ -76,6 +77,29 @@ describe("access · org-scoped view (INV-3 minimisation)", () => {
     expect(cov).toContain(12); // surfaced independent → visible
     expect(cov).not.toContain(50); // unsurfaced independent → hidden
   });
+});
+
+it('excludes expired, unknown, mismatched and frozen evidence from current coverage',()=>{
+ const certificates=[
+  {id:1,trainingId:1,isValid:true,certificateNumber:'valid',expiresAt:null,issuedAt:new Date()},
+  {id:2,trainingId:1,isValid:true,certificateNumber:'expired',expiresAt:new Date(0),issuedAt:new Date()},
+  {id:3,trainingId:1,isValid:null,certificateNumber:'unknown',expiresAt:null,issuedAt:new Date()},
+  {id:4,trainingId:2,isValid:true,certificateNumber:'other-course',expiresAt:null,issuedAt:new Date()},
+ ];
+ const base={trainingId:1,origin:'ORG_ASSIGNED',surfacedByPersonAt:null,state:'LIVING',expiresAt:null,certificateId:null};
+ const view=projectOrgScopedView({subjectPersonId:7,orgId:3,matchedRules:[{trainingId:1,periodMonths:12,trainingTitle:'Required'}],recurrencies:[],certificates,credentials:[
+  {...base,certificateId:1,part66Coverage:[10]},
+  {...base,certificateId:2,part66Coverage:[20]},
+  {...base,certificateId:3,part66Coverage:[30]},
+  {...base,certificateId:4,part66Coverage:[40]},
+  {...base,certificateId:999,part66Coverage:[50]},
+  {...base,state:'FROZEN',part66Coverage:[60]},
+  {...base,expiresAt:new Date(0),part66Coverage:[70]},
+  {...base,trainingId:null,part66Coverage:[80]},
+ ]});
+ expect(view.part66Coverage).toEqual([10]);expect(view.requiredModules[0].certificateNumber).toBe('valid');
+ const expiredOnly=projectOrgScopedView({subjectPersonId:7,orgId:3,matchedRules:[{trainingId:1,periodMonths:12,trainingTitle:'Required'}],recurrencies:[],certificates:[certificates[1]],credentials:[]});
+ expect(expiredOnly.requiredModules[0].hasValidCertificate).toBe(false);
 });
 
 describe("access · affiliation guard (INV-2)", () => {

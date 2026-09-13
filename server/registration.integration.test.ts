@@ -1,0 +1,70 @@
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { randomUUID } from 'node:crypto';
+import * as nano from 'nanoid';
+import { eq } from 'drizzle-orm';
+import { getDb } from './db';
+import { registerUser } from './auth';
+import { appRouter } from './routers';
+import { users, companies, affiliations } from '../drizzle/schema';
+vi.mock('nanoid', async importOriginal => {
+  const actual = await importOriginal<typeof import('nanoid')>();
+  return {...actual, nanoid:vi.fn(actual.nanoid)};
+});
+const url=process.env.RAERO_TEST_DATABASE_URL;
+describe.skipIf(!url)('atomic personal and organization registration · PostgreSQL',()=>{
+  beforeAll(()=>{process.env.DATABASE_URL=url!;});
+  afterEach(()=>vi.restoreAllMocks());
+  const input=()=>({email:`${randomUUID()}@example.test`,name:'New manager',password:'registration-password-fixture'});
+  it('creates the organization, manager and affiliation together without paid or verified status',async()=>{
+    const db=(await getDb())!;
+    const data=input();
+    const user=await registerUser({...data,email:` ${data.email.toUpperCase()} `,organization:{name:` Academy ${randomUUID()} `,type:'AIRLINE',agreementNumber:'DECLARED-FIXTURE'}});
+    expect(user).toMatchObject({email:data.email,role:'company_manager',status:'active'});
+    const [org]=await db.select().from(companies).where(eq(companies.id,user.companyId!));
+    expect(org).toMatchObject({type:'AIRLINE',contactEmail:data.email,status:'ACTIVE',subscriptionType:'none',stripeSubscriptionId:null});
+    expect(org.name).toBe(org.name.trim());
+    const links=await db.select().from(affiliations).where(eq(affiliations.personId,user.id));
+    expect(links).toHaveLength(1);
+    expect(links[0]).toMatchObject({orgId:org.id,role:'MANAGER',status:'ACTIVE'});
+  });
+  it('permits only one normalized concurrent registration and leaves no orphan organization',async()=>{
+    const db=(await getDb())!;
+    const data=input(), name=`Concurrent ${randomUUID()}`;
+    const results=await Promise.allSettled([registerUser({...data,organization:{name}}),registerUser({...data,email:data.email.toUpperCase(),organization:{name}})]);
+    expect(results.filter(result=>result.status==='fulfilled')).toHaveLength(1);
+    expect(results.filter(result=>result.status==='rejected')).toHaveLength(1);
+    const accounts=await db.select().from(users).where(eq(users.email,data.email));
+    expect(accounts).toHaveLength(1);
+    expect(await db.select().from(companies).where(eq(companies.name,name))).toHaveLength(1);
+    expect(await db.select().from(affiliations).where(eq(affiliations.personId,accounts[0].id))).toHaveLength(1);
+  });
+  it('rolls back an inserted company if the subsequent account insert fails a real constraint',async()=>{
+    const db=(await getDb())!;
+    const collision=randomUUID();
+    await db.insert(users).values({openId:`local-${collision}`});
+    vi.mocked(nano.nanoid).mockReturnValueOnce(collision);
+    const data=input(), name=`Rollback ${randomUUID()}`;
+    await expect(registerUser({...data,organization:{name}})).rejects.toThrow();
+    expect(await db.select().from(companies).where(eq(companies.name,name))).toHaveLength(0);
+    expect(await db.select().from(users).where(eq(users.email,data.email))).toHaveLength(0);
+    vi.mocked(nano.nanoid).mockReturnValueOnce(collision);
+    const cookie=vi.fn();
+    const caller=appRouter.createCaller({user:null,req:{headers:{}} as never,res:{cookie} as never});
+    await expect(caller.auth.register({...data,organization:{name}})).rejects.toMatchObject({message:'Inscription impossible. Vérifiez vos informations et réessayez.'});
+    expect(cookie).not.toHaveBeenCalled();
+    expect(await db.select().from(companies).where(eq(companies.name,name))).toHaveLength(0);
+  });
+  it('rejects invalid input before writes and cannot use supplied IDs to join an existing organization',async()=>{
+    const db=(await getDb())!;
+    const [foreign]=await db.insert(companies).values({name:`Foreign ${randomUUID()}`}).returning();
+    const data=input();
+    await expect(registerUser({...data,organization:{name:'   '}})).rejects.toThrow();
+    expect(await db.select().from(users).where(eq(users.email,data.email))).toHaveLength(0);
+    const user=await registerUser({...data,companyId:foreign.id,asManager:true} as never);
+    expect(user).toMatchObject({companyId:null,role:'user'});
+    expect(await db.select().from(affiliations).where(eq(affiliations.personId,user.id))).toHaveLength(0);
+    const legacy=input();
+    await db.insert(users).values({openId:randomUUID(),email:legacy.email.toUpperCase()});
+    await expect(registerUser(legacy)).rejects.toThrow('Un compte existe déjà');
+  });
+});

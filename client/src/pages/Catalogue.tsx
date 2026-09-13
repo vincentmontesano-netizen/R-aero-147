@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { useI18n } from "@/i18n";
 
 export default function Catalogue() {
-  const { t } = useI18n();
+  const { t,lang } = useI18n();
   const [search, setSearch] = useState("");
   const [type, setType] = useState("");
   const [domain, setDomain] = useState("");
@@ -38,6 +38,7 @@ export default function Catalogue() {
     { value: "", label: t("catalogue.langAll") },
     { value: "fr", label: t("catalogue.langFr") },
     { value: "en", label: t("catalogue.langEn") },
+    { value: "ar", label: t("catalogue.langAr") },
   ];
 
   const TYPE_LABELS: Record<string, string> = {
@@ -45,11 +46,13 @@ export default function Catalogue() {
     seminar: t("catalogue.typeSeminar"), event: t("catalogue.typeEvent"),
   };
 
-  const { data: trainings = [], isLoading } = trpc.public.trainings.useQuery({ type, domain, language, search });
+  const query = trpc.public.trainings.useQuery({ type, domain, language, search });
+  const {data:trainings=[],isLoading}=query;
+  const utils=trpc.useUtils();
   const { data: categories = [] } = trpc.public.categories.useQuery();
   const addToCart = trpc.cart.add.useMutation({
-    onSuccess: () => toast.success(t("catalogue.toastAdded")),
-    onError: () => toast.error(t("catalogue.toastLoginRequired")),
+    onSuccess: async () => {toast.success(t("catalogue.toastAdded"));await utils.cart.invalidate();},
+    onError: error => toast.error(t(error.data?.code==="UNAUTHORIZED"?"catalogue.toastLoginRequired":"catalogue.cartError")),
   });
 
   return (
@@ -70,20 +73,20 @@ export default function Catalogue() {
         {/* Filters */}
         <div className="rounded-xl p-6 mb-8 flex flex-wrap gap-4 items-end" style={{ background: "oklch(100% 0 0)", border: "1px solid oklch(88% 0.015 88)" }}>
           <div className="flex-1 min-w-48">
-            <label className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("catalogue.searchLabel")}</label>
+            <label htmlFor="catalogue-search" className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("catalogue.searchLabel")}</label>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "oklch(62% 0.02 240)" }} />
-              <Input
+              <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "oklch(62% 0.02 240)" }} />
+              <Input id="catalogue-search" maxLength={255}
                 placeholder={t("catalogue.searchPlaceholder")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
+                className="ps-9"
               />
             </div>
           </div>
           <div className="min-w-40">
-            <label className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("catalogue.typeLabel")}</label>
-            <select
+            <label htmlFor="catalogue-type" className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("catalogue.typeLabel")}</label>
+            <select id="catalogue-type"
               value={type}
               onChange={(e) => setType(e.target.value)}
               className="w-full h-9 rounded-md border px-3 text-sm"
@@ -93,8 +96,8 @@ export default function Catalogue() {
             </select>
           </div>
           <div className="min-w-40">
-            <label className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("catalogue.domainLabel")}</label>
-            <select
+            <label htmlFor="catalogue-domain" className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("catalogue.domainLabel")}</label>
+            <select id="catalogue-domain"
               value={domain}
               onChange={(e) => setDomain(e.target.value)}
               className="w-full h-9 rounded-md border px-3 text-sm"
@@ -104,8 +107,8 @@ export default function Catalogue() {
             </select>
           </div>
           <div className="min-w-36">
-            <label className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("catalogue.langLabel")}</label>
-            <select
+            <label htmlFor="catalogue-lang" className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("catalogue.langLabel")}</label>
+            <select id="catalogue-lang"
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
               className="w-full h-9 rounded-md border px-3 text-sm"
@@ -126,12 +129,15 @@ export default function Catalogue() {
         {/* Results count */}
         <div className="flex items-center justify-between mb-6">
           <div className="text-sm" style={{ color: "oklch(45% 0.02 240)" }}>
-            {isLoading ? t("catalogue.loading") : t("catalogue.resultsCount", { count: trainings.length, plural: trainings.length > 1 ? "s" : "" })}
+            {query.isError ? t("catalogue.unavailable") : isLoading ? t("catalogue.loading") : t("catalogue.resultsCount", { count: trainings.length, plural: trainings.length > 1 ? "s" : "" })}
           </div>
         </div>
 
         {/* Grid */}
-        {isLoading ? (
+        {addToCart.isError&&<p role="alert" className="text-sm mb-4">{t(addToCart.error.data?.code==="UNAUTHORIZED"?"catalogue.toastLoginRequired":"catalogue.cartError")}</p>}
+        {query.isError ? (
+          <div role="alert" className="text-center py-12"><p className="mb-3">{t("catalogue.unavailable")}</p><Button variant="outline" disabled={query.isFetching} onClick={()=>void query.refetch()}>{t("quoteThread.retry")}</Button></div>
+        ) : isLoading ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="rounded-xl h-64 animate-pulse" style={{ background: "oklch(88% 0.015 88)" }} />
@@ -195,7 +201,7 @@ export default function Catalogue() {
                       </div>
                     </div>
                     <div className="font-bold text-base" style={{ color: "oklch(19% 0.08 252)" }}>
-                      {training.priceTtc ? `${Number(training.priceTtc).toFixed(0)} €` : t("catalogue.onQuote")}
+                      {training.priceTtc ? Number(training.priceTtc).toLocaleString(lang,{style:"currency",currency:"EUR"}) : t("catalogue.onQuote")}
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -207,6 +213,7 @@ export default function Catalogue() {
                     {training.priceTtc && (
                       <Button
                         size="sm"
+                        aria-label={t("trainingDetail.addToCart")}
                         className="btn-press"
                         style={{ background: "oklch(68% 0.1 78)", color: "oklch(19% 0.08 252)" }}
                         onClick={() => addToCart.mutate({ trainingId: training.id })}

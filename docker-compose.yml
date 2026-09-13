@@ -11,6 +11,7 @@ services:
       dockerfile: Dockerfile
     container_name: r-aero-academy
     restart: unless-stopped
+    stop_grace_period: 30s
     ports:
       - "${APP_PORT:-3000}:3000"
     environment:
@@ -22,16 +23,30 @@ services:
       # persists it in the volume (stable across restarts). Or set your own.
       JWT_SECRET: ${JWT_SECRET:-}
       APP_ORIGIN: ${APP_ORIGIN:-}
-      # ── Admin account (created/used by the seed) ──
+      TRUST_PROXY: ${TRUST_PROXY:-}
+      # ── First admin (existing accounts are never overwritten) ──
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-false}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-}
+      JAAS_APP_ID: ${JAAS_APP_ID:-}
+      JAAS_API_KEY_ID: ${JAAS_API_KEY_ID:-}
+      JAAS_PRIVATE_KEY: ${JAAS_PRIVATE_KEY:-}
+      STRIPE_PRICE_STANDARD_SEAT: ${STRIPE_PRICE_STANDARD_SEAT:-}
+      STRIPE_PRICE_ALL_INCLUSIVE: ${STRIPE_PRICE_ALL_INCLUSIVE:-}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
-      # ── Stripe ── (unset = demo mode)
+      # ── Stripe ── (unset = payments unavailable)
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
       STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
       VITE_STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
       # ── AI (e-learning maker). Mistral does text + image + voice. ──
       MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
+      AI_TEXT_REQUESTS_PER_HOUR: ${AI_TEXT_REQUESTS_PER_HOUR:-30}
+      AI_IMAGE_REQUESTS_PER_HOUR: ${AI_IMAGE_REQUESTS_PER_HOUR:-10}
+      AI_SPEECH_REQUESTS_PER_HOUR: ${AI_SPEECH_REQUESTS_PER_HOUR:-20}
+      AI_VIDEO_REQUESTS_PER_HOUR: ${AI_VIDEO_REQUESTS_PER_HOUR:-2}
+      GEMINI_VIDEO_MODEL: ${GEMINI_VIDEO_MODEL:-}
+      INVOICE_ISSUER_JSON: ${INVOICE_ISSUER_JSON:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}

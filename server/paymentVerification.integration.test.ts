@@ -1,0 +1,148 @@
+import { recordChargeRefund, orderRefundHistory } from "./refunds";
+import { requireEnrollment } from "./learningAccess";
+import { listLicenses, assignLicense, licenseCandidates } from "./licenses";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { randomUUID } from "node:crypto";
+import Stripe from "stripe";
+import { eq } from "drizzle-orm";
+import { getDb, updateTraining, deleteTraining } from "./db";
+import { fulfillPaidCheckout, euroCents, paymentOrigin } from "./paymentVerification";
+import { createCheckoutSession, createQuoteCheckout, handleStripeWebhook } from "./stripe";
+import { createSubscriptionCheckoutSession } from "./subscription";
+import { users, companies, trainings, orders, orderItems, enrollments, trainingLicenses, affiliations, refundObservations } from "../drizzle/schema";
+const url = process.env.RAERO_TEST_DATABASE_URL;
+describe.skipIf(!url)("verified checkout · PostgreSQL", () => {
+  beforeAll(() => { process.env.DATABASE_URL = url!; vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_fixture_only"); vi.stubEnv("STRIPE_WEBHOOK_SECRET", "whsec_fixture_only"); });
+  afterAll(() => vi.unstubAllEnvs());
+  async function fixture() {
+    const db = (await getDb())!;
+    const [user] = await db.insert(users).values({ openId: randomUUID() }).returning();
+    const [training] = await db.insert(trainings).values({ title: "Purchased version", slug: randomUUID(), type: "webinar" }).returning();
+    await updateTraining(training.id, { isPublished: true });
+    const [published] = await db.select().from(trainings).where(eq(trainings.id, training.id));
+    const sessionId = `cs_test_${randomUUID()}`;
+    const [order] = await db.insert(orders).values({ userId: user.id, totalHt: "100.00", totalTtc: "120.00", stripeSessionId: sessionId }).returning();
+    await db.insert(orderItems).values({ orderId: order.id, trainingId: training.id, trainingVersionId: published.publishedVersionId, quantity: 1, unitPriceHt: "100.00", unitPriceTtc: "120.00" });
+    const session = { id: sessionId, mode: "payment", payment_status: "paid", status: "complete", currency: "eur", amount_total: 12000, payment_intent: `pi_${randomUUID()}`, client_reference_id: String(user.id), metadata: { order_id: String(order.id), user_id: String(user.id) } } as unknown as Stripe.Checkout.Session;
+    return { db, user, training, order, session, versionId: published.publishedVersionId };
+  }
+  it("requires a paid status and exact order, buyer, amount, session and currency", async () => {
+    const { db, order, session } = await fixture();
+    expect(await fulfillPaidCheckout({ ...session, payment_status: "unpaid", status: "complete" })).toEqual({ status: "pending" });
+    for (const patch of [{ amount_total: 1 }, { currency: "usd" }, { id: "cs_wrong" }, { client_reference_id: "999999" }, { metadata: { ...session.metadata, user_id: "999999" } }]) await expect(fulfillPaidCheckout({ ...session, ...patch } as Stripe.Checkout.Session)).rejects.toThrow();
+    expect((await db.select().from(orders).where(eq(orders.id, order.id)))[0].status).toBe("pending");
+    expect(await db.select().from(enrollments).where(eq(enrollments.orderId, order.id))).toHaveLength(0);
+  });
+  it("settles once under concurrency and grants the purchased version even after republication/archive", async () => {
+    const { db, training, order, session, versionId } = await fixture();
+    await updateTraining(training.id, { isPublished: true, title: "Later version" });
+    await deleteTraining(training.id);
+    expect(await Promise.all([fulfillPaidCheckout(session), fulfillPaidCheckout(session)])).toEqual([{ status: "paid" }, { status: "paid" }]);
+    const granted = await db.select().from(enrollments).where(eq(enrollments.orderId, order.id));
+    expect(granted).toHaveLength(1);
+    expect(granted[0].trainingVersionId).toBe(versionId);
+    expect((await db.select().from(orders).where(eq(orders.id, order.id)))[0].fulfilledAt).toBeInstanceOf(Date);
+    await db.update(orders).set({ status: "refunded" }).where(eq(orders.id, order.id));
+    expect(await fulfillPaidCheckout(session)).toEqual({ status: "refunded" });
+  });
+  it("verifies webhook signatures and handles delayed paid events without duplicate grants", async () => {
+    const { db, session, order } = await fixture();
+    const stripe = new Stripe("sk_test_fixture_only");
+    const payload = JSON.stringify({ id: `evt_${randomUUID()}`, type: "checkout.session.async_payment_succeeded", data: { object: session } });
+    const header = stripe.webhooks.generateTestHeaderString({ payload, secret: "whsec_fixture_only" });
+    await expect(handleStripeWebhook(Buffer.from(payload), "invalid")).rejects.toThrow();
+    await handleStripeWebhook(Buffer.from(payload), header);
+    await handleStripeWebhook(Buffer.from(payload), header);
+    expect(await db.select().from(enrollments).where(eq(enrollments.orderId, order.id))).toHaveLength(1);
+  });
+  it("never simulates paid orders or subscriptions when configuration is missing", async () => {
+    const { db, user } = await fixture();
+    const [company] = await db.insert(companies).values({ name: "No simulated billing" }).returning();
+    const before = await db.select().from(orders).where(eq(orders.userId, user.id));
+    vi.stubEnv("STRIPE_SECRET_KEY", "");
+    const identity = { userId: user.id, userEmail: "fixture@example.test", userName: "Fixture", origin: "http://localhost:3174" };
+    await expect(createCheckoutSession({ ...identity, cartItems: [] })).rejects.toThrow("Stripe");
+    await expect(createQuoteCheckout({ ...identity, actor: { id: user.id, role: "admin" }, quoteId: 1, items: [] })).rejects.toThrow("Stripe");
+    await expect(createSubscriptionCheckoutSession({ companyId: company.id, plan: "standard", origin: identity.origin })).rejects.toThrow("Stripe");
+    expect(await db.select().from(orders).where(eq(orders.userId, user.id))).toHaveLength(before.length);
+    expect((await db.select().from(companies).where(eq(companies.id, company.id)))[0].subscriptionType).toBe("none");
+    vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_fixture_only");
+  });
+  it("parses exact cents and constrains return origins to the configured application", () => {
+    expect(euroCents("19.99")).toBe(1999);
+    for (const value of ["-1", "NaN", "1e3", "2.999"]) expect(() => euroCents(value)).toThrow();
+    vi.stubEnv("PUBLIC_APP_URL", "https://academy.example.test");
+    expect(paymentOrigin("https://academy.example.test")).toBe("https://academy.example.test");
+    expect(() => paymentOrigin("https://attacker.example.test")).toThrow();
+  });
+  it("creates every company seat and permits one authorized immutable assignment per license", async () => {
+    const { db, user, training, order, session, versionId } = await fixture();
+    const [company] = await db.insert(companies).values({ name: "Seat buyer" }).returning();
+    const [learner, other, foreign] = await db.insert(users).values([1, 2, 3].map(() => ({ openId: randomUUID(), name: "Seat learner" }))).returning();
+    await db.insert(affiliations).values([{ personId: user.id, orgId: company.id, role: "MANAGER" }, { personId: learner.id, orgId: company.id, role: "MEMBER" }, { personId: other.id, orgId: company.id, role: "MEMBER" }]);
+    await db.update(orders).set({ companyId: company.id, totalHt: "300.00", totalTtc: "360.00" }).where(eq(orders.id, order.id));
+    await db.update(orderItems).set({ quantity: 3 }).where(eq(orderItems.orderId, order.id));
+    session.amount_total = 36000;
+    await Promise.all([fulfillPaidCheckout(session), fulfillPaidCheckout(session)]);
+    const seats = await db.select().from(trainingLicenses).where(eq(trainingLicenses.orderId, order.id));
+    expect(seats).toHaveLength(3);
+    expect(await db.select().from(enrollments).where(eq(enrollments.orderId, order.id))).toHaveLength(0);
+    expect((await listLicenses(user)).map(l => l.id)).toEqual(expect.arrayContaining(seats.map(l => l.id)));
+    expect((await listLicenses(foreign)).map(l => l.id)).not.toContain(seats[0].id);
+    await expect(licenseCandidates(foreign, seats[0].id)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(assignLicense(user, seats[0].id, foreign.id)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await updateTraining(training.id, { isPublished: true, title: "Next version" });
+    await deleteTraining(training.id);
+    const assigned = await Promise.all([assignLicense(user, seats[0].id, learner.id), assignLicense(user, seats[0].id, learner.id)]);
+    expect(assigned[0].enrollmentId).toBe(assigned[1].enrollmentId);
+    const [enrolled] = await db.select().from(enrollments).where(eq(enrollments.id, assigned[0].enrollmentId));
+    expect(enrolled).toMatchObject({ trainingVersionId: versionId, trainingLicenseId: seats[0].id, assignedOrgId: company.id });
+    await expect(requireEnrollment(learner.id, enrolled.id)).resolves.toBeTruthy();
+    await expect(assignLicense(user, seats[0].id, other.id)).rejects.toMatchObject({ code: "CONFLICT" });
+    await expect(assignLicense(user, seats[1].id, learner.id)).rejects.toMatchObject({ code: "CONFLICT" });
+    expect((await db.select().from(trainingLicenses).where(eq(trainingLicenses.id, seats[1].id)))[0].assignedUserId).toBeNull();
+    await expect(db.update(trainingLicenses).set({ assignedUserId: other.id }).where(eq(trainingLicenses.id, seats[0].id))).rejects.toThrow();
+    await expect(db.delete(trainingLicenses).where(eq(trainingLicenses.id, seats[0].id))).rejects.toThrow();
+    await db.update(affiliations).set({ status: "INACTIVE" }).where(eq(affiliations.personId, user.id));
+    await expect(assignLicense(user, seats[1].id, other.id)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect((await listLicenses(user)).map(l => l.id)).not.toContain(seats[0].id);
+    await db.update(orders).set({ status: "refunded" }).where(eq(orders.id, order.id));
+    await expect(requireEnrollment(learner.id, enrolled.id)).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("keeps partial-refund access, revokes a full refund and ignores older/repeated observations", async () => {
+    const { db, session, order, user } = await fixture();
+    await fulfillPaidCheckout(session);
+    const charge = { id: `ch_${randomUUID()}`, payment_intent: session.payment_intent, amount: 12000, amount_refunded: 3000, currency: "eur", refunded: false } as Stripe.Charge;
+    const partialId = `evt_${randomUUID()}`, fullId = `evt_${randomUUID()}`;
+    await recordChargeRefund(partialId, 100, charge);
+    expect((await db.select().from(orders).where(eq(orders.id, order.id)))[0]).toMatchObject({ status: "paid", refundedAmountCents: 3000 });
+    const [enrollment] = await db.select().from(enrollments).where(eq(enrollments.orderId, order.id));
+    await expect(requireEnrollment(user.id, enrollment.id)).resolves.toBeTruthy();
+    const full = { ...charge, amount_refunded: 12000, refunded: true };
+    await Promise.all([recordChargeRefund(fullId, 200, full), recordChargeRefund(fullId, 200, full)]);
+    await recordChargeRefund(`evt_${randomUUID()}`, 50, { ...charge, amount_refunded: 1000 });
+    expect((await db.select().from(orders).where(eq(orders.id, order.id)))[0]).toMatchObject({ status: "refunded", refundedAmountCents: 12000 });
+    const [license] = await db.select().from(trainingLicenses).where(eq(trainingLicenses.orderId, order.id));
+    expect(license.revokedAt).toBeInstanceOf(Date);
+    await expect(requireEnrollment(user.id, enrollment.id)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(await db.select().from(refundObservations).where(eq(refundObservations.paymentIntentId, charge.payment_intent as string))).toHaveLength(3);
+    expect(await orderRefundHistory(user, order.id)).toHaveLength(3);
+    await expect(orderRefundHistory({ id: user.id + 999999, role: "user" }, order.id)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(db.delete(refundObservations).where(eq(refundObservations.eventId, fullId))).rejects.toThrow();
+    await expect(db.update(refundObservations).set({ refundedCents: 0 }).where(eq(refundObservations.eventId, fullId))).rejects.toThrow();
+    await expect(db.update(trainingLicenses).set({ revokedAt: null }).where(eq(trainingLicenses.id, license.id))).rejects.toThrow();
+  });
+  it("reconciles refunds arriving before the paid Checkout and refuses inconsistent charge data", async () => {
+    const { db, session, order } = await fixture();
+    const charge = { id: `ch_${randomUUID()}`, payment_intent: session.payment_intent, amount: 12000, amount_refunded: 12000, currency: "eur", refunded: true } as Stripe.Charge;
+    await recordChargeRefund(`evt_${randomUUID()}`, 100, charge);
+    expect(await fulfillPaidCheckout(session)).toEqual({ status: "refunded" });
+    expect(await db.select().from(trainingLicenses).where(eq(trainingLicenses.orderId, order.id))).toHaveLength(0);
+    expect(await db.select().from(enrollments).where(eq(enrollments.orderId, order.id))).toHaveLength(0);
+    await expect(recordChargeRefund(`evt_${randomUUID()}`, 200, { ...charge, amount_refunded: 99999 })).rejects.toThrow();
+    await expect(recordChargeRefund(`evt_${randomUUID()}`, 200, { ...charge, currency: "usd" })).rejects.toThrow();
+    expect((await db.select().from(orders).where(eq(orders.id, order.id)))[0]).toMatchObject({ status: "refunded", refundedAmountCents: 12000 });
+  });
+
+});

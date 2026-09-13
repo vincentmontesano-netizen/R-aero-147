@@ -1,0 +1,32 @@
+import { beforeAll, describe, expect, it } from 'vitest';
+import { randomUUID } from 'node:crypto';
+import { eq } from 'drizzle-orm';
+import { getDb, getMyTickets } from './db';
+import { users, supportTickets } from '../drizzle/schema';
+import { appRouter } from './routers';
+const url = process.env.RAERO_TEST_DATABASE_URL;
+describe.skipIf(!url)('personal support pagination · PostgreSQL', () => {
+  beforeAll(() => { process.env.DATABASE_URL = url!; });
+  it('keeps pages private and stable on new arrivals, applies literal filters and rejects a stale suspended account', async () => {
+    const db = (await getDb())!;
+    const [owner,other] = await db.insert(users).values([{openId:randomUUID()},{openId:randomUUID()}]).returning();
+    const tickets = await db.insert(supportTickets).values(Array.from({length:55},(_,i)=>({userId:owner.id,subject:'My %_ request '+i,status:'OPEN'}))).returning();
+    await db.insert(supportTickets).values([{userId:other.id,subject:'My %_ request private',status:'OPEN'},{userId:owner.id,subject:'Closed request',status:'CLOSED'}]);
+    const caller = appRouter.createCaller({user:owner,req:{headers:{}},res:{}} as any);
+    const first = await caller.support.myList({status:'OPEN',search:'  MY %_ REQUEST  '});
+    expect(first.entries.map(t=>t.id)).toEqual(tickets.slice(5).reverse().map(t=>t.id));
+    expect(first.nextBeforeId).toBe(first.entries[49].id);
+    await db.insert(supportTickets).values({userId:owner.id,subject:'My %_ request newest',status:'OPEN'});
+    const second = await caller.support.myList({status:'OPEN',search:'My %_ request',beforeId:first.nextBeforeId!});
+    expect(second.entries.map(t=>t.id)).toEqual(tickets.slice(0,5).reverse().map(t=>t.id));
+    expect(second.nextBeforeId).toBeNull();
+    expect(new Set([...first.entries,...second.entries].map(t=>t.id)).size).toBe(55);
+    expect([...first.entries,...second.entries].every(t=>t.userId===owner.id)).toBe(true);
+    expect((await caller.support.myList({status:'CLOSED'})).entries).toHaveLength(1);
+    expect((await caller.support.myList({search:'missing'})).entries).toEqual([]);
+    await expect(caller.support.myList({beforeId:0})).rejects.toMatchObject({code:'BAD_REQUEST'});
+    await expect(getMyTickets(owner.id,{userId:other.id})).rejects.toMatchObject({code:'BAD_REQUEST'});
+    await db.update(users).set({status:'suspended'}).where(eq(users.id,owner.id));
+    await expect(caller.support.myList()).rejects.toMatchObject({code:'FORBIDDEN'});
+  });
+});

@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import ChatWidget from "@/components/ChatWidget";
 import CartWidget from "@/components/CartWidget";
@@ -6,33 +7,39 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import { I18nProvider } from "./i18n";
+import { I18nProvider, useI18n } from "./i18n";
 import Home from "./pages/Home";
-import Catalogue from "./pages/Catalogue";
-import TrainingDetail from "./pages/TrainingDetail";
-import Dashboard from "./pages/Dashboard";
-import LearningPlayer from "./pages/LearningPlayer";
-import LiveRoom from "./pages/LiveRoom";
-import CompanyDashboard from "./pages/CompanyDashboard";
-import AdminDashboard from "./pages/AdminDashboard";
-import Cart from "./pages/Cart";
-import Checkout from "./pages/Checkout";
-import QuoteRequest from "./pages/QuoteRequest";
-import CertificateVerification from "./pages/CertificateVerification";
-import UserProfile from "./pages/UserProfile";
-import MyQuotes from "./pages/MyQuotes";
-import Support from "./pages/Support";
-import Login from "./pages/Login";
-import ResetPassword from "./pages/ResetPassword";
-import Register from "./pages/Register";
-import Webinars from "./pages/Webinars";
-import About from "./pages/About";
-import Legal from "./pages/Legal";
-import CourseMaker from "./pages/CourseMaker";
-import Sessions from "./pages/Sessions";
-import News from "./pages/News";
-import ArticleDetail from "./pages/ArticleDetail";
-import Glossary from "./pages/Glossary";
+const Catalogue = lazy(() => import("./pages/Catalogue"));
+const TrainingDetail = lazy(() => import("./pages/TrainingDetail"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const LearningPlayer = lazy(() => import("./pages/LearningPlayer"));
+const LiveRoom = lazy(() => import("./pages/LiveRoom"));
+const CompanyDashboard = lazy(() => import("./pages/CompanyDashboard"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const Cart = lazy(() => import("./pages/Cart"));
+const Checkout = lazy(() => import("./pages/Checkout"));
+const QuoteRequest = lazy(() => import("./pages/QuoteRequest"));
+const CertificateVerification = lazy(() => import("./pages/CertificateVerification"));
+const UserProfile = lazy(() => import("./pages/UserProfile"));
+const MyQuotes = lazy(() => import("./pages/MyQuotes"));
+const SupportTicket = lazy(() => import("./pages/SupportTicket"));
+const Support = lazy(() => import("./pages/Support"));
+const Login = lazy(() => import("./pages/Login"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const Register = lazy(() => import("./pages/Register"));
+const Webinars = lazy(() => import("./pages/Webinars"));
+const About = lazy(() => import("./pages/About"));
+const Legal = lazy(() => import("./pages/Legal"));
+const CourseMaker = lazy(() => import("./pages/CourseMaker"));
+const Sessions = lazy(() => import("./pages/Sessions"));
+const News = lazy(() => import("./pages/News"));
+const ArticleDetail = lazy(() => import("./pages/ArticleDetail"));
+const Glossary = lazy(() => import("./pages/Glossary"));
+
+const ApprovalCenter = lazy(() => import("./pages/ApprovalCenter"));
+const Subscriptions = lazy(() => import("./pages/Subscriptions"));
+const Licenses = lazy(() => import("./pages/Licenses"));
+const VerificationCenter = lazy(() => import("./pages/VerificationCenter"));
 
 function Router() {
   return (
@@ -57,8 +64,12 @@ function Router() {
       <Route path="/register" component={Register} />
 
       {/* Authenticated */}
+      <Route path="/abonnements" component={Subscriptions} />
+      <Route path="/licences" component={Licenses} />
+      <Route path="/verifications" component={VerificationCenter} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/mes-devis" component={MyQuotes} />
+      <Route path="/support/ticket/:id" component={SupportTicket} />
       <Route path="/support" component={Support} />
       <Route path="/profil" component={UserProfile} />
       <Route path="/formation/:slug/apprendre" component={LearningPlayer} />
@@ -70,6 +81,7 @@ function Router() {
       <Route path="/entreprise" component={CompanyDashboard} />
 
       {/* Admin */}
+      <Route path="/admin/approval" component={ApprovalCenter} />
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/maker" component={CourseMaker} />
       <Route path="/maker/:trainingId" component={CourseMaker} />
@@ -81,6 +93,14 @@ function Router() {
   );
 }
 
+function PageLoading() {
+  const { t } = useI18n();
+  return <div role="status" className="min-h-screen flex flex-col gap-4 items-center justify-center">
+    <div aria-hidden="true" className="h-8 w-8 rounded-full border-2 border-slate-300 border-t-slate-900 animate-spin motion-reduce:animate-none" />
+    <p>{t('common.loading')}</p>
+  </div>;
+}
+
 function App() {
   return (
     <ErrorBoundary>
@@ -88,7 +108,7 @@ function App() {
         <I18nProvider>
           <TooltipProvider>
             <Toaster />
-            <Router />
+            <Suspense fallback={<PageLoading />}><Router /></Suspense>
             <ChatWidget />
             <CartWidget />
           </TooltipProvider>

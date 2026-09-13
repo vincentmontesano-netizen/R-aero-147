@@ -1,3 +1,60 @@
+import {notifySupport,listSupportNotifications,supportNotificationListInput,sendPendingSupportNotification,supportNotificationSendInput} from "./supportNotifications";
+import {supportMessageInput} from "../shared/supportMessageInput";
+import {supportListInput} from "../shared/supportListInput";
+import {learningProgressInput} from "../shared/learningProgressInput";
+import {catalogueInput} from "../shared/catalogueInput";
+import {quoteListInput} from "../shared/quoteListInput";
+import {quoteMessageInput,quoteThreadInput} from "../shared/quoteMessageInput";
+import {quoteStatusInput} from "../shared/quoteStatusInput";
+import {quoteRequestInput} from "../shared/quoteRequestInput";
+import {roleRequirementCourses} from "./roleRequirementCourses";
+import {roleRequirementHistory} from "./roleRequirementHistory";
+import {roleRequirementInput} from "../shared/roleRequirementInput";
+import { objectiveCreationInput, createAuthorObjective } from './objectiveCreation';
+import {reorderModules} from "./db";
+import {createAuthorSlide,slideCreationInput} from "./slideCreation";
+import { createAuthorModule, moduleCreationInput } from "./moduleCreation";
+import { broadcastRetryInput, previewBroadcastRetry, retryBroadcastRecipient } from "./adminBroadcastRetry";
+import { broadcastInput, sendAdminBroadcast, recoverBroadcastOutcome, broadcastHistoryInput, broadcastHistory, broadcastRecipientInput, broadcastRecipientHistory } from "./adminBroadcast";
+import { createAuthorQuestion, questionCreationInput } from "./questionCreation";
+import {getTicketStatusHistory} from "./db";
+import {supportRequestInput} from "../shared/supportRequest";
+import {adminCertificate,revokeCertificate,certificateRevocationInput} from "./certificateRevocation";
+import {invoiceLanguageSchema} from '../shared/invoiceLanguage';
+import { invoiceBuyerSchema } from "../shared/invoiceIdentity";
+import { startVideoInput, startAiVideo, listAiVideos, refreshAiVideo } from "./aiVideoJobs";
+import { saveAiOutline, pendingAiOutlines, pendingOutlineInput, createFromAiOutline } from "./aiOutlines";
+import { courseDraftInput } from "./courseDraftInput";
+import { runAiRequest, aiRequestUsage } from "./aiRequests";
+import { instructorAgenda, instructorAgendaInput } from "./instructorAgenda";
+import { liveInstructorHistory, instructorHistoryInput, searchLiveInstructors, listLiveInstructors, setLiveInstructor, instructorRoomInput, instructorAssignmentInput, instructorSearchInput } from "./liveInstructors";
+import { webinarHistory, webinarHistoryInput, updateWebinarMetadata, webinarMetadataInput, listAdminWebinars, createAdminWebinar, rescheduleWebinar, setWebinarStatus, webinarCreateInput, webinarScheduleInput, webinarStatusInput } from "./adminWebinars";
+import { scheduleInput, rescheduleSession, scheduleHistoryInput, sessionScheduleHistory } from "./sessionSchedule";
+import { copyCourse, copyCourseInput } from "./courseCopy";
+import { archiveExternalTraining, archiveExternalTrainingInput } from "./externalTrainingArchive";
+import { organizationHistoryInput, organizationStatusHistory } from "./organizationHistory";
+import { passwordResetOrigin } from "./authOrigin";
+import { issueLiveVideoTicket } from "./liveVideo";
+import { uploadCourseMedia } from "./courseMedia";
+import { billingRouter } from "./billing";
+import { withdrawPedagogicalApproval, requestPedagogicalReview, pendingPedagogicalReviews, listPedagogicalReviews, reviewSnapshot, decidePedagogicalReview } from "./pedagogicalReview";
+import { getExamFinalizationFailures } from "./db";
+import { authorWorkspaces } from "./makerAccess";
+import { cancelSessionReservation } from "./admissions";
+import { getUserSessions } from "./db";
+import { getPassportHistory, getPassportHistoryPage } from "./passport";
+import { reconcilePayment, reconciliationHistory } from "./paymentReconciliation";
+import { resumeOrderCheckout } from "./checkoutAttempts";
+import { orderRefundHistory } from "./refunds";
+import { listLicenses, licenseCandidates, assignLicense } from "./licenses";
+import { requireManagedCompany, requireManagedEmployee, distributionCandidates, assignCompanyTraining } from "./companyTraining";
+import { publishedVersions } from "./curriculum";
+import { contentHistory } from "./contentArchive";
+import { courseReadiness } from "./courseReadiness";
+import { requireAuthorContent, courseOwnership, listAuthorCourses, requireAuthorCourse, requireAuthorSlides, validateSlideLinks } from "./makerAccess";
+import { approvalRouter } from "./approval";
+import { verificationRouter } from "./verification";
+import { learnerCurriculum, requireEnrollment, requireTrainingAccess, learnerQuestion } from "./learningAccess";
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
@@ -5,7 +62,7 @@ import { sdk } from "./_core/sdk";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { registerUser, loginUser, sanitizeUser, adminCreateUser, createPasswordReset, resetPasswordWithToken, startTwoFactor, verifyTwoFactorCode, setTwoFactor } from "./auth";
+import { registrationInput, revokeAllSessions, registerUser, loginUser, InvalidPasswordResetTokenError, sanitizeUser, adminCreateUser, createPasswordReset, resetPasswordWithToken, startTwoFactor, verifyTwoFactorCode, beginTwoFactorChange, confirmTwoFactorChange } from "./auth";
 import {
   getPublicTrainings, getFeaturedTrainings, getTrainingBySlug, getTrainingCategories,
   getCartItems, addToCart, removeFromCart, getCartCount, clearCart,
@@ -14,11 +71,11 @@ import {
   getCompanyEmployees, createEmployee, updateEmployee,
   getCompanyRecurrencies,
   getQuoteRequests, createQuoteRequest,
-  getQuoteById, getMyQuotes, findUserByEmail, getQuoteMessages, createQuoteMessage, markQuoteMessagesRead,
-  createSupportTicket, getMyTickets, getAdminTickets, getTicketById, getTicketThread, postTicketMessage, setTicketStatus,
-  broadcastNotification, createNotification,
+  getQuoteById, getMyQuotes, findUserByEmail, getQuoteMessages, createQuoteMessage,
+  createSupportTicket, getMyTickets, getAdminTickets, getTicketById, getSupportTicketDetail, getTicketThread, postTicketMessage, setTicketStatus,
+  createNotification,
   getAdminUsers, getAdminTrainings, createTraining, updateTraining, deleteTraining,
-  getAdminOrders, getAdminQuoteRequests, updateQuoteRequestStatus,
+  getUserOrders, getAdminOrders, getAdminQuoteRequests, getQuoteStatusHistory, updateQuoteRequestStatus,
   getWebinars, registerForWebinar,
   getUserCompany, getCompanyById, createOrUpdateCompany,
   getAdminStats,
@@ -30,23 +87,23 @@ import {
   getObjectives, adminCreateObjective, adminUpdateObjective, adminDeleteObjective, reorderObjectives, getObjectiveCompletion,
   getUserNotifications, getUnreadNotificationCount, markNotificationRead, markAllNotificationsRead, generateExpiryAlerts,
   getCompanySubscriptionView,
-  startExamSession, logProctoringEvent, getExamIntegrity,
-  getTechnicianFile, createExternalTraining, deleteExternalTraining,
-  surfaceCredentialForPerson, unsurfaceCredentialForPerson, getPersonCredentials, lockSurfacedCredentialsForOrg,
+  saveExamAnswers, startExamSession, logProctoringEvent, getExamIntegrity,
+  getTechnicianFile, createExternalTraining,
+  surfaceCredentialForPerson, shareCertificateForPerson, getCredentialSharingHistory, unsurfaceCredentialForPerson, getPersonCredentials,
   createSignoff, getSignoffsForSubject, setAffiliationRole, erasePerson,
   getCompanyConsolidated, getRoleRequirements, createRoleRequirement, deleteRoleRequirement, runTNA,
   getCourseTemplates, createCourseFromTemplate, getRegulatoryChanges, createRegulatoryChange, setReviewStatus, getContentRevisions,
   adminCreateQuestion, adminUpdateQuestion, adminDeleteQuestion,
   adminSetUserStatus, adminSetUserRole, adminUpdateUser, countActiveAdmins,
-  getAdminOrganizations, adminCreateOrganization, adminUpdateOrganization, adminSetOrganizationStatus, adminDeleteOrganization,
+  getAdminOrganizations, adminCreateOrganization, adminUpdateOrganization, adminSetOrganizationStatus,
   getOrganizationManagers, addOrganizationManager, removeOrganizationManager,
   getOrganizationAffiliates, addOrganizationAffiliate, getAffiliationById,
   getPassportDocuments, createPassportDocument, deletePassportDocument, setPassportSharing,
   getActiveOffers, getAllOffers, createOffer, updateOffer, deleteOffer,
   getActiveFaq, getAllFaq, createFaqItem, updateFaqItem, deleteFaqItem,
   setSetting,
-  getSlides, createSlide, updateSlide, deleteSlide, reorderSlides, createCourseWithSlides,
-  getUpcomingSessions, getAllSessions, createSession, updateSession, deleteSession, registerForSession,
+  getSlides, updateSlide, deleteSlide, reorderSlides, createCourseWithSlides,
+  getUpcomingSessions, getAllSessions, createSession, deleteSession, registerForSession,
   getPublishedArticles, getArticleBySlug, getAllArticles, createArticle, updateArticle, deleteArticle,
 } from "./db";
 import { generateCataloguePDF } from "./catalogue";
@@ -54,14 +111,14 @@ import {
   aiProviderStatus, aiGenerateOutline, aiWriteSlideText, aiGenerateQuiz,
   generateImage, generateSpeech, AIError, type AIProvider,
 } from "./ai";
-import { createCheckoutSession, confirmCheckoutPayment, createQuoteCheckout } from "./stripe";
+import { createCheckoutSession, confirmCheckoutPayment, createQuoteCheckout, getStripe } from "./stripe";
 import { sendEmail, isEmailConfigured, adminNotifyEmail, simpleEmail, passwordResetEmail, twoFactorCodeEmail } from "./email";
 import { fetchInbox, fetchMessage, isInboxConfigured } from "./inbox";
 import { rateLimit, rateLimitReset } from "./ratelimit";
 import { createSubscriptionCheckoutSession, createBillingPortalSession, confirmSubscription } from "./subscription";
 import {
-  getLiveAccess, joinLiveRoom, getParticipants, postLiveMessage, getLiveMessages, setMessageAnswered,
-  createLivePoll, closeLivePoll, voteLivePoll, getLivePolls, getEngagementScores, setReplayUrl,
+  getLiveAccess, getPresenceHistory, joinLiveRoom, getParticipants, postLiveMessage, getLiveMessages, setMessageAnswered,
+  createLivePoll, closeLivePoll, voteLivePoll, getLivePolls, getEngagementScores, setReplayUrl, getReplayHistory, replayHistoryInput,
 } from "./live";
 import { issueCertificate } from "./certificate";
 import { generateInvoicePDF } from "./invoice";
@@ -79,7 +136,7 @@ const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
 
 // Staff guard — admins and instructors can author courses.
 const staffProcedure = protectedProcedure.use(({ ctx, next }) => {
-  if (ctx.user.role !== "admin" && ctx.user.role !== "instructor" && ctx.user.role !== "company_manager")
+  if (ctx.user.role !== "admin" && ctx.user.role !== "instructor" && ctx.user.role !== "company_manager" && !(ctx.affiliations ?? []).some(a => a.role === "MANAGER" && a.status === "ACTIVE"))
     throw new TRPCError({ code: "FORBIDDEN", message: "Accès réservé aux formateurs, managers et administrateurs." });
   return next({ ctx });
 });
@@ -91,23 +148,17 @@ const moderatorProcedure = protectedProcedure.use(({ ctx, next }) => {
   return next({ ctx });
 });
 
-// Org manager guard — admin (operator, god-mode, always logged) OR anyone holding an
-// ACTIVE MANAGER affiliation. This is a coarse gate; the PER-ORG authorisation (which
-// organisation, INV-2) is asserted inside handlers via assertActiveAffiliation. The
-// legacy global "company_manager" role is tolerated as a fallback during the transition.
-const orgManagerProcedure = protectedProcedure.use(({ ctx, next }) => {
-  const isManager = (ctx.affiliations ?? []).some((a) => a.role === "MANAGER" && a.status === "ACTIVE");
-  if (ctx.user.role !== "admin" && ctx.user.role !== "company_manager" && !isManager)
-    throw new TRPCError({ code: "FORBIDDEN", message: "Accès réservé aux managers d'organisation." });
-  return next({ ctx });
+// Organization access derives from current active memberships, not the global role.
+const orgManagerProcedure = protectedProcedure.use(async ({ctx,next}) => {
+  const effective = await getActiveAffiliations(ctx.user.id);
+  if (ctx.user.role !== "admin" && !effective.some(a=>a.role === "MANAGER"))
+    throw new TRPCError({code:"FORBIDDEN",message:"Une affiliation active de responsable est requise."});
+  return next({ctx:{...ctx,affiliations:effective}});
 });
-
-// Resolve the org a MANAGER administers: their first ACTIVE MANAGER affiliation, or — during
-// the legacy transition — the company_manager's own companyId. Throws if none.
 function managerOrgId(ctx: any): number {
-  const aff = (ctx.affiliations ?? []).find((a: any) => a.role === "MANAGER" && a.status === "ACTIVE");
-  const orgId = aff?.orgId ?? ctx.user?.companyId ?? null;
-  if (!orgId) throw new TRPCError({ code: "FORBIDDEN", message: "Aucune organisation rattachée à votre compte." });
+  const aff = (ctx.affiliations ?? []).find((a:any)=>a.role === "MANAGER" && a.status === "ACTIVE");
+  const orgId = aff?.orgId ?? (ctx.user.role === "admin" ? ctx.user.companyId : null);
+  if (!orgId) throw new TRPCError({code:"FORBIDDEN",message:"Aucune organisation active rattachée à votre compte."});
   return orgId;
 }
 
@@ -140,6 +191,9 @@ function aiErr<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 export const appRouter = router({
+  billing: billingRouter,
+  verification: verificationRouter,
+  approval: approvalRouter,
   system: systemRouter,
 
   // ─── Landing-page assistant (LLM + tool calling) ─────────────────────────────
@@ -157,39 +211,17 @@ export const appRouter = router({
     me: publicProcedure.query((opts) => (opts.ctx.user ? sanitizeUser(opts.ctx.user) : null)),
 
     register: publicProcedure
-      .input(z.object({
-        email: z.string().email("Email invalide."),
-        password: z.string().min(8, "Le mot de passe doit comporter au moins 8 caractères."),
-        name: z.string().min(2, "Veuillez indiquer votre nom."),
-        jobTitle: z.string().optional(),
-        licenseNumber: z.string().optional(),
-        licenseCategories: z.string().optional(),
-        preferredLanguage: z.string().optional(),
-        marketingOptIn: z.boolean().optional(),
-        // Optionally create an organisation and become its manager.
-        organization: z.object({
-          name: z.string().min(1),
-          type: z.enum(["MRO", "AIRLINE", "CAMO", "OTHER"]).optional(),
-          agreementNumber: z.string().optional(),
-        }).optional(),
-      }))
+      .input(registrationInput)
       .mutation(async ({ ctx, input }) => {
         let user;
         try {
-          const { organization, ...rest } = input;
-          let companyId: number | undefined;
-          if (organization?.name) {
-            const org = await adminCreateOrganization({ name: organization.name, type: organization.type ?? null, agreementNumber: organization.agreementNumber ?? null, contactEmail: rest.email });
-            companyId = org?.id;
-          }
-          user = await registerUser({ ...rest, companyId, asManager: !!companyId });
-          if (companyId && user.email) await addOrganizationAffiliate(companyId, user.email, "MANAGER");
+          user = await registerUser(input);
         } catch (err: any) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
+          throw new TRPCError({ code: "BAD_REQUEST", message: err instanceof Error && err.message === "Un compte existe déjà avec cet email." ? err.message : "Inscription impossible. Vérifiez vos informations et réessayez." });
         }
         await notifyAdminEmail(`Nouvelle inscription : ${user.name ?? user.email}`,
           emailBody(`${user.name ?? ""} (${user.email})${input.organization ? "\nOrganisation : " + input.organization.name : ""}`, "/admin"));
-        const token = await sdk.createSessionToken(user.openId, { name: user.name ?? "", expiresInMs: ONE_YEAR_MS });
+        const token = await sdk.createSessionToken(user.openId, { name: user.name ?? "", sessionVersion: user.sessionVersion, expiresInMs: ONE_YEAR_MS });
         ctx.res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(ctx.req), maxAge: ONE_YEAR_MS });
         return sanitizeUser(user);
       }),
@@ -208,22 +240,22 @@ export const appRouter = router({
           throw new TRPCError({ code: "UNAUTHORIZED", message: err.message });
         }
         rateLimitReset(rlKey);
-        // Email 2FA (opt-in): if enabled AND email delivery is possible, send a code and
-        // require a second step. If SMTP is down, fall back to direct login (no lockout).
-        if ((user as any).twoFactorEnabled && isEmailConfigured()) {
-          const code = await startTwoFactor(user.id);
+        // An enabled second factor is required even when delivery is unavailable.
+        if (user.twoFactorEnabled) {
+          if (!isEmailConfigured()) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "La connexion à deux facteurs nécessite un service de messagerie disponible." });
+          const code = await startTwoFactor(user.id, user.sessionVersion);
           const { subject, html } = twoFactorCodeEmail({ name: user.name ?? "", code });
           await sendEmail({ to: user.email ?? "", subject, html }).catch(() => {});
           return { twoFactorRequired: true as const, email: user.email };
         }
-        const token = await sdk.createSessionToken(user.openId, { name: user.name ?? "", expiresInMs: ONE_YEAR_MS });
+        const token = await sdk.createSessionToken(user.openId, { name: user.name ?? "", sessionVersion: user.sessionVersion, expiresInMs: ONE_YEAR_MS });
         ctx.res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(ctx.req), maxAge: ONE_YEAR_MS });
         return sanitizeUser(user);
       }),
 
     // Second step of email 2FA: exchange the emailed code for a session.
     verifyTwoFactor: publicProcedure
-      .input(z.object({ email: z.string().email(), code: z.string().min(4) }))
+      .input(z.object({ email: z.string().email(), code: z.string().regex(/^\d{6}$/) }))
       .mutation(async ({ ctx, input }) => {
         const rlKey = `2fa:${ipFromReq(ctx.req) ?? "?"}:${input.email.trim().toLowerCase()}`;
         const rl = rateLimit(rlKey, 8, 15 * 60 * 1000);
@@ -232,15 +264,44 @@ export const appRouter = router({
         try { user = await verifyTwoFactorCode(input.email, input.code); }
         catch (err: any) { throw new TRPCError({ code: "UNAUTHORIZED", message: err.message }); }
         rateLimitReset(rlKey);
-        const token = await sdk.createSessionToken(user.openId, { name: user.name ?? "", expiresInMs: ONE_YEAR_MS });
+        const token = await sdk.createSessionToken(user.openId, { name: user.name ?? "", sessionVersion: user.sessionVersion, expiresInMs: ONE_YEAR_MS });
         ctx.res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(ctx.req), maxAge: ONE_YEAR_MS });
         return sanitizeUser(user);
       }),
 
-    // Enable/disable email 2FA for the connected user.
-    setTwoFactor: protectedProcedure
-      .input(z.object({ enabled: z.boolean() }))
-      .mutation(({ ctx, input }) => setTwoFactor(ctx.user.id, input.enabled)),
+    beginTwoFactorChange: protectedProcedure
+      .input(z.object({ enabled: z.boolean(), password: z.string().min(1).max(1024) }))
+      .mutation(async ({ctx,input}) => {
+        if (!rateLimit(`2fa-setting:${ctx.user.id}`,5,15*60*1000).ok) throw new TRPCError({code:"TOO_MANY_REQUESTS",message:"Trop de tentatives. Réessayez plus tard."});
+        if (!isEmailConfigured()) throw new TRPCError({code:"PRECONDITION_FAILED",message:"Le service de messagerie est indisponible."});
+        let challenge;
+        try { challenge = await beginTwoFactorChange(ctx.user.id,ctx.user.sessionVersion,input.password,input.enabled); }
+        catch (error) { throw new TRPCError({code:"BAD_REQUEST",message:error instanceof Error ? error.message : "Vérification impossible."}); }
+        const content = twoFactorCodeEmail({name:challenge.name ?? "",code:challenge.code,action:input.enabled ? "enable" : "disable"});
+        const result = await sendEmail({to:challenge.email!,...content});
+        if (!result.sent) throw new TRPCError({code:"PRECONDITION_FAILED",message:"Le code n’a pas pu être envoyé. Réessayez plus tard."});
+        return {ok:true};
+      }),
+    confirmTwoFactorChange: protectedProcedure
+      .input(z.object({ enabled: z.boolean(), code: z.string().regex(/^\d{6}$/) }))
+      .mutation(async ({ctx,input}) => {
+        let user;
+        try { user = await confirmTwoFactorChange(ctx.user.id,ctx.user.sessionVersion,input.enabled,input.code); }
+        catch { throw new TRPCError({code:"BAD_REQUEST",message:"Code invalide ou expiré."}); }
+        const token = await sdk.createSessionToken(user.openId,{name:user.name ?? "",sessionVersion:user.sessionVersion,expiresInMs:ONE_YEAR_MS});
+        ctx.res.cookie(COOKIE_NAME,token,{...getSessionCookieOptions(ctx.req),maxAge:ONE_YEAR_MS});
+        return {ok:true};
+      }),
+
+    revokeAllSessions: protectedProcedure
+      .input(z.object({ password: z.string().min(1).max(1024) }))
+      .mutation(async ({ ctx, input }) => {
+        if (!rateLimit(`revoke-sessions:${ctx.user.id}`, 5, 15 * 60 * 1000).ok) throw new TRPCError({ code: "TOO_MANY_REQUESTS", message: "Trop de tentatives. Réessayez plus tard." });
+        try { await revokeAllSessions(ctx.user.id, ctx.user.sessionVersion, input.password); }
+        catch { throw new TRPCError({ code: "UNAUTHORIZED", message: "Mot de passe incorrect ou session expirée." }); }
+        ctx.res.clearCookie(COOKIE_NAME, { ...getSessionCookieOptions(ctx.req), maxAge: -1 });
+        return { ok: true };
+      }),
 
     logout: publicProcedure.mutation(({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
@@ -254,10 +315,13 @@ export const appRouter = router({
       .mutation(async ({ ctx, input }) => {
         // Throttle by IP to prevent reset-email bombing (response stays neutral).
         if (!rateLimit(`reset:${ipFromReq(ctx.req) ?? "?"}`, 5, 15 * 60 * 1000).ok) return { ok: true };
+        if (!isEmailConfigured()) return { ok: true };
+        let base: string;
+        try { base = passwordResetOrigin(); }
+        catch { console.warn("[auth] Password recovery origin is not configured correctly"); return { ok: true }; }
         const reset = await createPasswordReset(input.email);
         // Never reveal whether the email exists; only send when it does + SMTP is set.
-        if (reset && isEmailConfigured()) {
-          const base = (input.origin || "").replace(/\/$/, "");
+        if (reset) {
           const link = `${base}/reset-password?token=${reset.token}`;
           const { subject, html } = passwordResetEmail({ name: reset.name ?? "", link });
           await sendEmail({ to: input.email.trim().toLowerCase(), subject, html }).catch(() => {});
@@ -265,10 +329,15 @@ export const appRouter = router({
         return { ok: true };
       }),
     resetPassword: publicProcedure
-      .input(z.object({ token: z.string().min(10), password: z.string().min(8, "Le mot de passe doit comporter au moins 8 caractères.") }))
+      .input(z.object({ token: z.string().min(10).max(128), password: z.string().min(8, "Le mot de passe doit comporter au moins 8 caractères.").max(1024) }))
       .mutation(async ({ input }) => {
         try { return await resetPasswordWithToken(input.token, input.password); }
-        catch (err: any) { throw new TRPCError({ code: "BAD_REQUEST", message: err.message }); }
+        catch (err) {
+          if (err instanceof InvalidPasswordResetTokenError) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Lien de réinitialisation invalide ou expiré." });
+          }
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Le changement de mot de passe n’a pas pu être confirmé. Réessayez de vous connecter ou demandez un nouveau lien." });
+        }
       }),
     updateProfile: protectedProcedure
       .input(z.object({
@@ -293,19 +362,13 @@ export const appRouter = router({
   // ─── Public ────────────────────────────────────────────────────────────────
   public: router({
     trainings: publicProcedure
-      .input(z.object({
-        type: z.string().optional(),
-        domain: z.string().optional(),
-        language: z.string().optional(),
-        categoryId: z.number().optional(),
-        search: z.string().optional(),
-      }).optional())
+      .input(catalogueInput.optional())
       .query(({ input }) => getPublicTrainings(input ?? {})),
 
     featuredTrainings: publicProcedure.query(() => getFeaturedTrainings()),
 
     trainingBySlug: publicProcedure
-      .input(z.object({ slug: z.string() }))
+      .input(z.object({ slug: z.string().min(1).max(255) }).strict())
       .query(({ input }) => getTrainingBySlug(input.slug)),
 
     categories: publicProcedure.query(() => getTrainingCategories()),
@@ -321,7 +384,7 @@ export const appRouter = router({
       .query(({ input }) => getActiveFaq(input?.language ?? "fr")),
 
     verifyCertificate: publicProcedure
-      .input(z.object({ code: z.string() }))
+      .input(z.object({ code: z.string().trim().min(1).max(32).regex(/^[A-Za-z0-9_-]+$/) }))
       .query(async ({ ctx, input }) => {
         const cert = await getCertificateByCode(input.code);
         // INV-8: log even public certificate verification (a read of the holder's name).
@@ -331,7 +394,9 @@ export const appRouter = router({
           dataAccessed: { fields: ["name", "trainingTitle"], code: input.code, found: !!cert },
           ip: ipFromReq(ctx.req),
         });
-        return cert;
+        if(!cert)return null;
+        const {userId: _auditSubject,...verification}=cert;
+        return verification;
       }),
 
     sessions: publicProcedure.query(() => getUpcomingSessions()),
@@ -347,6 +412,8 @@ export const appRouter = router({
 
   // ─── Sessions registration ───────────────────────────────────────────────
   sessions: router({
+    mine: protectedProcedure.query(({ ctx }) => getUserSessions(ctx.user.id)),
+    cancel: protectedProcedure.input(z.object({ sessionId: z.number().int().positive() })).mutation(({ ctx, input }) => cancelSessionReservation(ctx.user.id, input.sessionId)),
     register: protectedProcedure
       .input(z.object({ sessionId: z.number() }))
       .mutation(({ ctx, input }) => registerForSession(ctx.user.id, input.sessionId)),
@@ -357,7 +424,7 @@ export const appRouter = router({
     list: protectedProcedure.query(({ ctx }) => getCartItems(ctx.user.id)),
     count: protectedProcedure.query(async ({ ctx }) => { const n = await getCartCount(ctx.user.id); return n; }),
     add: protectedProcedure
-      .input(z.object({ trainingId: z.number(), quantity: z.number().default(1) }))
+      .input(z.object({ trainingId: z.number(), quantity: z.number().int().min(1).max(100).default(1) }))
       .mutation(({ ctx, input }) => addToCart(ctx.user.id, input.trainingId, input.quantity)),
     remove: protectedProcedure
       .input(z.object({ itemId: z.number() }))
@@ -366,15 +433,27 @@ export const appRouter = router({
   }),
 
   // ─── Checkout (Stripe) ─────────────────────────────────────────────────────
+  licenses: router({
+    list: protectedProcedure.query(({ ctx }) => listLicenses(ctx.user)),
+    candidates: protectedProcedure.input(z.object({ licenseId: z.number().int().positive() })).query(({ ctx, input }) => licenseCandidates(ctx.user, input.licenseId)),
+    assign: protectedProcedure.input(z.object({ licenseId: z.number().int().positive(), userId: z.number().int().positive() })).mutation(({ ctx, input }) => assignLicense(ctx.user, input.licenseId, input.userId)),
+  }),
   checkout: router({
+    resume: protectedProcedure.input(z.object({ orderId: z.number().int().positive() })).mutation(({ ctx, input }) => {
+      const stripe = getStripe();
+      if (!stripe) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Paiement indisponible." });
+      return resumeOrderCheckout(stripe, ctx.user, input.orderId);
+    }),
+    refunds: protectedProcedure.input(z.object({ orderId: z.number().int().positive() })).query(({ ctx, input }) => orderRefundHistory(ctx.user, input.orderId)),
     createSession: protectedProcedure
-      .input(z.object({ origin: z.string() }))
+      .input(z.object({ origin: z.string(), companyId: z.number().int().positive().optional() }))
       .mutation(async ({ ctx, input }) => {
+        if (input.companyId) await requireManagedCompany(ctx.user, input.companyId);
         const items = await getCartItems(ctx.user.id);
         if (!items.length) throw new TRPCError({ code: "BAD_REQUEST", message: "Panier vide." });
         try {
           const result = await createCheckoutSession({
-            userId: ctx.user.id,
+            userId: ctx.user.id, userRole: ctx.user.role, companyId: input.companyId,
             userEmail: ctx.user.email ?? "",
             userName: ctx.user.name ?? "",
             cartItems: items as any,
@@ -391,9 +470,9 @@ export const appRouter = router({
       .mutation(({ ctx, input }) => confirmCheckoutPayment(input.orderId, ctx.user.id)),
 
     generateInvoice: protectedProcedure
-      .input(z.object({ orderId: z.number(), origin: z.string() }))
+      .input(z.object({ orderId: z.number().int().positive(), origin: z.string().optional(), buyer:invoiceBuyerSchema.optional(), language:invoiceLanguageSchema.default('fr') }))
       .mutation(async ({ ctx, input }) => {
-        const url = await generateInvoicePDF(input.orderId, input.origin);
+        const url = await generateInvoicePDF(input.orderId, "", ctx.user.id, input.buyer, input.language);
         return { url };
       }),
   }),
@@ -405,41 +484,67 @@ export const appRouter = router({
       .input(z.object({ id: z.number() }))
       .query(({ ctx, input }) => getEnrollmentById(input.id, ctx.user.id)),
     updateProgress: protectedProcedure
-      .input(z.object({ enrollmentId: z.number(), progressPercent: z.number(), status: z.string().optional() }))
-      .mutation(({ input }) => updateEnrollmentProgress(input.enrollmentId, input.progressPercent, input.status)),
+      .input(learningProgressInput)
+      .mutation(async ({ ctx, input }) => {
+        await requireEnrollment(ctx.user.id, input.enrollmentId);
+        return updateEnrollmentProgress(input.enrollmentId, input.progressPercent, input.status);
+      }),
     certificates: protectedProcedure.query(({ ctx }) => getUserCertificates(ctx.user.id)),
-    orders: protectedProcedure.query(({ ctx }) => getAdminOrders().then(orders => orders.filter((o: any) => o.userId === ctx.user.id))),
+    orders: protectedProcedure.query(({ ctx }) => getUserOrders(ctx.user.id)),
   }),
 
   // ─── Learning (player + quiz) ──────────────────────────────────────────────
   learning: router({
     modules: protectedProcedure
-      .input(z.object({ trainingId: z.number() }))
-      .query(({ input }) => getTrainingModules(input.trainingId)),
+      .input(z.object({ trainingId: z.number(), enrollmentId: z.number().int().positive().optional() }))
+      .query(async ({ ctx, input }) => {
+        const curriculum = await learnerCurriculum(ctx.user.id, input.trainingId, input.enrollmentId);
+        return curriculum?.modules ?? getTrainingModules(input.trainingId);
+      }),
 
     slides: protectedProcedure
-      .input(z.object({ trainingId: z.number() }))
-      .query(({ input }) => getSlides(input.trainingId)),
+      .input(z.object({ trainingId: z.number(), enrollmentId: z.number().int().positive().optional() }))
+      .query(async ({ ctx, input }) => {
+        const curriculum = await learnerCurriculum(ctx.user.id, input.trainingId, input.enrollmentId);
+        return curriculum?.slides ?? getSlides(input.trainingId);
+      }),
 
     objectives: protectedProcedure
-      .input(z.object({ trainingId: z.number() }))
-      .query(({ input }) => getObjectives(input.trainingId)),
+      .input(z.object({ trainingId: z.number(), enrollmentId: z.number().int().positive().optional() }))
+      .query(async ({ ctx, input }) => {
+        const curriculum = await learnerCurriculum(ctx.user.id, input.trainingId, input.enrollmentId);
+        return curriculum?.objectives ?? getObjectives(input.trainingId);
+      }),
 
     objectiveProgress: protectedProcedure
       .input(z.object({ enrollmentId: z.number() }))
-      .query(({ input }) => getObjectiveCompletion(input.enrollmentId)),
+      .query(async ({ ctx, input }) => {
+        await requireEnrollment(ctx.user.id, input.enrollmentId);
+        return getObjectiveCompletion(input.enrollmentId);
+      }),
 
     moduleProgress: protectedProcedure
       .input(z.object({ enrollmentId: z.number() }))
-      .query(({ input }) => getModuleProgress(input.enrollmentId)),
+      .query(async ({ ctx, input }) => {
+        await requireEnrollment(ctx.user.id, input.enrollmentId);
+        return getModuleProgress(input.enrollmentId);
+      }),
 
     completeModule: protectedProcedure
-      .input(z.object({ enrollmentId: z.number(), moduleId: z.number(), timeSpentMinutes: z.number().optional() }))
-      .mutation(({ input }) => updateModuleProgress(input.enrollmentId, input.moduleId, input.timeSpentMinutes)),
+      .input(z.object({ enrollmentId: z.number(), moduleId: z.number(), timeSpentMinutes: z.number().int().min(0).max(1440).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        const enrollment = await requireEnrollment(ctx.user.id, input.enrollmentId);
+        if (!enrollment.modules.some(m => m.id === input.moduleId))
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Ce chapitre ne fait pas partie de votre formation." });
+        return updateModuleProgress(input.enrollmentId, input.moduleId, input.timeSpentMinutes);
+      }),
 
     quizQuestions: protectedProcedure
-      .input(z.object({ trainingId: z.number(), moduleId: z.number().optional() }))
-      .query(({ input }) => getQuizQuestions(input.trainingId, input.moduleId)),
+      .input(z.object({ trainingId: z.number(), enrollmentId: z.number().int().positive().optional(), moduleId: z.number().optional() }))
+      .query(async ({ ctx, input }) => {
+        const curriculum = await learnerCurriculum(ctx.user.id, input.trainingId, input.enrollmentId);
+        return (curriculum?.questions ?? await getQuizQuestions(input.trainingId, input.moduleId)).filter(q => input.moduleId != null ? q.moduleId === input.moduleId : q.moduleId == null).map(learnerQuestion);
+      }),
 
     submitQuiz: protectedProcedure
       .input(z.object({
@@ -449,35 +554,52 @@ export const appRouter = router({
         attemptNumber: z.number().optional(),
         sessionId: z.number().optional(),
       }))
-      .mutation(({ ctx, input }) => submitQuizAttempt({
+      .mutation(async ({ ctx, input }) => {
+        await requireEnrollment(ctx.user.id, input.enrollmentId, input.trainingId);
+        return submitQuizAttempt({
         userId: ctx.user.id,
         enrollmentId: input.enrollmentId,
         trainingId: input.trainingId,
         answers: input.answers,
         attemptNumber: input.attemptNumber ?? 1,
         sessionId: input.sessionId,
-      })),
+      });
+      }),
 
     startExam: protectedProcedure
-      .input(z.object({ enrollmentId: z.number(), trainingId: z.number(), attemptNumber: z.number().optional() }))
-      .mutation(({ ctx, input }) => startExamSession({ enrollmentId: input.enrollmentId, userId: ctx.user.id, trainingId: input.trainingId, attemptNumber: input.attemptNumber ?? 1 })),
+      .input(z.object({ enrollmentId: z.number(), trainingId: z.number(), moduleId: z.number().int().positive().optional(), attemptNumber: z.number().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        await requireEnrollment(ctx.user.id, input.enrollmentId, input.trainingId);
+        const session = await startExamSession({ enrollmentId: input.enrollmentId, userId: ctx.user.id, trainingId: input.trainingId, moduleId: input.moduleId, attemptNumber: input.attemptNumber ?? 1 });
+        return session ? { ...session, serverNow: Date.now(), questions: session.questions.map(learnerQuestion) } : null;
+      }),
+
+    saveExamAnswers: protectedProcedure
+      .input(z.object({ sessionId: z.number().int().positive(), revision: z.number().int().min(0), answers: z.record(z.string(), z.union([z.string().max(10000), z.array(z.number().int()).max(100), z.array(z.array(z.number().int()).length(2)).max(100)])) }))
+      .mutation(({ ctx, input }) => saveExamAnswers({ ...input, userId: ctx.user.id })),
 
     logProctoringEvent: protectedProcedure
       .input(z.object({ sessionId: z.number(), type: z.string(), detail: z.string().optional() }))
       .mutation(({ ctx, input }) => logProctoringEvent({ sessionId: input.sessionId, userId: ctx.user.id, type: input.type, detail: input.detail })),
 
     quizAttempts: protectedProcedure
-      .input(z.object({ enrollmentId: z.number() }))
-      .query(({ input }) => getQuizAttempts(input.enrollmentId)),
+      .input(z.object({ enrollmentId: z.number(), moduleId: z.number().int().positive().optional() }))
+      .query(async ({ ctx, input }) => {
+        await requireEnrollment(ctx.user.id, input.enrollmentId);
+        return (await getQuizAttempts(input.enrollmentId)).filter(a => input.moduleId == null ? a.moduleId == null : a.moduleId === input.moduleId);
+      }),
 
     issueCertificate: protectedProcedure
-      .input(z.object({ enrollmentId: z.number(), origin: z.string() }))
-      .mutation(({ input }) => issueCertificate(input.enrollmentId, input.origin)),
+      .input(z.object({ enrollmentId: z.number().int().positive(), origin: z.string().optional() }))
+      .mutation(async ({ ctx, input }) => {
+        await requireEnrollment(ctx.user.id, input.enrollmentId);
+        return issueCertificate(input.enrollmentId);
+      }),
   }),
 
   // ─── Company (B2B) ─────────────────────────────────────────────────────────
   company: router({
-    get: protectedProcedure.query(({ ctx }) => getUserCompany(ctx.user.id)),
+    get: protectedProcedure.query(async ({ ctx }) => { if(ctx.user.companyId && ctx.user.role !== "admin") await assertActiveAffiliation(ctx.user.id,ctx.user.companyId); return getUserCompany(ctx.user.id); }),
     upsert: protectedProcedure
       .input(z.object({
         name: z.string(),
@@ -489,7 +611,7 @@ export const appRouter = router({
         contactEmail: z.string().optional(),
         contactPhone: z.string().optional(),
       }))
-      .mutation(({ ctx, input }) => createOrUpdateCompany(ctx.user.id, input)),
+      .mutation(async ({ ctx, input }) => { if(ctx.user.companyId) await requireManagedCompany(ctx.user); return createOrUpdateCompany(ctx.user.id, input); }),
 
     // ── Membres / affiliations (manager-scoped) ──
     // A MANAGER manages the affiliations of THEIR OWN org. The org is resolved from the
@@ -524,8 +646,8 @@ export const appRouter = router({
         return removeOrganizationManager(input.affiliationId);
       }),
 
-    employees: protectedProcedure.query(({ ctx }) => getCompanyEmployees(ctx.user.id)),
-    createEmployee: protectedProcedure
+    employees: orgManagerProcedure.query(async ({ ctx }) => { await requireManagedCompany(ctx.user); return getCompanyEmployees(ctx.user.id); }),
+    createEmployee: orgManagerProcedure
       .input(z.object({
         firstName: z.string(),
         lastName: z.string(),
@@ -537,16 +659,17 @@ export const appRouter = router({
         department: z.string().optional(),
         base: z.string().optional(),
       }))
-      .mutation(({ ctx, input }) => createEmployee(ctx.user.id, input)),
-    updateEmployee: protectedProcedure
-      .input(z.object({ id: z.number() }).and(z.record(z.string(), z.unknown())))
-      .mutation(({ input }) => { const { id, ...data } = input; return updateEmployee(id as number, data); }),
+      .mutation(async ({ ctx, input }) => { await requireManagedCompany(ctx.user); return createEmployee(ctx.user.id, input); }),
+    updateEmployee: orgManagerProcedure
+      .input(z.object({ id: z.number().int().positive(), firstName: z.string().min(1).max(128).optional(), lastName: z.string().min(1).max(128).optional(), email: z.string().email().optional(), jobTitle: z.string().max(128).optional(), licenseNumber: z.string().max(64).optional(), licenseCategories: z.string().max(128).optional(), typeRatings: z.string().max(255).optional(), department: z.string().max(128).optional(), base: z.string().max(128).optional(), isActive: z.boolean().optional() }).strict())
+      .mutation(async ({ ctx, input }) => { const { id, ...data } = input; const employee = await requireManagedEmployee(ctx.user, id); return updateEmployee(id, data, employee.companyId); }),
 
-    importCSV: protectedProcedure
+    importCSV: orgManagerProcedure
       .input(z.object({ csvData: z.string() }))
-      .mutation(({ ctx, input }) => importEmployeesCSV(ctx.user.id, input.csvData)),
+      .mutation(async ({ ctx, input }) => { const companyId = await requireManagedCompany(ctx.user); return importEmployeesCSV(ctx.user.id, input.csvData, companyId); }),
 
-    recurrencies: protectedProcedure.query(async ({ ctx }) => {
+    recurrencies: orgManagerProcedure.query(async ({ ctx }) => {
+      await requireManagedCompany(ctx.user);
       const rows = await getCompanyRecurrencies(ctx.user.id);
       // INV-8: a manager reading the recurrency deadlines of the org's roster.
       await logAccess({
@@ -559,28 +682,31 @@ export const appRouter = router({
     }),
 
     // ── Subscription (conformité-as-a-subscription) ──
-    subscription: protectedProcedure.query(({ ctx }) => getCompanySubscriptionView(ctx.user.id)),
-    createSubscription: protectedProcedure
+    subscription: protectedProcedure.query(async ({ ctx }) => { await requireManagedCompany(ctx.user); return getCompanySubscriptionView(ctx.user.id); }),
+    createSubscription: orgManagerProcedure
       .input(z.object({ plan: z.enum(["standard", "all_inclusive"]), origin: z.string() }))
       .mutation(async ({ ctx, input }) => {
-        if (!ctx.user.companyId) throw new TRPCError({ code: "FORBIDDEN", message: "Compte entreprise requis." });
+        await requireManagedCompany(ctx.user);
+        if (!ctx.user.companyId) throw new TRPCError({ code: "FORBIDDEN" });
         try {
-          return await createSubscriptionCheckoutSession({ companyId: ctx.user.companyId, plan: input.plan, origin: input.origin, userEmail: ctx.user.email ?? undefined });
+          return await createSubscriptionCheckoutSession({ companyId: ctx.user.companyId, plan: input.plan, origin: input.origin, userId: ctx.user.id, userEmail: ctx.user.email ?? undefined });
         } catch (err: any) {
           throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err.message });
         }
       }),
-    createPortalSession: protectedProcedure
+    createPortalSession: orgManagerProcedure
       .input(z.object({ origin: z.string() }))
       .mutation(async ({ ctx, input }) => {
-        if (!ctx.user.companyId) throw new TRPCError({ code: "FORBIDDEN", message: "Compte entreprise requis." });
+        await requireManagedCompany(ctx.user);
+        if (!ctx.user.companyId) throw new TRPCError({ code: "FORBIDDEN" });
         try {
           return await createBillingPortalSession(ctx.user.companyId, input.origin);
         } catch (err: any) {
           throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
         }
       }),
-    confirmSubscription: protectedProcedure.mutation(({ ctx }) => {
+    confirmSubscription: orgManagerProcedure.mutation(async ({ ctx }) => {
+      await requireManagedCompany(ctx.user);
       if (!ctx.user.companyId) throw new TRPCError({ code: "FORBIDDEN", message: "Compte entreprise requis." });
       return confirmSubscription(ctx.user.companyId);
     }),
@@ -589,16 +715,12 @@ export const appRouter = router({
     technicianFile: protectedProcedure
       .input(z.object({ employeeId: z.number() }))
       .query(async ({ ctx, input }) => {
+        await requireManagedEmployee(ctx.user,input.employeeId);
         const file = await getTechnicianFile(input.employeeId);
         if (!file) throw new TRPCError({ code: "NOT_FOUND", message: "Technicien introuvable." });
         const orgId = file.employee.companyId;
         const subjectUserId = file.employee.userId;
-        // INV-2 authorisation: admin (operator), or an ACTIVE MANAGER affiliation in this
-        // org (legacy company_manager via companyId tolerated as fallback during transition).
         const isAdmin = ctx.user.role === "admin";
-        const managerAff = (ctx.affiliations ?? []).some((a) => a.orgId === orgId && a.role === "MANAGER" && a.status === "ACTIVE");
-        if (!isAdmin && !managerAff && orgId !== ctx.user.companyId)
-          throw new TRPCError({ code: "FORBIDDEN" });
         await logAccess({
           actorId: ctx.user.id, actorRole: isAdmin ? "admin" : "AFFILIATION:MANAGER",
           subjectPersonId: subjectUserId ?? null, action: "READ_TECHNICIAN_FILE",
@@ -616,9 +738,8 @@ export const appRouter = router({
           department: e.department, base: e.base, companyId: e.companyId, userId: e.userId, email: e.email,
         };
         const scoped = subjectUserId ? await orgScopedViewForSubject(orgId, subjectUserId) : null;
-        // INV-5: relying on the file locks the subject's surfaced credentials for this org
-        // (the person can no longer withdraw a proof while employed).
-        if (subjectUserId) await lockSurfacedCredentialsForOrg(subjectUserId, orgId);
+        // Viewing a dossier does not establish reliance on every shared proof.
+        // createSignoff retains only the explicitly validated credential.
         // ID module (passport documents) is shared with the org ONLY if the person opted in.
         let passportDocuments: any[] = [];
         if (subjectUserId) {
@@ -648,54 +769,61 @@ export const appRouter = router({
           certNumber: input.certNumber, docUrl: input.docUrl,
         });
       }),
-    deleteExternalTraining: protectedProcedure
-      .input(z.object({ id: z.number() }))
-      .mutation(({ ctx, input }) => deleteExternalTraining(input.id, { companyId: ctx.user.companyId, isAdmin: ctx.user.role === "admin" })),
+    archiveExternalTraining: orgManagerProcedure
+      .input(archiveExternalTrainingInput)
+      .mutation(({ctx,input}) => archiveExternalTraining(ctx.user.id,input)),
+    deleteExternalTraining: orgManagerProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(() => { throw new TRPCError({code:"PRECONDITION_FAILED",message:"Archivez la formation avec un motif pour conserver son justificatif."}); }),
 
     // ── Sign-off (INV-4): the HUMAN determination of compliance by a manager ──
     signoff: orgManagerProcedure
-      .input(z.object({ employeeId: z.number(), trainingId: z.number().optional(), credentialId: z.number().optional(), scope: z.string().optional(), decision: z.enum(["VALIDATED", "REJECTED"]).optional(), note: z.string().optional() }))
+      .input(z.object({ requestId:z.string().uuid(), employeeId: z.number().int().positive(), trainingId: z.number().int().positive().optional(), credentialId: z.number().int().positive().optional(), scope: z.enum(["COMPETENCE","RECURRENCY"]).optional(), decision: z.enum(["VALIDATED", "REJECTED"]).optional(), note: z.string().trim().max(2000).optional() }))
       .mutation(async ({ ctx, input }) => {
+        await requireManagedEmployee(ctx.user,input.employeeId);
         const file = await getTechnicianFile(input.employeeId);
         if (!file?.employee.userId) throw new TRPCError({ code: "BAD_REQUEST", message: "Le sign-off requiert un technicien rattaché à un compte personne." });
         const orgId = file.employee.companyId;
         const subjectPersonId = file.employee.userId;
         const isAdmin = ctx.user.role === "admin";
-        const mgrAff = (ctx.affiliations ?? []).some((a) => a.orgId === orgId && a.role === "MANAGER" && a.status === "ACTIVE");
-        if (!isAdmin && !mgrAff && orgId !== ctx.user.companyId) throw new TRPCError({ code: "FORBIDDEN" });
-        const subjectAff = (await getActiveAffiliations(subjectPersonId)).find((a) => a.orgId === orgId);
+        const subjectAff = await assertActiveAffiliation(subjectPersonId,orgId);
         const so = await createSignoff({
-          managerPersonId: ctx.user.id, subjectPersonId, orgId, affiliationId: subjectAff?.id ?? null,
+          requestId:input.requestId,employeeId:input.employeeId,managerPersonId: ctx.user.id, subjectPersonId, orgId, affiliationId: subjectAff?.id ?? null,
           credentialId: input.credentialId, trainingId: input.trainingId, scope: input.scope, decision: input.decision, note: input.note,
         });
-        // INV-5: the determination relies on the proof → lock the subject's surfaced credentials.
-        await lockSurfacedCredentialsForOrg(subjectPersonId, orgId);
+        // Retention of an explicitly used proof is committed with the decision.
         await logAccess({ actorId: ctx.user.id, actorRole: isAdmin ? "admin" : "AFFILIATION:MANAGER", subjectPersonId, action: "SIGNOFF", targetOrgId: orgId, dataAccessed: { trainingId: input.trainingId ?? null, decision: input.decision ?? "VALIDATED" }, ip: ipFromReq(ctx.req) });
         return so;
       }),
     signoffs: orgManagerProcedure
       .input(z.object({ employeeId: z.number() }))
-      .query(async ({ input }) => {
+      .query(async ({ ctx, input }) => {
+        await requireManagedEmployee(ctx.user,input.employeeId);
         const file = await getTechnicianFile(input.employeeId);
         if (!file?.employee.userId) return [];
         return getSignoffsForSubject(file.employee.userId, file.employee.companyId);
       }),
 
     // ── Consolidated view + TNA (V2.3) ──
-    consolidated: protectedProcedure.query(({ ctx }) => getCompanyConsolidated(ctx.user.id)),
-    roleRequirements: protectedProcedure.query(({ ctx }) => getRoleRequirements(ctx.user.companyId ?? null)),
-    createRoleRequirement: protectedProcedure
-      .input(z.object({ label: z.string().optional(), jobTitleContains: z.string().optional(), licenseCategoryContains: z.string().optional(), trainingId: z.number(), periodMonths: z.number() }))
-      .mutation(({ ctx, input }) => {
-        if (!ctx.user.companyId && ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN", message: "Compte entreprise requis." });
-        return createRoleRequirement({ ...input, companyId: ctx.user.role === "admin" ? null : ctx.user.companyId });
+    consolidated: orgManagerProcedure.query(async ({ ctx }) => { await requireManagedCompany(ctx.user); return getCompanyConsolidated(ctx.user.id); }),
+    roleRequirements: orgManagerProcedure.query(async ({ ctx }) => { if(ctx.user.companyId != null || ctx.user.role !== "admin") await requireManagedCompany(ctx.user); return getRoleRequirements(ctx.user.companyId ?? null); }),
+    roleRequirementCourses: orgManagerProcedure.query(({ctx})=>roleRequirementCourses(ctx.user.id)),
+    roleRequirementHistory: orgManagerProcedure
+      .input(z.object({beforeId:z.number().int().positive().max(2147483647).optional()}))
+      .query(({ctx,input})=>roleRequirementHistory(ctx.user.id,input.beforeId)),
+    createRoleRequirement: orgManagerProcedure
+      .input(roleRequirementInput)
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.companyId || ctx.user.role !== "admin") await requireManagedCompany(ctx.user);
+        return createRoleRequirement({ ...input, companyId: ctx.user.companyId ?? null }, ctx.user.id);
       }),
-    deleteRoleRequirement: protectedProcedure
+    deleteRoleRequirement: orgManagerProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(({ ctx, input }) => deleteRoleRequirement(input.id, { companyId: ctx.user.companyId, isAdmin: ctx.user.role === "admin" })),
-    runTNA: protectedProcedure.mutation(({ ctx }) => {
+      .mutation(async ({ ctx, input }) => { if(ctx.user.role !== "admin") await requireManagedCompany(ctx.user); return deleteRoleRequirement(input.id, ctx.user.id); }),
+    runTNA: orgManagerProcedure.mutation(async ({ ctx }) => {
+      await requireManagedCompany(ctx.user);
       if (!ctx.user.companyId) throw new TRPCError({ code: "FORBIDDEN", message: "Compte entreprise requis." });
-      return runTNA(ctx.user.companyId);
+      return runTNA(ctx.user.companyId, ctx.user.id);
     }),
   }),
 
@@ -721,28 +849,33 @@ export const appRouter = router({
     // aggregated client-side from dashboard.* — only uploaded documents live here.
     passport: router({
       documents: protectedProcedure.query(({ ctx }) => getPassportDocuments(ctx.user.id)),
+      archives: protectedProcedure.query(({ ctx }) => getPassportDocuments(ctx.user.id, true)),
+      history: protectedProcedure.query(({ ctx }) => getPassportHistory(ctx.user.id)),
+      historyPage: protectedProcedure.input(z.object({ beforeId: z.number().int().positive().optional() }).optional())
+        .query(({ ctx, input }) => getPassportHistoryPage(ctx.user.id, input?.beforeId)),
       addDocument: protectedProcedure
         .input(z.object({
+          requestId: z.string().uuid().optional(),
           kind: z.enum(["ID", "PASSPORT", "DIPLOMA", "CERTIFICATE", "LICENSE", "RATING", "LOGBOOK", "EXPERIENCE", "OTHER"]),
-          title: z.string().min(1),
-          issuer: z.string().optional(),
-          reference: z.string().optional(),
-          country: z.string().optional(),
-          issuedAt: z.string().optional(),
-          expiresAt: z.string().optional(),
-          fileName: z.string().min(1),
-          contentType: z.string().min(1),
-          dataBase64: z.string().min(1),
+          title: z.string().trim().min(1).max(255),
+          issuer: z.string().max(255).optional(),
+          reference: z.string().max(128).optional(),
+          country: z.string().max(64).optional(),
+          issuedAt: z.string().date().optional(),
+          expiresAt: z.string().date().optional(),
+          fileName: z.string().min(1).max(255),
+          contentType: z.enum(["application/pdf", "image/png", "image/jpeg"]),
+          dataBase64: z.string().min(1).max(13981016),
         }))
         .mutation(({ ctx, input }) => createPassportDocument({
-          personId: ctx.user.id, kind: input.kind, title: input.title,
+          requestId: input.requestId, personId: ctx.user.id, kind: input.kind, title: input.title,
           issuer: input.issuer, reference: input.reference, country: input.country,
           issuedAt: input.issuedAt ? new Date(input.issuedAt) : null,
           expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
           fileName: input.fileName, contentType: input.contentType, dataBase64: input.dataBase64,
         })),
       deleteDocument: protectedProcedure
-        .input(z.object({ id: z.number() }))
+        .input(z.object({ id: z.number().int().positive() }))
         .mutation(async ({ ctx, input }) => {
           const r = await deletePassportDocument(input.id, ctx.user.id);
           if (!r.ok) throw new TRPCError({ code: "FORBIDDEN", message: "Document introuvable ou non autorisé." });
@@ -759,24 +892,34 @@ export const appRouter = router({
       const out: Array<{ orgId: number; name: string; role: string }> = [];
       for (const a of (ctx.affiliations ?? []).filter((x) => x.status === "ACTIVE")) {
         const org = await getCompanyById(a.orgId);
-        if (org) out.push({ orgId: a.orgId, name: org.name, role: a.role });
+        if (org?.status === "ACTIVE") out.push({ orgId: a.orgId, name: org.name, role: a.role });
       }
       return out;
     }),
     // INV-5: the person — not the manager — surfaces a prior/external qualification.
     surfaceCredential: protectedProcedure
       .input(z.object({
-        label: z.string().min(1), provider: z.string().optional(), trainingId: z.number().optional(),
+        orgId:z.number().int().positive(), label: z.string().min(1), provider: z.string().optional(), trainingId: z.number().optional(),
         objectiveIds: z.array(z.number()).optional(), completedAt: z.string().optional(), expiresAt: z.string().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
         const cred = await surfaceCredentialForPerson(ctx.user.id, {
-          label: input.label, provider: input.provider ?? null, trainingId: input.trainingId ?? null,
+          orgId:input.orgId,label: input.label, provider: input.provider ?? null, trainingId: input.trainingId ?? null,
           objectiveIds: input.objectiveIds, completedAt: input.completedAt ? new Date(input.completedAt) : null,
           expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
         });
-        await logAccess({ actorId: ctx.user.id, actorRole: "self", subjectPersonId: ctx.user.id, action: "SURFACE_CREDENTIAL", dataAccessed: { label: input.label }, ip: ipFromReq(ctx.req) });
+        await logAccess({ actorId: ctx.user.id, actorRole: "self", subjectPersonId: ctx.user.id, action: "SURFACE_CREDENTIAL", targetOrgId:input.orgId,dataAccessed: { label: input.label }, ip: ipFromReq(ctx.req) });
         return cred;
+      }),
+    credentialSharingHistory: protectedProcedure
+      .input(z.object({cursor:z.number().int().positive().optional()}))
+      .query(({ctx,input})=>getCredentialSharingHistory(ctx.user.id,input.cursor)),
+    shareCertificate: protectedProcedure
+      .input(z.object({orgId:z.number().int().positive(),certificateId:z.number().int().positive()}))
+      .mutation(async({ctx,input})=>{
+        const proof=await shareCertificateForPerson(ctx.user.id,input.orgId,input.certificateId);
+        await logAccess({actorId:ctx.user.id,actorRole:'self',subjectPersonId:ctx.user.id,action:'SHARE_CERTIFICATE',targetOrgId:input.orgId,dataAccessed:{certificateId:input.certificateId,credentialId:proof.id},ip:ipFromReq(ctx.req)});
+        return proof;
       }),
     // INV-5: withdrawal allowed only while not locked (not yet relied upon during employment).
     unsurfaceCredential: protectedProcedure
@@ -788,107 +931,85 @@ export const appRouter = router({
         if (!res.ok) throw new TRPCError({ code: "BAD_REQUEST", message: "Retrait impossible." });
         return res;
       }),
-    // INV-7: the person erases their own account. Independent/LIVING layer is deleted;
-    // proof relied upon during employment is frozen & retained by the org; the account is
-    // pseudonymised. The session cookie is cleared.
-    eraseAccount: protectedProcedure.mutation(async ({ ctx }) => {
-      const res = await erasePerson(ctx.user.id);
-      await logAccess({ actorId: ctx.user.id, actorRole: "self", subjectPersonId: ctx.user.id, action: "ERASE_PERSON", dataAccessed: { ...res }, ip: ipFromReq(ctx.req) });
+    // Profile closure preserves regulatory and financial records; it is not full erasure.
+    eraseAccount: protectedProcedure.input(z.object({password:z.string().min(1).max(1024)})).mutation(async ({ ctx,input }) => {
+      if(!rateLimit(`close-account:${ctx.user.id}`,5,15*60*1000).ok)throw new TRPCError({code:'TOO_MANY_REQUESTS'});
+      const result=await erasePerson(ctx.user.id,ctx.user.id,input.password);
       ctx.res.clearCookie(COOKIE_NAME);
-      return res;
+      return result;
     }),
   }),
 
   // ─── Support tickets ─────────────────────────────────────────────────────────
   support: router({
-    myList: protectedProcedure.query(({ ctx }) => getMyTickets(ctx.user.id)),
+    notificationQueue: adminProcedure.input(supportNotificationListInput.optional()).query(({ctx,input})=>listSupportNotifications(ctx.user.id,input)),
+    sendNotification: adminProcedure.input(supportNotificationSendInput).mutation(({ctx,input})=>sendPendingSupportNotification(ctx.user.id,input)),
+    myList: protectedProcedure.input(supportListInput.optional()).query(({ ctx, input }) => getMyTickets(ctx.user.id, input)),
     create: protectedProcedure
-      .input(z.object({ subject: z.string().min(1), message: z.string().optional(), priority: z.string().optional() }))
+      .input(supportRequestInput)
       .mutation(async ({ ctx, input }) => {
-        const tkt = await createSupportTicket(ctx.user.id, input);
-        await notifyAdminEmail(`Nouveau ticket support : ${input.subject}`,
-          emailBody(`${ctx.user.name ?? ctx.user.email} a ouvert un ticket :\n\n${input.subject}\n${input.message ?? ""}`, "/admin"));
+        const {replayed,...tkt} = await createSupportTicket(ctx.user.id, input);
+        await notifySupport(`ticket:${tkt.id}`);
         return tkt;
       }),
+    detail: protectedProcedure.input(z.object({ticketId:z.number().int().positive().max(2147483647)}).strict())
+      .query(({ctx,input})=>getSupportTicketDetail(input.ticketId,ctx.user.id)),
     thread: protectedProcedure
-      .input(z.object({ ticketId: z.number() }))
+      .input(z.object({ ticketId: z.number().int().positive() }))
       .query(async ({ ctx, input }) => {
         const tkt = await getTicketById(input.ticketId);
         if (!tkt) throw new TRPCError({ code: "NOT_FOUND" });
-        const staff = ["admin", "instructor", "company_manager"].includes(ctx.user.role);
+        const staff = ctx.user.role === "admin";
         if (!staff && tkt.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
-        return getTicketThread(input.ticketId);
+        return getTicketThread(input.ticketId,ctx.user.id);
       }),
     reply: protectedProcedure
-      .input(z.object({ ticketId: z.number(), content: z.string().min(1) }))
+      .input(supportMessageInput)
       .mutation(async ({ ctx, input }) => {
         const tkt = await getTicketById(input.ticketId);
         if (!tkt) throw new TRPCError({ code: "NOT_FOUND" });
-        const staff = ["admin", "instructor", "company_manager"].includes(ctx.user.role);
+        const staff = ctx.user.role === "admin";
         if (!staff && tkt.userId !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN" });
-        const msg = await postTicketMessage(input.ticketId, ctx.user.id, input.content);
-        if (staff && tkt.userId !== ctx.user.id) {
-          // Notify the ticket owner (in-app + email) when staff replies.
-          await createNotification({ userId: tkt.userId, type: "support", title: "Réponse à votre demande de support", body: input.content.slice(0, 120), link: "/support" });
-          await emailUserById(tkt.userId, "Réponse à votre demande de support — R-AERO", emailBody(input.content, "/support"));
-        } else if (!staff) {
-          // Client replied → alert the back office.
-          await notifyAdminEmail(`Réponse client sur le ticket #${tkt.id}`, emailBody(input.content, "/admin"));
-        }
+        const result = await postTicketMessage(input.ticketId, ctx.user.id, input.content, input.requestId);
+        const msg = result.message;
+        await notifySupport(`message:${msg.id}`);
         return msg;
       }),
-    adminList: staffProcedure.query(() => getAdminTickets()),
-    setStatus: staffProcedure
-      .input(z.object({ ticketId: z.number(), status: z.enum(["OPEN", "PENDING", "CLOSED"]) }))
-      .mutation(({ input }) => setTicketStatus(input.ticketId, input.status)),
+    adminList: adminProcedure.input(supportListInput.optional()).query(({input}) => getAdminTickets(input)),
+    setStatus: adminProcedure
+      .input(z.object({ ticketId: z.number().int().positive(), status: z.enum(["OPEN", "PENDING", "CLOSED"]),reason:z.string().trim().max(2000).optional() }))
+      .mutation(({ ctx,input }) => setTicketStatus(input.ticketId, input.status,ctx.user.id,input.reason)),
+    statusHistory:protectedProcedure.input(z.object({ticketId:z.number().int().positive(),cursor:z.number().int().positive().optional()}))
+      .query(({ctx,input})=>getTicketStatusHistory(ctx.user.id,input.ticketId,input.cursor)),
   }),
 
   // ─── Quotes ────────────────────────────────────────────────────────────────
   quotes: router({
     create: publicProcedure
-      .input(z.object({
-        companyName: z.string(),
-        siret: z.string().optional(),
-        contactName: z.string(),
-        contactEmail: z.string().email(),
-        contactPhone: z.string().optional(),
-        employeeCount: z.number().optional(),
-        trainingTypes: z.string().optional(),
-        message: z.string().optional(),
-      }))
+      .input(quoteRequestInput)
       // Link the quote to the account when the requester is logged in (enables messaging
       // + conversion without a manual email match).
       .mutation(async ({ ctx, input }) => {
         const q = await createQuoteRequest({ ...input, userId: ctx.user?.id ?? null });
-        await notifyAdminEmail(`Nouvelle demande de devis : ${input.companyName}`,
+        if (!q.replayed) await notifyAdminEmail(`Nouvelle demande de devis : ${input.companyName}`,
           emailBody(`${input.contactName} — ${input.contactEmail}\nSociété : ${input.companyName}\n${input.trainingTypes ? "Types : " + input.trainingTypes + "\n" : ""}${input.message ?? ""}`, "/admin"));
         return q;
       }),
 
     // Client view of their own quotes (by userId or matching email).
-    myList: protectedProcedure.query(({ ctx }) => getMyQuotes(ctx.user.id, ctx.user.email ?? null)),
+    myList: protectedProcedure.input(quoteListInput.optional()).query(({ ctx,input }) => getMyQuotes(ctx.user.id,input ?? {})),
 
     // Quote message thread — accessible to the quote owner or an admin.
     messages: router({
       list: protectedProcedure
-        .input(z.object({ quoteId: z.number() }))
-        .query(async ({ ctx, input }) => {
-          const q = await getQuoteById(input.quoteId);
-          if (!q) throw new TRPCError({ code: "NOT_FOUND" });
-          const owns = ctx.user.role === "admin" || q.userId === ctx.user.id || (!!q.contactEmail && q.contactEmail.toLowerCase() === ctx.user.email?.toLowerCase());
-          if (!owns) throw new TRPCError({ code: "FORBIDDEN" });
-          await markQuoteMessagesRead(input.quoteId, ctx.user.id);
-          return getQuoteMessages(input.quoteId);
-        }),
+        .input(quoteThreadInput)
+        .query(({ctx,input})=>getQuoteMessages(input.quoteId,ctx.user.id)),
       send: protectedProcedure
-        .input(z.object({ quoteId: z.number(), content: z.string().min(1) }))
+        .input(quoteMessageInput)
         .mutation(async ({ ctx, input }) => {
-          const q = await getQuoteById(input.quoteId);
-          if (!q) throw new TRPCError({ code: "NOT_FOUND" });
-          const owns = ctx.user.role === "admin" || q.userId === ctx.user.id || (!!q.contactEmail && q.contactEmail.toLowerCase() === ctx.user.email?.toLowerCase());
-          if (!owns) throw new TRPCError({ code: "FORBIDDEN" });
-          const msg = await createQuoteMessage({ quoteRequestId: input.quoteId, fromUserId: ctx.user.id, content: input.content });
-          if (ctx.user.role === "admin") {
+          const {message:msg,quote:q,actorRole,replayed}=await createQuoteMessage(input,ctx.user.id);
+          if(replayed)return msg;
+          if (actorRole === "admin") {
             // Admin reply → email the client (by account, else by the quote contact email).
             if (q.userId) await emailUserById(q.userId, "Réponse à votre devis — R-AERO", emailBody(input.content, "/mes-devis"));
             else if (q.contactEmail && isEmailConfigured()) await sendEmail({ to: q.contactEmail, subject: "Réponse à votre devis — R-AERO", html: simpleEmail("Réponse à votre devis", emailBody(input.content, "/mes-devis")).html });
@@ -910,42 +1031,47 @@ export const appRouter = router({
 
   // ─── Live classroom (TIER 2) ─────────────────────────────────────────────
   live: router({
+    myClasses: protectedProcedure.input(instructorAgendaInput).query(({ctx,input}) => instructorAgenda(ctx.user.id,input)),
+    videoTicket: protectedProcedure.input(z.object({ roomType: z.enum(["session", "webinar"]), roomId: z.number().int().positive() }))
+      .mutation(({ ctx, input }) => issueLiveVideoTicket(input.roomType, input.roomId, ctx.user.id)),
+    presenceHistory: moderatorProcedure.input(z.object({ roomType: z.enum(["webinar", "session"]), roomId: z.number().int().positive(), beforeId: z.number().int().positive().optional() })).query(({ ctx, input }) => getPresenceHistory(input.roomType, input.roomId, ctx.user.id, input.beforeId)),
     access: protectedProcedure
-      .input(z.object({ roomType: z.enum(["webinar", "session"]), roomId: z.number() }))
-      .query(({ ctx, input }) => getLiveAccess(input.roomType, input.roomId, ctx.user as any)),
+      .input(z.object({ roomType: z.enum(["webinar", "session"]), roomId: z.number().int().positive() }))
+      .query(({ ctx, input }) => getLiveAccess(input.roomType, input.roomId, { id: ctx.user.id })),
     join: protectedProcedure
-      .input(z.object({ roomType: z.enum(["webinar", "session"]), roomId: z.number() }))
+      .input(z.object({ roomType: z.enum(["webinar", "session"]), roomId: z.number().int().positive() }))
       .mutation(({ ctx, input }) => joinLiveRoom(input.roomType, input.roomId, ctx.user.id)),
     participants: protectedProcedure
-      .input(z.object({ roomType: z.enum(["webinar", "session"]), roomId: z.number() }))
-      .query(({ input }) => getParticipants(input.roomType, input.roomId)),
+      .input(z.object({ roomType: z.enum(["webinar", "session"]), roomId: z.number().int().positive() }))
+      .query(({ ctx, input }) => getParticipants(input.roomType, input.roomId, ctx.user.id)),
     messages: protectedProcedure
-      .input(z.object({ roomType: z.enum(["webinar", "session"]), roomId: z.number() }))
-      .query(({ input }) => getLiveMessages(input.roomType, input.roomId)),
+      .input(z.object({ roomType: z.enum(["webinar", "session"]), roomId: z.number().int().positive() }))
+      .query(({ ctx, input }) => getLiveMessages(input.roomType, input.roomId, ctx.user.id)),
     postMessage: protectedProcedure
-      .input(z.object({ roomType: z.enum(["webinar", "session"]), roomId: z.number(), kind: z.enum(["chat", "qa"]), content: z.string().min(1) }))
-      .mutation(({ ctx, input }) => postLiveMessage({ roomType: input.roomType, roomId: input.roomId, userId: ctx.user.id, kind: input.kind, content: input.content })),
+      .input(z.object({ roomType: z.enum(["webinar", "session"]), roomId: z.number().int().positive(), kind: z.enum(["chat", "qa"]), content: z.string().trim().min(1).max(4000), requestId: z.string().uuid().optional() }))
+      .mutation(({ ctx, input }) => postLiveMessage({ roomType: input.roomType, roomId: input.roomId, userId: ctx.user.id, kind: input.kind, content: input.content, requestId: input.requestId })),
     markAnswered: moderatorProcedure
-      .input(z.object({ messageId: z.number() }))
+      .input(z.object({ messageId: z.number().int().positive() }))
       .mutation(({ ctx, input }) => setMessageAnswered(input.messageId, ctx.user.id)),
     polls: protectedProcedure
-      .input(z.object({ roomType: z.enum(["webinar", "session"]), roomId: z.number() }))
-      .query(({ input }) => getLivePolls(input.roomType, input.roomId)),
+      .input(z.object({ roomType: z.enum(["webinar", "session"]), roomId: z.number().int().positive() }))
+      .query(({ ctx, input }) => getLivePolls(input.roomType, input.roomId, ctx.user.id)),
     createPoll: moderatorProcedure
-      .input(z.object({ roomType: z.enum(["webinar", "session"]), roomId: z.number(), kind: z.enum(["poll", "quiz"]), question: z.string().min(1), options: z.array(z.string()), correct: z.array(z.number()).optional() }))
-      .mutation(({ input }) => createLivePoll(input)),
+      .input(z.object({ roomType: z.enum(["webinar", "session"]), roomId: z.number().int().positive(), kind: z.enum(["poll", "quiz"]), question: z.string().trim().min(1).max(1000), options: z.array(z.string().trim().min(1).max(500)).min(2).max(10), correct: z.array(z.number().int().min(0).max(9)).max(10).optional() }))
+      .mutation(({ ctx, input }) => createLivePoll(input, ctx.user.id)),
     closePoll: moderatorProcedure
-      .input(z.object({ pollId: z.number() }))
-      .mutation(({ input }) => closeLivePoll(input.pollId)),
+      .input(z.object({ pollId: z.number().int().positive() }))
+      .mutation(({ ctx, input }) => closeLivePoll(input.pollId, ctx.user.id)),
     votePoll: protectedProcedure
-      .input(z.object({ pollId: z.number(), choices: z.array(z.number()) }))
+      .input(z.object({ pollId: z.number().int().positive(), choices: z.array(z.number().int().min(0).max(9)).max(10) }))
       .mutation(({ ctx, input }) => voteLivePoll({ pollId: input.pollId, userId: ctx.user.id, choices: input.choices })),
     engagement: moderatorProcedure
-      .input(z.object({ roomType: z.enum(["webinar", "session"]), roomId: z.number() }))
-      .query(({ input }) => getEngagementScores(input.roomType, input.roomId)),
+      .input(z.object({ roomType: z.enum(["webinar", "session"]), roomId: z.number().int().positive() }))
+      .query(({ ctx, input }) => getEngagementScores(input.roomType, input.roomId, ctx.user.id)),
+    replayHistory: moderatorProcedure.input(replayHistoryInput).query(({ctx,input})=>getReplayHistory(ctx.user.id,input)),
     setReplay: moderatorProcedure
-      .input(z.object({ roomType: z.enum(["webinar", "session"]), roomId: z.number(), url: z.string() }))
-      .mutation(({ input }) => setReplayUrl(input.roomType, input.roomId, input.url)),
+      .input(z.object({ roomType: z.enum(["webinar", "session"]), roomId: z.number().int().positive(), url: z.string().url().max(512).refine(v => v.startsWith("https://")), expectedRevision:z.number().int().min(0).max(2147483647) }))
+      .mutation(({ ctx, input }) => setReplayUrl(input.roomType, input.roomId, input.url, ctx.user.id, input.expectedRevision)),
   }),
 
   // ─── Notifications ──────────────────────────────────────────────────────────
@@ -960,49 +1086,33 @@ export const appRouter = router({
 
   // ─── Admin ─────────────────────────────────────────────────────────────────
   admin: router({
+    certificate:adminProcedure.input(z.object({number:z.string().trim().min(1).max(64)})).query(({ctx,input})=>adminCertificate(ctx.user.id,input.number)),
+    revokeCertificate:adminProcedure.input(certificateRevocationInput).mutation(({ctx,input})=>revokeCertificate(ctx.user.id,input)),
     stats: adminProcedure.query(() => getAdminStats()),
     users: adminProcedure.query(() => getAdminUsers()),
     // Per-org role management (matrix E): a person can be MANAGER of one org, MEMBER of another.
     setAffiliationRole: adminProcedure
       .input(z.object({ affiliationId: z.number(), role: z.enum(["MANAGER", "MEMBER"]) }))
       .mutation(({ input }) => setAffiliationRole(input.affiliationId, input.role)),
-    // INV-7: operator-initiated erasure (e.g. on a person's written request).
+    // Operator-initiated profile closure with evidence retention.
     erasePerson: adminProcedure
       .input(z.object({ userId: z.number() }))
       .mutation(async ({ ctx, input }) => {
-        if (input.userId === ctx.user.id) throw new TRPCError({ code: "BAD_REQUEST", message: "Vous ne pouvez pas effacer votre propre compte ici." });
+        if (input.userId === ctx.user.id) throw new TRPCError({ code: "BAD_REQUEST", message: "Utilisez le parcours personnel pour fermer votre propre compte." });
         const target = await getUserById(input.userId);
         if (target?.role === "admin" && target?.status === "active" && (await countActiveAdmins()) <= 1)
-          throw new TRPCError({ code: "BAD_REQUEST", message: "Impossible d'effacer le dernier administrateur actif." });
-        const res = await erasePerson(input.userId);
-        await logAccess({ actorId: ctx.user.id, actorRole: "admin", subjectPersonId: input.userId, action: "ERASE_PERSON", dataAccessed: { ...res }, ip: ipFromReq(ctx.req) });
+          throw new TRPCError({ code: "BAD_REQUEST", message: "Impossible de fermer le compte du dernier administrateur actif." });
+        const res = await erasePerson(input.userId,ctx.user.id);
+        await logAccess({ actorId: ctx.user.id, actorRole: "admin", subjectPersonId: input.userId, action: "CLOSE_ACCOUNT", dataAccessed: { ...res }, ip: ipFromReq(ctx.req) });
         return res;
       }),
     // Broadcast a notification to all users (or a company), fanned out per-user.
-    broadcast: adminProcedure
-      .input(z.object({
-        audience: z.string(), title: z.string().min(1), body: z.string().optional(), link: z.string().optional(),
-        email: z.boolean().optional(),   // also deliver by email
-        userId: z.number().optional(),   // target a single user instead of an audience
-      }))
-      .mutation(async ({ input }) => {
-        const bodyHtml = emailBody(input.body ?? input.title, input.link);
-        // Single recipient.
-        if (input.userId) {
-          await createNotification({ userId: input.userId, type: "broadcast", title: input.title, body: input.body ?? "", link: input.link });
-          if (input.email) await emailUserById(input.userId, input.title, bodyHtml);
-          return { ok: true, recipients: 1 };
-        }
-        // Audience fan-out (in-app), optionally by email too.
-        const r: any = await broadcastNotification(input);
-        if (input.email && isEmailConfigured()) {
-          let recipients: { email?: string | null }[] = [];
-          if (input.audience === "all") recipients = await getAdminUsers();
-          else if (input.audience.startsWith("company:")) recipients = await getOrganizationAffiliates(Number(input.audience.split(":")[1]));
-          for (const u of recipients) if (u.email) await sendEmail({ to: u.email, subject: input.title, html: simpleEmail(input.title, bodyHtml).html });
-        }
-        return r;
-      }),
+    previewBroadcastRetry: adminProcedure.input(z.object({recipientId:z.number().int().positive()})).query(({ctx,input})=>previewBroadcastRetry(ctx.user.id,input.recipientId)),
+    retryBroadcastRecipient: adminProcedure.input(broadcastRetryInput).mutation(({ctx,input})=>retryBroadcastRecipient(ctx.user.id,input)),
+    broadcastRecipients: adminProcedure.input(broadcastRecipientInput).query(({ctx,input}) => broadcastRecipientHistory(ctx.user.id,input)),
+    recoverBroadcastOutcome: adminProcedure.input(z.object({runId:z.number().int().positive()})).mutation(({ctx,input})=>recoverBroadcastOutcome(ctx.user.id,input.runId)),
+    broadcastHistory: adminProcedure.input(broadcastHistoryInput).query(({ctx, input}) => broadcastHistory(ctx.user.id, input)),
+    broadcast: adminProcedure.input(broadcastInput).mutation(({ ctx, input }) => sendAdminBroadcast(ctx.user.id, input)),
 
     // ── Settings (AI API keys, etc.) ──
     settings: router({
@@ -1159,18 +1269,24 @@ export const appRouter = router({
         .mutation(({ input }) => createTraining(input)),
       update: adminProcedure
         .input(z.object({ id: z.number() }).and(z.record(z.string(), z.unknown())))
-        .mutation(({ input }) => { const { id, ...data } = input; return updateTraining(id as number, data); }),
+        .mutation(({ ctx, input }) => { const { id, ...data } = input; return updateTraining(id as number, data, ctx.user.id); }),
       delete: adminProcedure
         .input(z.object({ id: z.number() }))
-        .mutation(async ({ input }) => {
-          const r = await deleteTraining(input.id);
-          if (r && !r.success && r.reason === "in_use")
-            throw new TRPCError({ code: "CONFLICT", message: "Formation utilisée (inscriptions ou commandes existantes) — dépubliez-la plutôt que de la supprimer." });
+        .mutation(async ({ ctx, input }) => {
+          const r = await deleteTraining(input.id, ctx.user.id);
           return r;
         }),
     }),
 
     orders: adminProcedure.query(() => getAdminOrders()),
+    payments: router({
+      history: adminProcedure.input(z.object({ orderId: z.number().int().positive() })).query(({ ctx, input }) => reconciliationHistory(ctx.user, input.orderId)),
+      reconcile: adminProcedure.input(z.object({ orderId: z.number().int().positive(), sessionId: z.string().regex(/^cs_[A-Za-z0-9_]{1,250}$/).optional() })).mutation(({ ctx, input }) => {
+        const stripe = getStripe();
+        if (!stripe) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Stripe non configuré." });
+        return reconcilePayment(stripe, ctx.user, input.orderId, input.sessionId);
+      }),
+    }),
 
     // ── E-learning content: modules ──
     modules: router({
@@ -1188,15 +1304,18 @@ export const appRouter = router({
           durationMinutes: z.number().optional(),
           sortOrder: z.number().optional(),
           isRequired: z.boolean().optional(),
+          quizPassingScore: z.number().int().min(1).max(100).optional(),
+          quizMaxAttempts: z.number().int().min(1).max(20).optional(),
+          quizTimeLimitMin: z.number().int().min(1).max(240).nullable().optional(),
           objectiveId: z.number().nullable().optional(),
         }))
         .mutation(({ input }) => adminCreateModule(input)),
       update: adminProcedure
-        .input(z.object({ id: z.number() }).and(z.record(z.string(), z.unknown())))
+        .input(z.object({ id: z.number(), quizPassingScore: z.number().int().min(1).max(100).optional(), quizMaxAttempts: z.number().int().min(1).max(20).optional(), quizTimeLimitMin: z.number().int().min(1).max(240).nullable().optional() }).and(z.record(z.string(), z.unknown())))
         .mutation(({ input }) => { const { id, ...data } = input; return adminUpdateModule(id as number, data); }),
       delete: adminProcedure
         .input(z.object({ id: z.number() }))
-        .mutation(({ input }) => adminDeleteModule(input.id)),
+        .mutation(({ ctx, input }) => adminDeleteModule(input.id, ctx.user.id)),
     }),
 
     // ── E-learning content: Part-66 objectives (sub-modules) ──
@@ -1221,7 +1340,7 @@ export const appRouter = router({
         .mutation(({ input }) => { const { id, ...data } = input; return adminUpdateObjective(id as number, data); }),
       delete: adminProcedure
         .input(z.object({ id: z.number() }))
-        .mutation(({ input }) => adminDeleteObjective(input.id)),
+        .mutation(({ ctx, input }) => adminDeleteObjective(input.id, ctx.user.id)),
       reorder: adminProcedure
         .input(z.object({ orderedIds: z.array(z.number()) }))
         .mutation(({ input }) => reorderObjectives(input.orderedIds)),
@@ -1253,7 +1372,7 @@ export const appRouter = router({
         .mutation(({ input }) => { const { id, ...data } = input; return adminUpdateQuestion(id as number, data); }),
       delete: adminProcedure
         .input(z.object({ id: z.number() }))
-        .mutation(({ input }) => adminDeleteQuestion(input.id)),
+        .mutation(({ ctx, input }) => adminDeleteQuestion(input.id, ctx.user.id)),
     }),
 
     setUserStatus: adminProcedure
@@ -1320,16 +1439,14 @@ export const appRouter = router({
       update: adminProcedure
         .input(z.object({ id: z.number() }).and(z.record(z.string(), z.unknown())))
         .mutation(({ input }) => { const { id, ...data } = input; return adminUpdateOrganization(id as number, data); }),
+      statusHistory: adminProcedure.input(organizationHistoryInput).query(({ctx,input}) => organizationStatusHistory(ctx.user.id,input)),
       setStatus: adminProcedure
         .input(z.object({ id: z.number(), status: z.enum(["ACTIVE", "SUSPENDED"]) }))
-        .mutation(({ input }) => adminSetOrganizationStatus(input.id, input.status)),
-      delete: adminProcedure
-        .input(z.object({ id: z.number() }))
-        .mutation(async ({ input }) => {
-          const r = await adminDeleteOrganization(input.id);
-          if (!r.ok && r.reason === "has_employees") throw new TRPCError({ code: "CONFLICT", message: `Cette organisation a ${r.count} employé(s) — suspendez-la ou retirez les employés avant suppression.` });
-          return r;
-        }),
+        .mutation(({ ctx, input }) => adminSetOrganizationStatus(input.id, input.status, ctx.user.id)),
+      // Retain the old route as an explicit refusal for clients not yet refreshed.
+      delete: adminProcedure.input(z.object({id:z.number().int().positive()})).mutation(() => {
+        throw new TRPCError({code:"PRECONDITION_FAILED",message:"La suppression définitive des compagnies est désactivée. Utilisez la suspension pour conserver leurs données."});
+      }),
       managers: adminProcedure.input(z.object({ orgId: z.number() })).query(({ input }) => getOrganizationManagers(input.orgId)),
       addManager: adminProcedure
         .input(z.object({ orgId: z.number(), email: z.string().email() }))
@@ -1341,8 +1458,23 @@ export const appRouter = router({
       removeManager: adminProcedure.input(z.object({ affiliationId: z.number() })).mutation(({ input }) => removeOrganizationManager(input.affiliationId)),
     }),
 
+    webinars: router({
+      list: adminProcedure.query(({ctx}) => listAdminWebinars(ctx.user.id)),
+      history: adminProcedure.input(webinarHistoryInput).query(({ctx,input}) => webinarHistory(ctx.user.id,input)),
+      update: adminProcedure.input(webinarMetadataInput).mutation(({ctx,input}) => updateWebinarMetadata(ctx.user.id,input)),
+      create: adminProcedure.input(webinarCreateInput).mutation(({ctx,input}) => createAdminWebinar(ctx.user.id,input)),
+      schedule: adminProcedure.input(webinarScheduleInput).mutation(({ctx,input}) => rescheduleWebinar(ctx.user.id,input)),
+      setStatus: adminProcedure.input(webinarStatusInput).mutation(({ctx,input}) => setWebinarStatus(ctx.user.id,input)),
+    }),
+    liveInstructors: router({
+      history: adminProcedure.input(instructorHistoryInput).query(({ctx,input}) => liveInstructorHistory(ctx.user.id,input)),
+      search: adminProcedure.input(instructorSearchInput).query(({ctx,input}) => searchLiveInstructors(ctx.user.id,input)),
+      list: adminProcedure.input(instructorRoomInput).query(({ctx,input}) => listLiveInstructors(ctx.user.id,input)),
+      set: adminProcedure.input(instructorAssignmentInput).mutation(({ctx,input}) => setLiveInstructor(ctx.user.id,input)),
+    }),
     // ── Sessions ──
     sessions: router({
+      scheduleHistory: adminProcedure.input(scheduleHistoryInput).query(({ctx,input}) => sessionScheduleHistory(ctx.user.id,input)),
       list: adminProcedure.query(() => getAllSessions()),
       create: adminProcedure
         .input(z.object({
@@ -1352,22 +1484,20 @@ export const appRouter = router({
           format: z.enum(["in_person", "virtual", "webinar"]),
           location: z.string().optional(),
           instructorName: z.string().optional(),
-          startDate: z.string(),
-          endDate: z.string().optional(),
+          startDate: z.string().datetime({offset:true}),
+          endDate: z.string().datetime({offset:true}).optional(),
           durationDays: z.string().optional(),
           seats: z.number().optional(),
           priceHt: z.string().optional(),
           language: z.string().optional(),
           cpfEligible: z.boolean().optional(),
-        }))
+        }).refine(v => (!v.endDate ? v.format === "in_person" : Date.parse(v.endDate)>Date.parse(v.startDate)), {message:"Renseignez une fin après le début pour les classes à distance.",path:["endDate"]}))
         .mutation(({ input }) => createSession({
           ...input,
           startDate: new Date(input.startDate),
           endDate: input.endDate ? new Date(input.endDate) : undefined,
         })),
-      update: adminProcedure
-        .input(z.object({ id: z.number() }).and(z.record(z.string(), z.unknown())))
-        .mutation(({ input }) => { const { id, ...data } = input; return updateSession(id as number, data); }),
+      update: adminProcedure.input(scheduleInput).mutation(({ctx,input}) => rescheduleSession(ctx.user.id,input)),
       delete: adminProcedure
         .input(z.object({ id: z.number() }))
         .mutation(({ input }) => deleteSession(input.id)),
@@ -1403,17 +1533,20 @@ export const appRouter = router({
     quotes: router({
       list: adminProcedure.query(() => getAdminQuoteRequests()),
       updateStatus: adminProcedure
-        .input(z.object({ id: z.number(), status: z.enum(["received", "in_progress", "quote_sent", "accepted", "refused"]) }))
-        .mutation(({ input }) => updateQuoteRequestStatus(input.id, input.status)),
+        .input(quoteStatusInput)
+        .mutation(({ ctx, input }) => updateQuoteRequestStatus(input, ctx.user.id)),
+      statusHistory: adminProcedure
+        .input(z.object({quoteId:z.number().int().positive().max(2147483647),beforeId:z.number().int().positive().max(2147483647).optional()}).strict())
+        .query(({input})=>getQuoteStatusHistory(input.quoteId,input.beforeId)),
       // Convert an accepted quote into an order + Stripe checkout (always via Stripe).
       // The admin maps the free-text request to catalogue trainings + negotiated prices.
       convert: adminProcedure
         .input(z.object({
-          quoteId: z.number(), origin: z.string(),
+          quoteId: z.number().int().positive(), origin: z.string(), companyId: z.number().int().positive().optional(),
           items: z.array(z.object({
-            trainingId: z.number(), title: z.string(), quantity: z.number().min(1),
-            unitPriceHt: z.number().min(0), unitPriceTtc: z.number().min(0),
-          })).min(1),
+            trainingId: z.number().int().positive(), title: z.string().trim().min(1).max(255), quantity: z.number().int().min(1).max(100),
+            unitPriceHt: z.number().min(0).max(999999.99), unitPriceTtc: z.number().min(0).max(999999.99),
+          })).min(1).max(100),
         }))
         .mutation(async ({ ctx, input }) => {
           const q = await getQuoteById(input.quoteId);
@@ -1422,28 +1555,24 @@ export const appRouter = router({
           if (!userId && q.contactEmail) userId = (await findUserByEmail(q.contactEmail))?.id ?? null;
           if (!userId) throw new TRPCError({ code: "BAD_REQUEST", message: `Aucun compte trouvé pour ${q.contactEmail}. Le client doit s'inscrire (utilisez la messagerie pour l'inviter) avant la conversion.` });
           const buyer = await getUserById(userId);
+          if (!buyer) throw new TRPCError({ code: "NOT_FOUND", message: "Compte acheteur introuvable." });
+          if (input.companyId) await requireManagedCompany(buyer, input.companyId);
           const res = await createQuoteCheckout({
-            quoteId: input.quoteId, userId, userEmail: buyer?.email ?? q.contactEmail, userName: buyer?.name ?? q.contactName,
-            items: input.items, origin: input.origin,
+            quoteId: input.quoteId, actor: ctx.user, userRole: buyer.role, userId, userEmail: buyer?.email ?? q.contactEmail, userName: buyer?.name ?? q.contactName,
+            items: input.items, origin: input.origin, companyId: input.companyId,
           });
-          // Post the payment link into the thread (from the admin) so the client can pay from « Mes devis ».
-          if (res?.url) await createQuoteMessage({ quoteRequestId: input.quoteId, fromUserId: ctx.user.id, toUserId: userId, content: `Devis accepté et commande créée. Lien de paiement : ${res.url}` });
           return res;
         }),
     }),
 
-    complianceReport: adminProcedure.query(async ({ ctx }) => {
-      // INV-8: mass read of personal data (names/emails across all users) — logged.
-      await logAccess({
-        actorId: ctx.user.id, actorRole: "admin", action: "READ_COMPLIANCE_REPORT",
-        dataAccessed: { scope: "GOD", fields: ["userName", "userEmail", "certificateNumber"] },
-        ip: ipFromReq(ctx.req),
-      });
-      return getAdminComplianceReport();
+    complianceReport: adminProcedure.input(z.object({cursor:z.number().int().positive().max(2147483647).optional(),pageSize:z.number().int().min(1).max(250).optional()}).strict().optional()).query(async ({ ctx,input }) => {
+      // Each page rechecks current rights and commits its access audit before returning data.
+      return getAdminComplianceReport(ctx.user.id,input?.cursor,input?.pageSize,ipFromReq(ctx.req));
     }),
 
     runExpiryAlerts: adminProcedure.mutation(() => generateExpiryAlerts()),
 
+    examFinalizationFailures: adminProcedure.query(() => getExamFinalizationFailures()),
     examIntegrity: adminProcedure
       .input(z.object({ enrollmentId: z.number() }))
       .query(({ input }) => getExamIntegrity(input.enrollmentId)),
@@ -1463,128 +1592,191 @@ export const appRouter = router({
 
   // ─── E-learning Maker (admin + instructor) ─────────────────────────────────
   maker: router({
-    courses: staffProcedure.query(() => getAdminTrainings()),
+    uploadMedia: protectedProcedure.input(z.object({ trainingId: z.number().int().positive(), contentType: z.enum(["image/png", "image/jpeg", "audio/mpeg", "video/mp4", "application/pdf"]), base64: z.string().min(1).max(34952536) }))
+      .mutation(({ ctx, input }) => uploadCourseMedia(ctx.user, input.trainingId, input.base64, input.contentType)),
+    reviews: router({
+      withdraw: staffProcedure.input(z.object({ reviewId: z.number().int().positive(), reason: z.string().trim().min(10).max(4000) })).mutation(({ ctx, input }) => withdrawPedagogicalApproval(ctx.user, input.reviewId, input.reason)),
+      pending: staffProcedure.query(({ ctx }) => pendingPedagogicalReviews(ctx.user)),
+      list: staffProcedure.input(z.object({ trainingId: z.number().int().positive() })).query(({ ctx, input }) => listPedagogicalReviews(ctx.user, input.trainingId)),
+      request: staffProcedure.input(z.object({ trainingId: z.number().int().positive() })).mutation(({ ctx, input }) => requestPedagogicalReview(ctx.user, input.trainingId)),
+      snapshot: staffProcedure.input(z.object({ reviewId: z.number().int().positive() })).query(({ ctx, input }) => reviewSnapshot(ctx.user, input.reviewId)),
+      decide: staffProcedure.input(z.object({ reviewId: z.number().int().positive(), decision: z.enum(["approved", "rejected"]), note: z.string().trim().min(1).max(4000) })).mutation(({ ctx, input }) => decidePedagogicalReview(ctx.user, input.reviewId, input.decision, input.note)),
+    }),
+    workspaces: protectedProcedure.query(({ ctx }) => authorWorkspaces(ctx.user)),
+    distributionCandidates: staffProcedure.input(z.object({ trainingId: z.number().int().positive() })).query(({ ctx, input }) => distributionCandidates(ctx.user, input.trainingId)),
+    assign: staffProcedure.input(z.object({ trainingId: z.number().int().positive(), userIds: z.array(z.number().int().positive()).min(1).max(100) })).mutation(({ ctx, input }) => assignCompanyTraining(ctx.user, input.trainingId, input.userIds)),
+    versions: staffProcedure.input(z.object({ trainingId: z.number().int().positive() })).query(async ({ ctx, input }) => { await requireAuthorCourse(ctx.user, input.trainingId, true); return publishedVersions(input.trainingId); }),
+    history: staffProcedure.input(z.object({ trainingId: z.number().int().positive() })).query(async ({ ctx, input }) => { await requireAuthorCourse(ctx.user, input.trainingId, true); return contentHistory(input.trainingId); }),
+    archive: staffProcedure.input(z.object({ trainingId: z.number().int().positive() })).mutation(async ({ ctx, input }) => { await requireAuthorCourse(ctx.user, input.trainingId); return deleteTraining(input.trainingId, ctx.user.id); }),
+    content: router({
+    // ── E-learning content: modules ──
+    modules: router({
+      list: staffProcedure
+        .input(z.object({ trainingId: z.number() }))
+        .query(async ({ ctx, input }) => { await requireAuthorCourse(ctx.user, input.trainingId); return getTrainingModules(input.trainingId); }),
+      create: staffProcedure.input(moduleCreationInput).mutation(({ctx,input})=>createAuthorModule(ctx.user.id,input)),
+      update: staffProcedure
+        .input(z.object({
+          trainingId: z.number(),
+          title: z.string().min(1),
+          description: z.string().optional(),
+          content: z.string().optional(),
+          videoUrl: z.string().optional(),
+          pdfUrl: z.string().optional(),
+          durationMinutes: z.number().optional(),
+          sortOrder: z.number().optional(),
+          isRequired: z.boolean().optional(),
+          quizPassingScore: z.number().int().min(1).max(100).optional(),
+          quizMaxAttempts: z.number().int().min(1).max(20).optional(),
+          quizTimeLimitMin: z.number().int().min(1).max(240).nullable().optional(),
+          objectiveId: z.number().nullable().optional(),
+        }).omit({ trainingId: true }).partial().extend({ id: z.number().int().positive(), expectedRevision: z.number().int().min(0).max(2147483647).optional() }).strict())
+        .mutation(async ({ ctx, input }) => { const { id, expectedRevision, ...data } = input; await requireAuthorContent(ctx.user, "module", id as number, data); return adminUpdateModule(id as number, data, expectedRevision); }),
+      reorder: staffProcedure.input(z.object({orderedIds:z.array(z.number().int().positive()).min(1),expectedRevisions:z.array(z.number().int().min(0).max(2147483647))}).refine(input=>new Set(input.orderedIds).size===input.orderedIds.length&&input.orderedIds.length===input.expectedRevisions.length)).mutation(async({ctx,input})=>{for(const id of input.orderedIds)await requireAuthorContent(ctx.user,'module',id);return reorderModules(input.orderedIds,input.expectedRevisions);}),
+      delete: staffProcedure
+        .input(z.object({ id: z.number() }))
+        .mutation(async ({ ctx, input }) => { await requireAuthorContent(ctx.user, "module", input.id); return adminDeleteModule(input.id, ctx.user.id); }),
+    }),
+
+    // ── E-learning content: Part-66 objectives (sub-modules) ──
+    objectives: router({
+      list: staffProcedure
+        .input(z.object({ trainingId: z.number() }))
+        .query(async ({ ctx, input }) => { await requireAuthorCourse(ctx.user, input.trainingId); return getObjectives(input.trainingId); }),
+      create: staffProcedure.input(objectiveCreationInput).mutation(({ctx,input})=>createAuthorObjective(ctx.user.id,input)),
+      update: staffProcedure
+        .input(z.object({
+          trainingId: z.number(),
+          moduleId: z.number().nullable().optional(),
+          code: z.string().optional(),
+          title: z.string().min(1),
+          description: z.string().optional(),
+          knowledgeLevel: z.enum(["1", "2", "3"]).optional(),
+          isRequired: z.boolean().optional(),
+          sortOrder: z.number().optional(),
+        }).omit({ trainingId: true }).partial().extend({ id: z.number().int().positive(), expectedRevision: z.number().int().min(0).max(2147483647).optional() }).strict())
+        .mutation(async ({ ctx, input }) => { const { id, expectedRevision, ...data } = input; await requireAuthorContent(ctx.user, "objective", id as number, data); return adminUpdateObjective(id as number, data, expectedRevision); }),
+      delete: staffProcedure
+        .input(z.object({ id: z.number() }))
+        .mutation(async ({ ctx, input }) => { await requireAuthorContent(ctx.user, "objective", input.id); return adminDeleteObjective(input.id, ctx.user.id); }),
+      reorder: staffProcedure
+        .input(z.object({ orderedIds: z.array(z.number().int().positive()).min(1), expectedSortOrders: z.array(z.number().int().nullable()).optional() }))
+        .mutation(async ({ ctx, input }) => { for (const id of input.orderedIds) await requireAuthorContent(ctx.user, "objective", id); return reorderObjectives(input.orderedIds, input.expectedSortOrders); }),
+    }),
+
+    // ── E-learning content: quiz question bank ──
+    questions: router({
+      list: staffProcedure
+        .input(z.object({ trainingId: z.number() }))
+        .query(async ({ ctx, input }) => { await requireAuthorCourse(ctx.user, input.trainingId); return getQuizQuestions(input.trainingId); }),
+      create: staffProcedure.input(questionCreationInput).mutation(({ ctx, input }) => createAuthorQuestion(ctx.user.id, input)),
+      update: staffProcedure
+        .input(z.object({
+          trainingId: z.number(),
+          moduleId: z.number().nullable().optional(),
+          objectiveId: z.number().nullable().optional(),
+          question: z.string().min(1),
+          type: z.enum(["qcm", "qcu", "true_false", "free_text", "matching"]),
+          options: z.array(z.string()).optional(),
+          correctAnswer: z.array(z.number()).optional(),
+          optionsRight: z.array(z.string()).optional(),
+          answerKey: z.object({ keywords: z.array(z.string()).optional(), regex: z.string().optional(), pairs: z.array(z.array(z.number())).optional() }).optional(),
+          explanation: z.string().optional(),
+          points: z.number().optional(),
+          sortOrder: z.number().optional(),
+        }).omit({ trainingId: true }).partial().extend({ id: z.number().int().positive(), expectedRevision: z.number().int().min(0).max(2147483647).optional() }).strict())
+        .mutation(async ({ ctx, input }) => { const { id, expectedRevision, ...data } = input; await requireAuthorContent(ctx.user, "question", id as number, data); return adminUpdateQuestion(id as number, data, expectedRevision); }),
+      delete: staffProcedure
+        .input(z.object({ id: z.number() }))
+        .mutation(async ({ ctx, input }) => { await requireAuthorContent(ctx.user, "question", input.id); return adminDeleteQuestion(input.id, ctx.user.id); }),
+    }),
+
+    }),
+    readiness: staffProcedure.input(z.object({ trainingId: z.number().int().positive() })).query(async ({ ctx, input }) => { await requireAuthorCourse(ctx.user, input.trainingId); return courseReadiness(input.trainingId); }),
+    courses: staffProcedure.query(({ ctx }) => listAuthorCourses(ctx.user)),
     slides: staffProcedure
       .input(z.object({ trainingId: z.number() }))
-      .query(({ input }) => getSlides(input.trainingId)),
+      .query(async ({ ctx, input }) => { await requireAuthorCourse(ctx.user, input.trainingId); return getSlides(input.trainingId); }),
     objectives: staffProcedure
       .input(z.object({ trainingId: z.number() }))
-      .query(({ input }) => getObjectives(input.trainingId)),
+      .query(async ({ ctx, input }) => { await requireAuthorCourse(ctx.user, input.trainingId); return getObjectives(input.trainingId); }),
     templates: staffProcedure.query(() => getCourseTemplates()),
+    copyCourse: staffProcedure.input(copyCourseInput).mutation(({ctx,input}) => copyCourse(ctx.user.id,input)),
     createFromTemplate: staffProcedure
-      .input(z.object({ templateId: z.number() }))
-      .mutation(({ ctx, input }) => createCourseFromTemplate(input.templateId, ctx.user.id)),
-    createSlide: staffProcedure
-      .input(z.object({
-        trainingId: z.number(),
-        moduleId: z.number().nullable().optional(),
-        objectiveId: z.number().nullable().optional(),
-        sortOrder: z.number().optional(),
-        title: z.string().optional(),
-        body: z.string().optional(),
-        imageUrl: z.string().optional(),
-        imagePrompt: z.string().optional(),
-        videoUrl: z.string().optional(),
-        audioUrl: z.string().optional(),
-        videoCues: z.array(z.object({
-          atSeconds: z.number(),
-          kind: z.enum(["quiz", "branch", "hotspot", "dragdrop"]).optional(),
-          question: z.string().optional(),
-          options: z.array(z.string()).optional(),
-          correct: z.array(z.number()).optional(),
-          explanation: z.string().optional(),
-          onCorrectSeek: z.number().nullable().optional(),
-          branches: z.array(z.object({ label: z.string(), seekTo: z.number() })).optional(),
-          hotspots: z.array(z.object({ xPct: z.number(), yPct: z.number(), label: z.string().optional(), correct: z.boolean().optional(), seekTo: z.number().optional() })).optional(),
-          dragItems: z.array(z.object({ id: z.string(), label: z.string() })).optional(),
-          dropZones: z.array(z.object({ id: z.string(), label: z.string().optional(), xPct: z.number(), yPct: z.number(), wPct: z.number(), hPct: z.number(), correctItemId: z.string() })).optional(),
-        })).nullable().optional(),
-        quizQuestion: z.string().nullable().optional(),
-        quizOptions: z.array(z.string()).nullable().optional(),
-        quizCorrect: z.array(z.number()).nullable().optional(),
-        quizExplanation: z.string().nullable().optional(),
-      }))
-      .mutation(({ input }) => createSlide(input)),
+      .input(z.object({ templateId: z.number(), orgId: z.number().int().positive().optional() }))
+      .mutation(async ({ ctx, input }) => { const owner = await courseOwnership(ctx.user, input.orgId); return createCourseFromTemplate(input.templateId, owner.ownerUserId, owner.ownerOrgId); }),
+    createSlide: staffProcedure.input(slideCreationInput).mutation(({ctx,input})=>createAuthorSlide(ctx.user.id,input)),
     updateSlide: staffProcedure
-      .input(z.object({ id: z.number() }).and(z.record(z.string(), z.unknown())))
-      .mutation(({ input }) => { const { id, ...data } = input; return updateSlide(id as number, data); }),
+      .input(z.object({ id: z.number(), expectedRevision: z.number().int().min(0).max(2147483647).optional() }).and(z.record(z.string(), z.unknown())))
+      .mutation(async ({ ctx, input }) => { const { id, expectedRevision, ...data } = input; const [slide] = await requireAuthorSlides(ctx.user, [id as number]); if (data.trainingId !== undefined && data.trainingId !== slide.trainingId) throw new TRPCError({ code: "BAD_REQUEST" }); delete data.trainingId; for (const key of Object.keys(data)) if (!["moduleId", "objectiveId", "sortOrder", "title", "body", "imageUrl", "imagePrompt", "videoUrl", "audioUrl", "videoCues", "quizQuestion", "quizOptions", "quizCorrect", "quizExplanation"].includes(key)) throw new TRPCError({ code: "BAD_REQUEST", message: "Champ de diapositive non modifiable." }); await validateSlideLinks(slide.trainingId, data); return updateSlide(id as number, data, expectedRevision); }),
     deleteSlide: staffProcedure
       .input(z.object({ id: z.number() }))
-      .mutation(({ input }) => deleteSlide(input.id)),
+      .mutation(async ({ ctx, input }) => { await requireAuthorSlides(ctx.user, [input.id]); return deleteSlide(input.id, ctx.user.id); }),
     reorderSlides: staffProcedure
-      .input(z.object({ orderedIds: z.array(z.number()) }))
-      .mutation(({ input }) => reorderSlides(input.orderedIds)),
+      .input(z.object({ orderedIds: z.array(z.number().int().positive()).min(1).refine(ids=>new Set(ids).size===ids.length), expectedRevisions:z.array(z.number().int().min(0).max(2147483647)).optional() }).refine(input=>input.expectedRevisions===undefined||input.expectedRevisions.length===input.orderedIds.length))
+      .mutation(async ({ ctx, input }) => { const rows = await requireAuthorSlides(ctx.user, input.orderedIds); if (new Set(rows.map(r => r.trainingId)).size > 1) throw new TRPCError({ code: "BAD_REQUEST" }); return reorderSlides(input.orderedIds,input.expectedRevisions); }),
     publish: staffProcedure
       .input(z.object({ id: z.number(), isPublished: z.boolean() }))
-      .mutation(({ input }) => updateTraining(input.id, { isPublished: input.isPublished })),
+      .mutation(async ({ ctx, input }) => { await requireAuthorCourse(ctx.user, input.id); return updateTraining(input.id, { isPublished: input.isPublished }, ctx.user.id); }),
+    pendingAiOutlines: staffProcedure.input(pendingOutlineInput).query(({ctx,input}) => pendingAiOutlines(ctx.user.id,input)),
+    createFromAiOutline: staffProcedure.input(z.object({id:z.number().int().positive()})).mutation(({ctx,input}) => createFromAiOutline(ctx.user.id,input.id)),
     createCourse: staffProcedure
-      .input(z.object({
-        title: z.string().min(1),
-        slug: z.string().min(1),
-        description: z.string().optional(),
-        language: z.string().optional(),
-        durationHours: z.string().optional(),
-        slides: z.array(z.object({
-          title: z.string().optional(),
-          body: z.string().optional(),
-          imageUrl: z.string().optional(),
-          imagePrompt: z.string().optional(),
-          videoUrl: z.string().optional(),
-          audioUrl: z.string().optional(),
-          quizQuestion: z.string().optional(),
-          quizOptions: z.array(z.string()).optional(),
-          quizCorrect: z.array(z.number()).optional(),
-          quizExplanation: z.string().optional(),
-        })).default([]),
-      }))
-      .mutation(({ input }) => createCourseWithSlides(input)),
+      .input(courseDraftInput.omit({categoryId:true}))
+      .mutation(async ({ ctx, input }) => { const owner = await courseOwnership(ctx.user, input.orgId); return createCourseWithSlides({ ...input, ...owner }); }),
   }),
 
   // ─── AI assistance (admin + instructor) ────────────────────────────────────
   ai: router({
+    usage: protectedProcedure.query(({ctx}) => aiRequestUsage(ctx.user.id)),
     providers: staffProcedure.query(() => aiProviderStatus()),
     generateOutline: staffProcedure
       .input(z.object({
+        orgId: z.number().int().positive().optional(),
         provider: z.enum(["openai", "anthropic", "google", "mistral"]),
-        topic: z.string().min(2),
-        audience: z.string().optional(),
-        slideCount: z.number().optional(),
-        language: z.string().optional(),
-        level: z.string().optional(),
-        tone: z.string().optional(),
-        domain: z.string().optional(),
-        objectives: z.string().optional(),
+        topic: z.string().trim().min(2).max(2000),
+        audience: z.string().max(2000).optional(),
+        slideCount: z.number().int().min(2).max(14).optional(),
+        language: z.enum(["fr","en","ar"]).optional(),
+        level: z.string().max(100).optional(),
+        tone: z.string().max(100).optional(),
+        domain: z.string().max(1000).optional(),
+        objectives: z.string().max(10000).optional(),
         quizCoverage: z.enum(["none", "some", "all"]).optional(),
         references: z.boolean().optional(),
       }))
-      .mutation(({ input }) => aiErr(() => aiGenerateOutline(input))),
+      .mutation(async ({ctx,input}) => {const owner=await courseOwnership(ctx.user,input.orgId);return runAiRequest(ctx.user.id,"outline",async requestId => {const output=await aiErr(()=>aiGenerateOutline(input));return saveAiOutline(ctx.user.id,owner.ownerOrgId??null,requestId,input.language??"en",output);});}),
     generateSlideText: staffProcedure
       .input(z.object({
         provider: z.enum(["openai", "anthropic", "google", "mistral"]),
-        instruction: z.string().min(2),
-        language: z.string().optional(),
+        instruction: z.string().trim().min(2).max(20000),
+        language: z.enum(["fr","en","ar"]).optional(),
       }))
-      .mutation(({ input }) => aiErr(() => aiWriteSlideText(input))),
+      .mutation(({ ctx, input }) => runAiRequest(ctx.user.id,"slide_text",() => aiErr(() => aiWriteSlideText(input)))),
     generateQuiz: staffProcedure
       .input(z.object({
         provider: z.enum(["openai", "anthropic", "google", "mistral"]),
-        content: z.string().min(2),
-        language: z.string().optional(),
+        content: z.string().trim().min(2).max(20000),
+        language: z.enum(["fr","en","ar"]).optional(),
       }))
-      .mutation(({ input }) => aiErr(() => aiGenerateQuiz(input))),
-    generateImage: staffProcedure
+      .mutation(({ ctx, input }) => runAiRequest(ctx.user.id,"quiz",() => aiErr(() => aiGenerateQuiz(input)))),
+    generateImage: protectedProcedure
       .input(z.object({
-        prompt: z.string().min(2),
+        trainingId: z.number().int().positive(),
+        prompt: z.string().min(2).max(10000),
         provider: z.enum(["openai", "anthropic", "google", "mistral"]).optional(),
       }))
-      .mutation(({ input }) => aiErr(() => generateImage({ prompt: input.prompt, provider: input.provider as AIProvider | undefined }))),
-    generateAudio: staffProcedure
+      .mutation(async ({ ctx, input }) => { await requireAuthorCourse(ctx.user, input.trainingId); return runAiRequest(ctx.user.id,"image",() => aiErr(() => generateImage({ ...input, actor: ctx.user }))); }),
+    startVideo: staffProcedure.input(startVideoInput).mutation(({ctx,input}) => startAiVideo(ctx.user.id,input)),
+    videos: staffProcedure.input(z.object({trainingId:z.number().int().positive()})).query(({ctx,input}) => listAiVideos(ctx.user.id,input.trainingId)),
+    refreshVideo: staffProcedure.input(z.object({id:z.string().uuid()})).mutation(({ctx,input}) => refreshAiVideo(ctx.user.id,input.id)),
+    generateAudio: protectedProcedure
       .input(z.object({
-        text: z.string().min(1),
+        trainingId: z.number().int().positive(),
+        text: z.string().trim().min(1).max(20000),
         provider: z.enum(["openai", "anthropic", "google", "mistral"]).optional(),
-        language: z.string().optional(),
+        language: z.enum(["fr","en","ar"]).optional(),
       }))
-      .mutation(({ input }) => aiErr(() => generateSpeech({ text: input.text, provider: input.provider as AIProvider | undefined, language: input.language }))),
+      .mutation(async ({ ctx, input }) => { await requireAuthorCourse(ctx.user, input.trainingId); return runAiRequest(ctx.user.id,"speech",() => aiErr(() => generateSpeech({ ...input, actor: ctx.user }))); }),
   }),
 });
 

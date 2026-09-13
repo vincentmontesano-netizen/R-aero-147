@@ -1,3 +1,5 @@
+import { watchSessionChanges } from '@/lib/sessionChange';
+import { clearSessionCache } from '@/lib/sessionCache';
 import { trpc } from "@/lib/trpc";
 import { UNAUTHED_ERR_MSG } from '@shared/const';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -34,7 +36,7 @@ const redirectToLoginIfUnauthorized = (error: unknown, queryKey?: readonly unkno
   const path = String(queryKey?.[0] ?? '');
   if (SILENT_UNAUTH_PATHS.some(p => path.includes(p))) return;
 
-  window.location.href = getLoginUrl();
+  window.location.href = getLoginUrl(window.location.pathname + window.location.search + window.location.hash);
 };
 
 queryClient.getQueryCache().subscribe(event => {
@@ -72,10 +74,18 @@ const trpcClient = trpc.createClient({
   ],
 });
 
-createRoot(document.getElementById("root")!).render(
+const appRoot = createRoot(document.getElementById("root")!);
+appRoot.render(
   <trpc.Provider client={trpcClient} queryClient={queryClient}>
     <QueryClientProvider client={queryClient}>
       <App />
     </QueryClientProvider>
   </trpc.Provider>
 );
+
+// The shared cookie changed in another tab. Discard this account's rendered state.
+const stopWatchingSession = watchSessionChanges(() => {
+  appRoot.unmount();
+  void clearSessionCache(queryClient).finally(() => window.location.reload());
+});
+if (import.meta.hot) import.meta.hot.dispose(stopWatchingSession);

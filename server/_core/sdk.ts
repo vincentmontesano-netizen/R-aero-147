@@ -12,6 +12,7 @@ export type SessionPayload = {
   openId: string;
   appId: string;
   name: string;
+  sessionVersion: number;
 };
 
 class SessionService {
@@ -22,10 +23,10 @@ class SessionService {
   /** Create a signed session token for a user openId. */
   async createSessionToken(
     openId: string,
-    options: { expiresInMs?: number; name?: string } = {}
+    options: { expiresInMs?: number; name?: string; sessionVersion: number }
   ): Promise<string> {
     return this.signSession(
-      { openId, appId: ENV.appId, name: options.name || "" },
+      { openId, appId: ENV.appId, name: options.name || "", sessionVersion: options.sessionVersion },
       options
     );
   }
@@ -42,6 +43,7 @@ class SessionService {
       openId: payload.openId,
       appId: payload.appId,
       name: payload.name,
+      sessionVersion: payload.sessionVersion,
     })
       .setProtectedHeader({ alg: "HS256", typ: "JWT" })
       .setExpirationTime(expirationSeconds)
@@ -60,7 +62,10 @@ class SessionService {
       if (!isNonEmptyString(openId) || !isNonEmptyString(appId) || !isNonEmptyString(name)) {
         return null;
       }
-      return { openId, appId, name };
+      // Existing signed cookies represent version zero until a security change.
+      const sessionVersion = payload.sessionVersion === undefined ? 0 : payload.sessionVersion;
+      if (appId !== ENV.appId || !Number.isSafeInteger(sessionVersion) || (sessionVersion as number) < 0) return null;
+      return { openId, appId, name, sessionVersion: sessionVersion as number };
     } catch {
       return null;
     }

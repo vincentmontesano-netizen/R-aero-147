@@ -21,15 +21,20 @@ const FORMAT = {
 } as const;
 
 export default function Sessions() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
   const [filter, setFilter] = useState<string>("all");
   const { data: sessions = [], isLoading } = trpc.public.sessions.useQuery();
 
+  const mine = trpc.sessions.mine.useQuery(undefined, { enabled: isAuthenticated });
+  const cancel = trpc.sessions.cancel.useMutation({
+    onSuccess: () => { toast.success(t("sessions.cancelledReservation")); utils.sessions.mine.invalidate(); utils.public.sessions.invalidate(); },
+    onError: error => toast.error(error.message),
+  });
   const register = trpc.sessions.register.useMutation({
-    onSuccess: (r: any) => { r?.success ? toast.success(r.message ?? t("sessions.registrationConfirmed")) : toast.error(r?.message ?? t("sessions.error")); utils.public.sessions.invalidate(); },
+    onSuccess: (r: any) => { r?.success ? toast.success(r.message ?? t("sessions.registrationConfirmed")) : toast.error(r?.message ?? t("sessions.error")); utils.public.sessions.invalidate(); utils.sessions.mine.invalidate(); },
     onError: (e) => toast.error(e.message),
   });
 
@@ -55,6 +60,15 @@ export default function Sessions() {
       </div>
 
       <div className="container py-8">
+        {isAuthenticated && <section className="mb-8">
+          <h2 className="font-serif text-xl mb-3">{t("sessions.myReservations")}</h2>
+          {mine.isError && <p role="alert">{mine.error.message}</p>}
+          {mine.data?.length === 0 && <p className="text-sm mb-3">{t("sessions.noReservations")}</p>}
+          <div className="space-y-2">{mine.data?.map(s => <div key={s.registrationId} className="bg-white border rounded-lg p-4 flex gap-3 justify-between items-center">
+            <div><p className="font-medium">{s.title}</p><p className="text-xs">{new Date(s.startDate).toLocaleString(lang)} · {s.status === "cancelled" ? t("sessions.cancelledClass") : t(`sessions.reservation.${s.registrationStatus}`)}</p></div>
+            {s.status !== "cancelled" && s.registrationStatus === "registered" && new Date(s.startDate).getTime() > Date.now() && <Button size="sm" variant="outline" disabled={cancel.isPending} onClick={() => { if (window.confirm(t("sessions.cancelConfirm"))) cancel.mutate({ sessionId: s.id }); }}>{t("sessions.cancelReservation")}</Button>}
+          </div>)}</div>
+        </section>}
         {/* Filters */}
         <div className="flex gap-2 mb-6 flex-wrap">
           {[["all", t("sessions.filterAll")], ["in_person", t("sessions.formatInPerson")], ["virtual", t("sessions.formatVirtual")], ["webinar", t("sessions.formatWebinar")]].map(([v, l]) => (

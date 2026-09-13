@@ -1,3 +1,8 @@
+import {certificateStatus} from '@shared/certificateStatus';
+import {certificateReportLabels} from '@shared/certificateReport';
+import InvoiceRequestDialog from "@/components/InvoiceRequestDialog";
+import InstructorAgenda from "@/components/InstructorAgenda";
+import RefundHistory from "@/components/RefundHistory";
 import { useState, useMemo, useEffect } from "react";
 import { Link, Redirect } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -177,18 +182,34 @@ function FilterBar({
   );
 }
 
+function DashboardLoadError({retry,busy}:{retry:()=>void;busy:boolean}) {
+  const {t}=useI18n();
+  return <div className="rounded-xl border bg-white p-6 space-y-3">
+    <p role="alert">{t('dashboard.loadError')}</p>
+    <Button variant="outline" disabled={busy} onClick={retry}>{t(busy?'common.loading':'learningPlayer.save.retry')}</Button>
+  </div>;
+}
+
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 export default function Dashboard() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { user, isAuthenticated, loading } = useAuth();
-  const { data: enrollments = [], isLoading: loadingEnrollments } = trpc.dashboard.enrollments.useQuery();
-  const { data: certificates = [], isLoading: loadingCerts } = trpc.dashboard.certificates.useQuery();
-  const { data: userOrders = [] } = trpc.dashboard.orders.useQuery();
-  const { data: myOrgs = [] } = trpc.me.organizations.useQuery();
+  const enrollmentQuery = trpc.dashboard.enrollments.useQuery(undefined, { enabled: isAuthenticated });
+  const { data: enrollments = [], isLoading: loadingEnrollments } = enrollmentQuery;
+  const certificateQuery = trpc.dashboard.certificates.useQuery(undefined, { enabled: isAuthenticated });
+  const { data: certificates = [], isLoading: loadingCerts } = certificateQuery;
+  const orderQuery = trpc.dashboard.orders.useQuery(undefined, { enabled: isAuthenticated });
+  const { data: userOrders = [] } = orderQuery;
+  const organizationQuery = trpc.me.organizations.useQuery(undefined, { enabled: isAuthenticated });
+  const { data: myOrgs = [] } = organizationQuery;
   const { state: pdfState, openPreview, closePreview } = usePDFPreview();
   const utils = trpc.useUtils();
 
   // ── Confirm payment on return from Stripe (works even without a webhook) ──
+  const resumePayment = trpc.checkout.resume.useMutation({
+    onSuccess: data => { window.location.href = data.url; },
+    onError: error => { toast.error(error.message); utils.dashboard.orders.invalidate(); },
+  });
   const confirmPayment = trpc.checkout.confirm.useMutation({
     onSuccess: (r) => {
       if (r?.status === "paid") {
@@ -233,20 +254,7 @@ export default function Dashboard() {
   const [orderStatus, setOrderStatus] = useState("");
   const [orderSort, setOrderSort] = useState<SortDir>("desc");
 
-  const generateInvoice = trpc.checkout.generateInvoice.useMutation({
-    onSuccess: (data) => {
-      if (data?.url) {
-        openPreview({
-          pdfUrl: data.url,
-          title: t("dashboard.invoiceModalTitle"),
-          subtitle: t("dashboard.invoiceModalSubtitle"),
-          downloadFilename: "facture-r-aero.pdf",
-        });
-        toast.success(t("dashboard.toastInvoiceGenerated"));
-      }
-    },
-    onError: () => toast.error(t("dashboard.toastInvoiceError")),
-  });
+  const [invoiceOrderId,setInvoiceOrderId]=useState<number|null>(null);
 
   // ── Filtered & sorted formations ──
   const filteredEnrollments = useMemo(() => {
@@ -341,6 +349,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen" style={{ background: "oklch(97% 0.01 88)" }}>
       {/* PDF Preview Modal */}
+      {invoiceOrderId!=null&&<InvoiceRequestDialog orderId={invoiceOrderId} initialName={user?.name??""} onClose={()=>setInvoiceOrderId(null)} onGenerated={url=>{setInvoiceOrderId(null);openPreview({pdfUrl:url,title:t("dashboard.invoiceModalTitle"),downloadFilename:"facture.pdf"});}}/>}
       <PDFPreviewModal
         open={pdfState.open}
         onClose={closePreview}
@@ -381,12 +390,13 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {organizationQuery.isError && <DashboardLoadError busy={organizationQuery.isFetching} retry={() => { void organizationQuery.refetch(); }} />}
           {/* Stats */}
           <div className="grid grid-cols-3 gap-6 mt-8">
             {[
-              { value: enrollments.length, label: t("dashboard.statEnrolledCourses"), icon: BookOpen },
-              { value: inProgressCount, label: t("dashboard.statInProgress"), icon: PlayCircle },
-              { value: certificates.length, label: t("dashboard.statCertificatesEarned"), icon: Award },
+              { value: enrollmentQuery.isError || !enrollmentQuery.data ? '—' : enrollments.length, label: t("dashboard.statEnrolledCourses"), icon: BookOpen },
+              { value: enrollmentQuery.isError || !enrollmentQuery.data ? '—' : inProgressCount, label: t("dashboard.statInProgress"), icon: PlayCircle },
+              { value: certificateQuery.isError || !certificateQuery.data ? '—' : certificates.length, label: t("dashboard.statCertificatesEarned"), icon: Award },
             ].map((stat) => (
               <div key={stat.label} className="rounded-xl p-4" style={{ background: "oklch(97% 0.01 88 / 0.07)", border: "1px solid oklch(97% 0.01 88 / 0.1)" }}>
                 <div className="flex items-center gap-2 mb-1">
@@ -404,6 +414,7 @@ export default function Dashboard() {
         <Tabs value={tab} onValueChange={setTab}>
           <div className="flex flex-col md:flex-row gap-4 md:gap-6 md:items-start">
             <DashboardSidebar active={tab} onSelect={setTab} heading={t("dashboard.sidebarHeading")} items={[
+              ...(user?.role === "instructor" ? [{key:"teaching",label:lang === "fr" ? "Mes classes à animer" : lang === "ar" ? "الفصول الموكلة إليّ" : "My teaching classes",icon:Calendar}] : []),
               { key: "id", label: t("dashboard.navPassport"), icon: IdCard },
               { key: "formations", label: t("dashboard.navMyCourses"), icon: BookOpen, badge: enrollments.length },
               { key: "certificates", label: t("dashboard.navMyCertificates"), icon: Award, badge: certificates.length },
@@ -411,6 +422,7 @@ export default function Dashboard() {
             ]} />
             <div className="flex-1 min-w-0">
 
+          {user?.role === "instructor" && <TabsContent value="teaching"><InstructorAgenda /></TabsContent>}
           {/* ── Formations ── */}
           <TabsContent value="formations">
             <FilterBar
@@ -431,7 +443,7 @@ export default function Dashboard() {
               onReset={() => { setFormSearch(""); setFormDateFrom(""); setFormDateTo(""); setFormStatus(""); setFormSort("desc"); }}
             />
 
-            {loadingEnrollments ? (
+            {enrollmentQuery.isError ? <DashboardLoadError busy={enrollmentQuery.isFetching} retry={() => { void enrollmentQuery.refetch(); }} /> : loadingEnrollments ? (
               <div className="space-y-4">
                 {Array.from({ length: 3 }).map((_, i) => (
                   <div key={i} className="h-24 rounded-xl animate-pulse" style={{ background: "oklch(88% 0.015 88)" }} />
@@ -474,15 +486,15 @@ export default function Dashboard() {
                             <span>{t("dashboard.progressLabel", { percent: enrollment.progressPercent ?? 0 })}</span>
                             <span className="flex items-center gap-1">
                               <Calendar className="w-3 h-3" />
-                              {t("dashboard.enrolledOn", { date: new Date(enrollment.createdAt).toLocaleDateString("fr-FR") })}
+                              {t("dashboard.enrolledOn", { date: new Date(enrollment.createdAt).toLocaleDateString(lang) })}
                             </span>
                             {enrollment.expiresAt && (
-                              <span>{t("dashboard.expiresOn", { date: new Date(enrollment.expiresAt).toLocaleDateString("fr-FR") })}</span>
+                              <span>{t("dashboard.expiresOn", { date: new Date(enrollment.expiresAt).toLocaleDateString(lang) })}</span>
                             )}
                           </div>
                           <Progress value={enrollment.progressPercent ?? 0} className="h-1.5" />
                         </div>
-                        <Link href={`/formation/${enrollment.training?.slug ?? ""}/apprendre`}>
+                        <Link href={`/formation/${enrollment.training?.slug ?? ""}/apprendre?enrollment=${enrollment.id}`}>
                           <Button size="sm" style={{ background: "oklch(19% 0.08 252)", color: "oklch(97% 0.01 88)" }}>
                             {enrollment.status === "not_started" ? t("dashboard.btnStart") : enrollment.status === "completed" ? t("dashboard.btnReview") : t("dashboard.btnContinue")}
                             <ArrowRight className="w-3 h-3 ml-1" />
@@ -509,7 +521,7 @@ export default function Dashboard() {
               onReset={() => { setCertSearch(""); setCertDateFrom(""); setCertDateTo(""); setCertSort("desc"); }}
             />
 
-            {loadingCerts ? (
+            {certificateQuery.isError ? <DashboardLoadError busy={certificateQuery.isFetching} retry={() => { void certificateQuery.refetch(); }} /> : loadingCerts ? (
               <div className="space-y-4">
                 {Array.from({ length: 2 }).map((_, i) => (
                   <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "oklch(88% 0.015 88)" }} />
@@ -529,8 +541,10 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="space-y-4">
-                {filteredCertificates.map((cert) => (
-                  <div key={cert.id} className="rounded-xl p-5 flex items-center justify-between gap-4" style={{ background: "oklch(100% 0 0)", border: "1px solid oklch(88% 0.015 88)" }}>
+                {filteredCertificates.map((cert) => {
+                  const status = certificateStatus(cert);
+                  return (
+                  <div key={cert.id} className="rounded-xl p-5 flex flex-wrap items-center justify-between gap-4" style={{ background: "oklch(100% 0 0)", border: "1px solid oklch(88% 0.015 88)" }}>
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "oklch(68% 0.1 78 / 0.1)" }}>
                         <Award className="w-5 h-5" style={{ color: "oklch(68% 0.1 78)" }} />
@@ -541,13 +555,14 @@ export default function Dashboard() {
                         </div>
                         <div className="flex flex-wrap items-center gap-3 text-xs mt-0.5" style={{ color: "oklch(62% 0.02 240)" }}>
                           <span className="font-mono">{t("dashboard.certNumber", { number: cert.certificateNumber })}</span>
+                          <span className={`rounded px-2 py-1 font-semibold ${status === 'valid' ? 'bg-green-100 text-green-800' : status === 'expired' ? 'bg-amber-100 text-amber-900' : 'bg-red-100 text-red-800'}`}>{certificateReportLabels[lang][status]}</span>
                           <span className="flex items-center gap-1">
                             <Calendar className="w-3 h-3" />
-                            {t("dashboard.issuedOn", { date: new Date(cert.issuedAt).toLocaleDateString("fr-FR") })}
+                            {t("dashboard.issuedOn", { date: new Date(cert.issuedAt).toLocaleDateString(lang) })}
                           </span>
                           {cert.expiresAt && (
                             <span style={{ color: new Date(cert.expiresAt) < new Date() ? "oklch(55% 0.22 27)" : "oklch(62% 0.02 240)" }}>
-                              {t("dashboard.expiresOn", { date: new Date(cert.expiresAt).toLocaleDateString("fr-FR") })}
+                              {t("dashboard.expiresOn", { date: new Date(cert.expiresAt).toLocaleDateString(lang) })}
                             </span>
                           )}
                         </div>
@@ -578,7 +593,7 @@ export default function Dashboard() {
                       )}
                     </div>
                   </div>
-                ))}
+                ); })}
               </div>
             )}
           </TabsContent>
@@ -603,7 +618,7 @@ export default function Dashboard() {
               onReset={() => { setOrderSearch(""); setOrderDateFrom(""); setOrderDateTo(""); setOrderStatus(""); setOrderSort("desc"); }}
             />
 
-            {(userOrders as any[]).length === 0 ? (
+            {orderQuery.isError ? <DashboardLoadError busy={orderQuery.isFetching} retry={() => { void orderQuery.refetch(); }} /> : orderQuery.isLoading ? <p role="status">{t("common.loading")}</p> : (userOrders as any[]).length === 0 ? (
               <div className="text-center py-16">
                 <ShoppingCart className="w-12 h-12 mx-auto mb-4" style={{ color: "oklch(68% 0.1 78)" }} />
                 <div className="font-semibold text-lg mb-2" style={{ color: "oklch(19% 0.08 252)" }}>{t("dashboard.noOrdersTitle")}</div>
@@ -620,7 +635,7 @@ export default function Dashboard() {
             ) : (
               <div className="space-y-4">
                 {filteredOrders.map((order: any) => (
-                  <div key={order.id} className="rounded-xl p-5 flex items-center justify-between gap-4" style={{ background: "oklch(100% 0 0)", border: "1px solid oklch(88% 0.015 88)" }}>
+                  <div key={order.id} className="rounded-xl p-5 flex flex-wrap items-center justify-between gap-4" style={{ background: "oklch(100% 0 0)", border: "1px solid oklch(88% 0.015 88)" }}>
                     <div>
                       <div className="font-semibold text-sm mb-1" style={{ color: "oklch(19% 0.08 252)" }}>
                         {t("dashboard.orderLabel", { ref: order.invoiceNumber ?? `#${order.id}` })}
@@ -628,12 +643,14 @@ export default function Dashboard() {
                       <div className="flex flex-wrap items-center gap-3 text-xs" style={{ color: "oklch(62% 0.02 240)" }}>
                         <span className="flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
-                          {new Date(order.createdAt).toLocaleDateString("fr-FR")}
+                          {new Date(order.createdAt).toLocaleDateString(lang)}
                         </span>
                         <span className="font-medium" style={{ color: "oklch(19% 0.08 252)" }}>
                           {t("dashboard.amountInclTax", { amount: Number(order.totalTtc).toFixed(2) })}
+                          {order.refundedAmountCents > 0 && <span className="block text-xs">{t("refund.amount", { amount: (order.refundedAmountCents / 100).toFixed(2) })}</span>}
                         </span>
                       </div>
+                      {order.refundedAmountCents > 0 && <RefundHistory orderId={order.id} />}
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0">
                       <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{
@@ -643,6 +660,7 @@ export default function Dashboard() {
                         {order.status === "paid" ? t("dashboard.orderStatusPaid") : order.status === "pending" ? t("dashboard.orderStatusPending") : order.status === "failed" ? t("dashboard.orderStatusFailed") : order.status === "refunded" ? t("dashboard.orderStatusRefunded") : order.status}
                       </span>
 
+                      {order.status === "pending" && <Button variant="outline" size="sm" disabled={resumePayment.isPending} onClick={() => resumePayment.mutate({ orderId: order.id })}>{t("checkout.resume")}</Button>}
                       {order.invoiceUrl ? (
                         <Button
                           variant="outline"
@@ -650,30 +668,14 @@ export default function Dashboard() {
                           onClick={() => openPreview({
                             pdfUrl: order.invoiceUrl,
                             title: t("dashboard.invoiceTitle", { ref: order.invoiceNumber ?? `#${order.id}` }),
-                            subtitle: `${t("dashboard.amountInclTax", { amount: Number(order.totalTtc).toFixed(2) })} · ${new Date(order.createdAt).toLocaleDateString("fr-FR")}`,
+                            subtitle: `${t("dashboard.amountInclTax", { amount: Number(order.totalTtc).toFixed(2) })} · ${new Date(order.createdAt).toLocaleDateString(lang)}`,
                             downloadFilename: `facture-${order.invoiceNumber ?? order.id}.pdf`,
                           })}
                         >
                           <Eye className="w-3 h-3 mr-1" /> {t("dashboard.btnPreview")}
                         </Button>
                       ) : order.status === "paid" ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openPreview({
-                            pdfUrl: null,
-                            title: t("dashboard.invoiceTitle", { ref: order.invoiceNumber ?? `#${order.id}` }),
-                            subtitle: t("dashboard.amountInclTax", { amount: Number(order.totalTtc).toFixed(2) }),
-                            downloadFilename: `facture-${order.invoiceNumber ?? order.id}.pdf`,
-                            onGenerate: async () => {
-                              const result = await generateInvoice.mutateAsync({ orderId: order.id, origin: window.location.origin });
-                              return result?.url;
-                            },
-                          })}
-                          disabled={generateInvoice.isPending}
-                        >
-                          <Eye className="w-3 h-3 mr-1" /> {t("dashboard.btnViewInvoice")}
-                        </Button>
+                        <Button variant="outline" size="sm" onClick={()=>setInvoiceOrderId(order.id)}><Eye className="w-3 h-3 mr-1" />{t("dashboard.btnViewInvoice")}</Button>
                       ) : null}
                     </div>
                   </div>

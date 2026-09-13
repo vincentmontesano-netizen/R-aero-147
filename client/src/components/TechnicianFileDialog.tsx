@@ -1,11 +1,13 @@
-import { useState } from "react";
+import {spreadsheetCsv} from "../../../shared/csvExport";
+import { useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Trash2, Download, Award, Clock, ExternalLink, CheckCircle2 } from "lucide-react";
+import { Archive, Download, Award, Clock, ExternalLink, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/i18n";
+import { requestId as createRequestId } from "@/lib/requestId";
 
 const BLUE = "oklch(19% 0.08 252)";
 const GOLD = "oklch(68% 0.1 78)";
@@ -44,18 +46,23 @@ const d = (v: any) => (v ? new Date(v).toLocaleDateString("fr-FR") : "");
 
 /** Consolidated technician dossier (internal + external) with compliance CSV export. */
 export default function TechnicianFileDialog({ employeeId, onClose }: { employeeId: number | null; onClose: () => void }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const [archiveId,setArchiveId] = useState<number | null>(null);
+  const [archiveReason,setArchiveReason] = useState("");
+  const labels = lang === "fr" ? {archive:"Archiver", archived:"Archivée", reason:"Motif de l’archivage", confirm:"Confirmer l’archivage", cancel:"Annuler", notice:"L’entrée et son justificatif seront conservés. L’archivage est définitif."} : lang === "ar" ? {archive:"أرشفة",archived:"مؤرشف",reason:"سبب الأرشفة",confirm:"تأكيد الأرشفة",cancel:"إلغاء",notice:"سيتم الاحتفاظ بالسجل والمستند. الأرشفة نهائية."} : {archive:"Archive",archived:"Archived",reason:"Reason for archiving",confirm:"Confirm archive",cancel:"Cancel",notice:"The entry and its evidence will be retained. Archiving is final."};
   const recLabel = (status: string) =>
     status === "ok" ? "OK" : t(`technicianFileDialog.status.${status}` as any);
   const utils = trpc.useUtils();
   const { data: file } = trpc.company.technicianFile.useQuery({ employeeId: employeeId! }, { enabled: employeeId != null });
   const invalidate = () => utils.company.technicianFile.invalidate({ employeeId: employeeId! });
-  // INV-5: the manager can no longer ADD external trainings — the person surfaces them
-  // (« Mon dossier »). The manager may still remove legacy manager-added entries.
-  const delExt = trpc.company.deleteExternalTraining.useMutation({ onSuccess: invalidate });
+  const archive = trpc.company.archiveExternalTraining.useMutation({
+    onSuccess: () => { invalidate(); setArchiveId(null); setArchiveReason(""); },
+    onError: (e) => toast.error(e.message),
+  });
   const { data: signoffs } = trpc.company.signoffs.useQuery({ employeeId: employeeId! }, { enabled: employeeId != null });
+  const signRequests=useRef(new Map<string,string>());
   const sign = trpc.company.signoff.useMutation({
-    onSuccess: () => { toast.success(t("technicianFileDialog.signoffSuccess")); utils.company.signoffs.invalidate({ employeeId: employeeId! }); },
+    onSuccess: (_result,input) => { signRequests.current.delete(`${input.employeeId}:${input.trainingId}`); toast.success(t("technicianFileDialog.signoffSuccess")); utils.company.signoffs.invalidate({ employeeId: employeeId! }); },
     onError: (e) => toast.error(e.message),
   });
 
@@ -68,10 +75,10 @@ export default function TechnicianFileDialog({ employeeId, onClose }: { employee
     ];
     for (const m of file.scoped?.requiredModules ?? []) rows.push([t("technicianFileDialog.csvRequiredModule"), m.title ?? `#${m.trainingId}`, "R-AERO", recLabel(m.recurrencyStatus), m.hasValidCertificate ? (m.certificateNumber ?? t("technicianFileDialog.csvValid")) : "—", d(m.nextDueAt)]);
     if (!file.scoped) for (const r of file.recurrencies ?? []) rows.push([t("technicianFileDialog.csvRecurrency"), r.training?.title ?? `#${r.trainingId}`, "R-AERO", recLabel(r.status ?? "not_started"), "—", d(r.nextDueAt)]);
-    for (const x of file.externalTrainings ?? []) rows.push([t("technicianFileDialog.csvExternal"), x.title, x.provider ?? "", t("technicianFileDialog.csvCompleted"), x.certNumber ?? "—", d(x.expiresAt)]);
+    for (const x of file.externalTrainings ?? []) rows.push([t("technicianFileDialog.csvExternal"), x.title, x.provider ?? "", x.archivedAt ? `${labels.archived} · ${d(x.archivedAt)} · #${x.archivedBy} · ${x.archiveReason}` : t("technicianFileDialog.csvCompleted"), x.certNumber ?? "—", d(x.expiresAt)]);
     for (const s of signoffs ?? []) rows.push([t("technicianFileDialog.csvSignoff"), s.trainingTitle ?? s.scope ?? t("technicianFileDialog.competence"), t("technicianFileDialog.csvManagerPrefix") + (s.managerName ?? ""), s.decision, "", d(s.signedAt)]);
-    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(";")).join("\n");
-    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+    const csv = spreadsheetCsv(rows);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url; a.download = `dossier_${file.employee.lastName}_${file.employee.firstName}.csv`; a.click();
@@ -111,7 +118,12 @@ export default function TechnicianFileDialog({ employeeId, onClose }: { employee
                       sub={`${m.hasValidCertificate ? t("technicianFileDialog.certificateNumber", { number: m.certificateNumber }) : t("technicianFileDialog.noValidCertificate")}${m.nextDueAt ? " · " + t("technicianFileDialog.dueLabel", { date: d(m.nextDueAt) }) : ""}`}
                       right={<div className="flex items-center gap-2">
                         <span style={{ color: col }}>{lbl}</span>
-                        <button onClick={() => sign.mutate({ employeeId: employeeId!, trainingId: m.trainingId, scope: "COMPETENCE", decision: "VALIDATED" })} disabled={sign.isPending}
+                        <button onClick={() => {
+                          const key=`${employeeId}:${m.trainingId}`;
+                          const requestId=signRequests.current.get(key)??createRequestId();
+                          signRequests.current.set(key,requestId);
+                          sign.mutate({ requestId, employeeId: employeeId!, trainingId: m.trainingId, scope: "COMPETENCE", decision: "VALIDATED" });
+                        }} disabled={sign.isPending}
                           className="text-[11px] px-2 py-0.5 rounded" style={{ border: `1px solid ${GOLD}`, color: BLUE }}>{t("technicianFileDialog.signButton")}</button>
                       </div>} />;
                   })}
@@ -140,8 +152,17 @@ export default function TechnicianFileDialog({ employeeId, onClose }: { employee
             {file.externalTrainings.length > 0 && (
               <Section title={t("technicianFileDialog.externalTrainingsSection")} icon={ExternalLink} count={file.externalTrainings.length}>
                 {file.externalTrainings.map((x: any) => (
-                  <Row key={x.id} title={x.title} sub={`${x.provider ?? "—"}${x.completedAt ? " · " + d(x.completedAt) : ""}${x.expiresAt ? " · " + t("technicianFileDialog.expiresLabel", { date: d(x.expiresAt) }) : ""}`}
-                    right={<button onClick={() => delExt.mutate({ id: x.id })} className="text-red-500"><Trash2 className="w-4 h-4" /></button>} />
+                  <div key={x.id}>
+                    <Row title={x.title} sub={`${x.provider ?? "—"}${x.completedAt ? " · " + d(x.completedAt) : ""}${x.expiresAt ? " · " + t("technicianFileDialog.expiresLabel", { date: d(x.expiresAt) }) : ""}`}
+                      right={x.archivedAt ? <span>{labels.archived}</span> : <Button size="sm" variant="outline" disabled={archive.isPending} onClick={() => {setArchiveId(x.id);setArchiveReason("");}}><Archive className="w-4 h-4 mr-1" />{labels.archive}</Button>} />
+                    {x.archivedAt && <p className="text-xs mt-1">{d(x.archivedAt)} · #{x.archivedBy} · {x.archiveReason}</p>}
+                    {archiveId === x.id && !x.archivedAt && <form className="p-3 space-y-2" onSubmit={e => {e.preventDefault();archive.mutate({id:x.id,reason:archiveReason});}}>
+                      <p className="text-xs">{labels.notice}</p>
+                      <label className="text-sm" htmlFor={`archive-reason-${x.id}`}>{labels.reason}</label>
+                      <Input id={`archive-reason-${x.id}`} value={archiveReason} onChange={e => setArchiveReason(e.target.value)} minLength={3} maxLength={1000} required disabled={archive.isPending} />
+                      <div className="flex gap-2"><Button type="submit" size="sm" disabled={archive.isPending || archiveReason.trim().length < 3}>{labels.confirm}</Button><Button type="button" size="sm" variant="outline" disabled={archive.isPending} onClick={() => {setArchiveId(null);setArchiveReason("");}}>{labels.cancel}</Button></div>
+                    </form>}
+                  </div>
                 ))}
               </Section>
             )}

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import QuoteStatusHistory from "./QuoteStatusHistory";
+import { useState, useRef, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import { useI18n } from "@/i18n";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -18,21 +19,61 @@ type Line = { trainingId: number; title: string; quantity: number; unitPriceHt: 
 /** Admin panel for a quote: message thread + conversion to a Stripe order. */
 export default function QuoteManageDialog({ quote, meId, onClose }: { quote: any | null; meId: number; onClose: () => void }) {
   const { t } = useI18n();
-  const { data: trainings = [] } = trpc.admin.trainings.list.useQuery(undefined, { enabled: quote != null });
+  const trainingsQuery = trpc.admin.trainings.list.useQuery(undefined, { enabled: quote != null });
+  const trainings = (trainingsQuery.data ?? []).filter(course=>course.isPublished && course.publishedVersionId && !course.archivedAt && course.ownerOrgId == null);
+  const organizations = trpc.admin.organizations.list.useQuery(undefined, { enabled: quote != null });
+  const [companyId, setCompanyId] = useState("");
   const [items, setItems] = useState<Line[]>([]);
   const [payUrl, setPayUrl] = useState<string | null>(null);
+  const [attempted,setAttempted]=useState(false);
+  const [invalid,setInvalid]=useState(false);
+  const sending=useRef(false);
+  const utils=trpc.useUtils();
+  useEffect(()=>{
+    const guard=(event:BeforeUnloadEvent)=>{if(sending.current || (items.length>0 && !payUrl)){event.preventDefault();event.returnValue='';}};
+    window.addEventListener('beforeunload',guard);
+    return ()=>window.removeEventListener('beforeunload',guard);
+  },[items.length,payUrl]);
   const convert = trpc.admin.quotes.convert.useMutation({
-    onSuccess: (r: any) => { toast.success(t("quoteManageDialog.orderCreated")); setPayUrl(r?.url ?? null); },
-    onError: (e) => toast.error(e.message),
+    onSuccess: (r) => {
+      if (!r?.url) {toast.error(t("quoteManageDialog.unconfirmed"));return;}
+      setPayUrl(r.url);
+      toast.success(t("quoteManageDialog.orderCreated"));
+      void utils.admin.quotes.list.invalidate();
+      void utils.admin.quotes.statusHistory.invalidate();
+      void utils.admin.orders.invalidate();
+    },
+    onError: () => toast.error(t("quoteManageDialog.unconfirmed")),
   });
 
   const lineFrom = (t: any): Line => ({ trainingId: t.id, title: t.title, quantity: 1, unitPriceHt: Number(t.priceHt ?? 0), unitPriceTtc: Number(t.priceTtc ?? 0) });
-  const addItem = () => { if (trainings[0]) setItems((x) => [...x, lineFrom(trainings[0])]); };
+  const available=trainings.filter(course=>!items.some(item=>item.trainingId===course.id));
+  const addItem = () => { if (available[0]) setItems((x) => [...x, lineFrom(available[0])]); };
   const upd = (idx: number, patch: Partial<Line>) => setItems((x) => x.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
   const totalTtc = items.reduce((s, i) => s + i.unitPriceTtc * (i.quantity || 0), 0);
 
+  const unavailable=trainingsQuery.isError || organizations.isError;
+  const loading=trainingsQuery.isPending || organizations.isPending;
+  const close=()=>{
+    if(sending.current)return;
+    if(items.length && !payUrl && !window.confirm(t(attempted?'quoteManageDialog.closeUnconfirmed':'quoteManageDialog.discard')))return;
+    onClose();
+  };
+  const submit=()=>{
+    if(sending.current || payUrl || unavailable || loading)return;
+    const valid=items.length>0 && items.length<=100 && new Set(items.map(i=>i.trainingId)).size===items.length
+      && (!companyId || organizations.data?.some(o=>o.id===Number(companyId)&&o.status==='ACTIVE'))
+      && items.every(i=>trainings.some(course=>course.id===i.trainingId) && Number.isInteger(i.quantity) && i.quantity>=1 && i.quantity<=(companyId?100:1)
+        && Number.isFinite(i.unitPriceTtc) && i.unitPriceTtc>0 && i.unitPriceTtc<=999999.99 && /^\d+(\.\d{1,2})?$/.test(String(i.unitPriceTtc))
+        && Number.isFinite(i.unitPriceHt) && i.unitPriceHt>=0 && i.unitPriceHt<=i.unitPriceTtc);
+    setInvalid(!valid);
+    if(!valid)return;
+    sending.current=true;setAttempted(true);
+    void convert.mutateAsync({quoteId:quote.id,origin:window.location.origin,items,companyId:companyId?Number(companyId):undefined}).catch(()=>{}).finally(()=>{sending.current=false;});
+  };
+
   return (
-    <Dialog open={quote != null} onOpenChange={(o) => !o && onClose()}>
+    <Dialog open={quote != null} onOpenChange={(o) => !o && close()}>
       <DialogContent className="max-w-2xl max-h-[88vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{t("quoteManageDialog.title", { company: quote?.companyName })}</DialogTitle></DialogHeader>
         {quote && (
@@ -42,6 +83,7 @@ export default function QuoteManageDialog({ quote, meId, onClose }: { quote: any
               {quote.trainingTypes && <> · <span style={{ color: BLUE }}>{t("quoteManageDialog.requested", { types: quote.trainingTypes })}</span></>}
             </div>
 
+            <QuoteStatusHistory key={quote.id} quoteId={quote.id} />
             <div>
               <h3 className="font-semibold text-sm mb-2" style={{ color: BLUE }}>{t("quoteManageDialog.messaging")}</h3>
               <QuoteThread quoteId={quote.id} meId={meId} />
@@ -49,26 +91,34 @@ export default function QuoteManageDialog({ quote, meId, onClose }: { quote: any
 
             <div>
               <h3 className="font-semibold text-sm mb-2" style={{ color: BLUE }}>{t("quoteManageDialog.convertToOrder")}</h3>
+              {unavailable?<p role="alert">{t("quoteManageDialog.dataError")}</p>:loading?<p role="status">{t("common.loading")}</p>:!trainings.length?<p>{t("quoteManageDialog.noCourses")}</p>:null}
+              {(unavailable || (!loading && !trainings.length))&&<Button variant="outline" disabled={trainingsQuery.isFetching||organizations.isFetching} onClick={()=>{void trainingsQuery.refetch();void organizations.refetch();}}>{t("quoteHistory.refresh")}</Button>}
+              <p className="text-xs mb-3">{t("quoteManageDialog.quantityHelp")}</p>
+              <fieldset disabled={attempted || unavailable || loading || trainingsQuery.isFetching || organizations.isFetching} className="min-w-0">
+              <label className="block text-sm mb-3">{t("licenses.buyer")}<select className="border rounded p-2 w-full" value={companyId} onChange={e => setCompanyId(e.target.value)}><option value="">{t("licenses.personal")}</option>{organizations.data?.filter(o => o.status === "ACTIVE").map(o => <option key={o.id} value={o.id}>{o.name}</option>)}</select></label>
               <div className="space-y-2">
                 {items.map((it, idx) => (
                   <div key={idx} className="flex gap-2 items-center">
-                    <select value={it.trainingId} onChange={(e) => { const t = trainings.find((x: any) => x.id === Number(e.target.value)); if (t) upd(idx, lineFrom(t)); }}
+                    <select aria-label={t("quoteManageDialog.training")} value={it.trainingId} onChange={(e) => { const t = trainings.find((x: any) => x.id === Number(e.target.value)); if (t) upd(idx, lineFrom(t)); }}
                       className="h-8 rounded-md border px-2 text-xs flex-1 min-w-0" style={{ borderColor: BORDER }}>
-                      {trainings.map((t: any) => <option key={t.id} value={t.id}>{t.title}</option>)}
+                      {trainings.filter(course=>course.id===it.trainingId || !items.some(item=>item.trainingId===course.id)).map((t: any) => <option key={t.id} value={t.id}>{t.title}</option>)}
                     </select>
-                    <Input type="number" min={1} value={it.quantity} onChange={(e) => upd(idx, { quantity: Number(e.target.value) })} className="h-8 w-16" title={t("quoteManageDialog.quantity")} />
-                    <Input type="number" min={0} step="0.01" value={it.unitPriceTtc} onChange={(e) => upd(idx, { unitPriceTtc: Number(e.target.value), unitPriceHt: +(Number(e.target.value) / 1.2).toFixed(2) })} className="h-8 w-24" title={t("quoteManageDialog.unitPriceTtc")} />
-                    <button onClick={() => setItems(items.filter((_, i) => i !== idx))} className="text-red-500 shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    <Input type="number" min={1} max={companyId?100:1} step={1} value={it.quantity} onChange={(e) => upd(idx, { quantity: Number(e.target.value) })} className="h-8 w-16" title={t("quoteManageDialog.quantity")} />
+                    <Input type="number" min="0.01" max="999999.99" step="0.01" value={it.unitPriceTtc} onChange={(e) => upd(idx, { unitPriceTtc: Number(e.target.value), unitPriceHt: +(Number(e.target.value) / 1.2).toFixed(2) })} className="h-8 w-24" title={t("quoteManageDialog.unitPriceTtc")} />
+                    <button aria-label={t("quoteManageDialog.removeTraining")} onClick={() => setItems(items.filter((_, i) => i !== idx))} className="text-red-500 shrink-0"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 ))}
-                <button onClick={addItem} className="text-xs flex items-center gap-1" style={{ color: GOLD }}><Plus className="w-3 h-3" /> {t("quoteManageDialog.addTraining")}</button>
+                <button disabled={!available.length || items.length>=100} onClick={addItem} className="text-xs flex items-center gap-1" style={{ color: GOLD }}><Plus className="w-3 h-3" /> {t("quoteManageDialog.addTraining")}</button>
               </div>
+              </fieldset>
+              {invalid&&<p role="alert" className="text-sm text-red-700">{t("quoteManageDialog.invalid")}</p>}
+              {(convert.isError || (convert.isSuccess&&!payUrl))&&<p role="alert" className="text-sm text-red-700">{t("quoteManageDialog.unconfirmed")}</p>}
               {items.length > 0 && (
                 <div className="flex items-center justify-between mt-3">
                   <span className="text-sm font-medium" style={{ color: BLUE }}>{t("quoteManageDialog.totalTtc", { amount: totalTtc.toFixed(2) })}</span>
-                  <Button size="sm" disabled={convert.isPending} style={{ background: BLUE, color: "white" }}
-                    onClick={() => convert.mutate({ quoteId: quote.id, origin: window.location.origin, items })}>
-                    <CreditCard className="w-4 h-4 mr-1" /> {t("quoteManageDialog.createOrderAndPaymentLink")}
+                  <Button size="sm" disabled={convert.isPending || !!payUrl || unavailable || loading || trainingsQuery.isFetching || organizations.isFetching} style={{ background: BLUE, color: "white" }}
+                    onClick={submit}>
+                    <CreditCard className="w-4 h-4 mr-1" /> {t(convert.isPending?"common.loading":attempted&&!payUrl?"quoteManageDialog.retry":"quoteManageDialog.createOrderAndPaymentLink")}
                   </Button>
                 </div>
               )}

@@ -1,4 +1,17 @@
-import { useState, useEffect } from "react";
+import SupportNotificationQueue from "@/components/SupportNotificationQueue";
+import { requestId as createRequestId } from "@/lib/requestId";
+import BroadcastHistory from "@/components/BroadcastHistory";
+import {supportRequestLabels,type supportRequestKinds} from "../../../shared/supportRequest";
+import {collectComplianceReport} from "../../../shared/collectComplianceReport";
+import {certificateReportLabels} from "../../../shared/certificateReport";
+import {spreadsheetCsv} from "../../../shared/csvExport";
+import AdminCertificates from "@/components/AdminCertificates";
+import AdminWebinars from "@/components/AdminWebinars";
+import OrganizationStatusHistory from "@/components/OrganizationStatusHistory";
+import ExamFinalizationAlerts from "@/components/ExamFinalizationAlerts";
+import PaymentReconciliation from "@/components/PaymentReconciliation";
+import RefundHistory from "@/components/RefundHistory";
+import { useState, useEffect, useRef } from "react";
 import { useI18n } from "@/i18n";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -156,42 +169,69 @@ function TrainingFormDialog({ training, open, onOpenChange, onSuccess }: { train
 }
 
 export default function AdminDashboard() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const certificateLabels=certificateReportLabels[lang];
   const { user } = useAuth();
   const [manageQuote, setManageQuote] = useState<any | null>(null);
   const { data: stats } = trpc.admin.stats.useQuery();
   const { data: users = [] } = trpc.admin.users.useQuery();
   const { data: adminTrainings = [], refetch: refetchTrainings } = trpc.admin.trainings.list.useQuery();
   const { data: orders = [] } = trpc.admin.orders.useQuery();
-  const { data: quotes = [], refetch: refetchQuotes } = trpc.admin.quotes.list.useQuery();
-  const { data: adminTickets = [], refetch: refetchTickets } = trpc.support.adminList.useQuery();
-  const setTicketStatus = trpc.support.setStatus.useMutation({ onSuccess: () => refetchTickets() });
-  const broadcast = trpc.admin.broadcast.useMutation({ onSuccess: (r: any) => toast.success(t("adminDashboard.toastBroadcastSent", { count: r?.sent ?? 0 })), onError: (e) => toast.error(e.message) });
+  const quotesQuery = trpc.admin.quotes.list.useQuery();
+  const {data:quotes=[],refetch:refetchQuotes}=quotesQuery;
+  const [ticketBeforeId, setTicketBeforeId] = useState<number | undefined>();
+  const [ticketStatusFilter, setTicketStatusFilter] = useState<"" | "OPEN" | "PENDING" | "CLOSED">("");
+  const [ticketSearch, setTicketSearch] = useState("");
+  const ticketsQuery = trpc.support.adminList.useQuery({beforeId: ticketBeforeId, status: ticketStatusFilter || undefined, search: ticketSearch});
+  const adminTickets = ticketsQuery.data?.entries ?? [];
+  const refetchTickets = ticketsQuery.refetch;
+  const setTicketStatus = trpc.support.setStatus.useMutation({ onSuccess: () => {refetchTickets();utils.support.statusHistory.invalidate();},onError:e=>toast.error(e.message) });
+  const mailRequest = useRef<{signature: string; id: string} | null>(null);
+  const broadcastRequest = useRef<{signature: string; id: string} | null>(null);
+  const reuseRequest = (input: object, holder: {current: {signature: string; id: string} | null}) => {
+    const signature = JSON.stringify(input);
+    if (holder.current?.signature !== signature) holder.current = {signature, id: createRequestId()};
+    return holder.current.id;
+  };
+  const reportBroadcast = (result: {sent: number; recipients: number; email: {requested: boolean; accepted: number; failed: number; skipped: number}}) => {
+    const message = result.email.requested ? t('adminDashboard.mailOutcome', {notifications: result.sent, accepted: result.email.accepted, failed: result.email.failed, skipped: result.email.skipped}) : t('adminDashboard.toastBroadcastSent', {count: result.sent});
+    if (result.email.failed || result.email.skipped || !result.recipients) toast.warning(message); else toast.success(message);
+  };
+  const broadcast = trpc.admin.broadcast.useMutation({ onSuccess: reportBroadcast, onError: (e) => toast.error(e.message), onSettled: () => { void utils.admin.broadcastHistory.invalidate(); void utils.admin.broadcastRecipients.invalidate(); } });
   const [openTicket, setOpenTicket] = useState<number | null>(null);
   const [bcast, setBcast] = useState({ title: "", body: "", audience: "all", email: false });
   const [emailSubTab, setEmailSubTab] = useState<"compose" | "inbox">("compose");
   // Dedicated email composer (Emails module).
   const [mail, setMail] = useState({ mode: "all" as "all" | "company" | "user", orgId: "", userId: "", subject: "", body: "", alsoInApp: true });
   const sendMail = trpc.admin.broadcast.useMutation({
-    onSuccess: () => { toast.success(t("adminDashboard.toastMailSent")); setMail((m) => ({ ...m, subject: "", body: "" })); }, onError: (e) => toast.error(e.message),
+    onSuccess: (result, input) => { reportBroadcast(result); if (result.recipients > 0 && !result.email.failed && !result.email.skipped) setMail((m) => m.subject.trim() === input.title.trim() && m.body === (input.body ?? "") ? ({ ...m, subject: "", body: "" }) : m); }, onError: (e) => toast.error(e.message), onSettled: () => { void utils.admin.broadcastHistory.invalidate(); void utils.admin.broadcastRecipients.invalidate(); },
   });
   const submitMail = () => {
-    const base: any = { title: mail.subject, body: mail.body || undefined, email: true };
-    if (!mail.alsoInApp) base.title = mail.subject; // email always carries the subject as title
-    if (mail.mode === "user") { if (!mail.userId) return toast.error(t("adminDashboard.mailPickUser")); sendMail.mutate({ ...base, userId: Number(mail.userId) }); }
-    else if (mail.mode === "company") { if (!mail.orgId) return toast.error(t("adminDashboard.mailPickOrg")); sendMail.mutate({ ...base, audience: `company:${mail.orgId}` }); }
-    else sendMail.mutate({ ...base, audience: "all" });
+    if (sendMail.isPending) return;
+    const base = { title: mail.subject, body: mail.body || undefined, email: true, inApp: mail.alsoInApp };
+    const send = (input: Parameters<typeof sendMail.mutate>[0]) => sendMail.mutate({...input, requestId: reuseRequest(input, mailRequest)});
+    if (mail.mode === "user") { if (!mail.userId) return toast.error(t("adminDashboard.mailPickUser")); send({ ...base, userId: Number(mail.userId) }); }
+    else if (mail.mode === "company") { if (!mail.orgId) return toast.error(t("adminDashboard.mailPickOrg")); send({ ...base, audience: `company:${mail.orgId}` }); }
+    else send({ ...base, audience: "all" });
   };
-  const { data: complianceReport = [] } = trpc.admin.complianceReport.useQuery();
+  const reportQuery=trpc.admin.complianceReport.useInfiniteQuery({}, {getNextPageParam:page=>page.nextCursor??undefined});
+  const complianceReport=reportQuery.data?.pages.flatMap(page=>page.entries)??[];
+  const [exportingReport,setExportingReport]=useState(false);
+  const reportExport = useRef<AbortController | null>(null);
+  const [exportedRows, setExportedRows] = useState(0);
+  const [exportNotice, setExportNotice] = useState<'cancelled' | 'error' | null>(null);
+  useEffect(() => () => { reportExport.current?.abort(); }, [user?.id]);
+  const reportText=lang==='fr'?{more:'Afficher la suite',retry:'Réessayer',error:'Rapport indisponible.',loading:'Chargement…',exporting:'Préparation du CSV…'}:lang==='ar'?{more:'عرض المزيد',retry:'إعادة المحاولة',error:'التقرير غير متاح.',loading:'جارٍ التحميل…',exporting:'جارٍ إعداد CSV…'}:{more:'Show more',retry:'Retry',error:'Report unavailable.',loading:'Loading…',exporting:'Preparing CSV…'};
 
   const updateQuoteStatus = trpc.admin.quotes.updateStatus.useMutation({
-    onSuccess: () => { toast.success(t("adminDashboard.toastStatusUpdated")); refetchQuotes(); },
+    onSuccess: async () => { toast.success(t("adminDashboard.toastStatusUpdated")); await Promise.all([refetchQuotes(),utils.admin.quotes.statusHistory.invalidate()]); },
+    onError: () => { toast.error(t("quoteHistory.updateError")); void refetchQuotes(); },
   });
   const updateTraining = trpc.admin.trainings.update.useMutation({
     onSuccess: () => { toast.success(t("adminDashboard.toastTrainingUpdated")); refetchTrainings(); },
   });
   const deleteTrainingM = trpc.admin.trainings.delete.useMutation({
-    onSuccess: () => { toast.success(t("adminDashboard.toastTrainingDeleted")); refetchTrainings(); },
+    onSuccess: () => { toast.success(t("contentArchive.done")); refetchTrainings(); },
     onError: (e) => toast.error(e.message),
   });
   const [trainingDialog, setTrainingDialog] = useState<{ training: any | null } | null>(null);
@@ -211,13 +251,11 @@ export default function AdminDashboard() {
   const [userDialog, setUserDialog] = useState<{ mode: "new"; defaultRole?: string } | { mode: "edit"; user: any } | null>(null);
   const { data: organizations = [] } = trpc.admin.organizations.list.useQuery();
   const setOrgStatus = trpc.admin.organizations.setStatus.useMutation({
-    onSuccess: () => { toast.success(t("adminDashboard.toastOrgUpdated")); utils.admin.organizations.list.invalidate(); }, onError: (e) => toast.error(e.message),
-  });
-  const deleteOrg = trpc.admin.organizations.delete.useMutation({
-    onSuccess: () => { toast.success(t("adminDashboard.toastOrgDeleted")); utils.admin.organizations.list.invalidate(); }, onError: (e) => toast.error(e.message),
+    onSuccess: () => { toast.success(t("adminDashboard.toastOrgUpdated")); utils.admin.organizations.list.invalidate(); utils.admin.organizations.statusHistory.invalidate(); }, onError: (e) => toast.error(e.message),
   });
   const [orgDialog, setOrgDialog] = useState<{ mode: "new" } | { mode: "edit"; org: any } | null>(null);
   const [mgrOrg, setMgrOrg] = useState<any | null>(null);
+  const [historyOrg, setHistoryOrg] = useState<number | null>(null);
   const { data: settings } = trpc.admin.settings.get.useQuery();
   const [mistralKey, setMistralKey] = useState("");
   const saveMistral = trpc.admin.settings.setMistralKey.useMutation({
@@ -253,22 +291,32 @@ export default function AdminDashboard() {
     onSuccess: () => { toast.success(t("adminDashboard.toastStripeSaved")); setStripe((s) => ({ ...s, secretKey: "", webhookSecret: "" })); utils.admin.settings.get.invalidate(); }, onError: (e) => toast.error(e.message),
   });
 
-  const exportComplianceCSV = () => {
-    const headers = [t("adminDashboard.csvLearner"), t("adminDashboard.csvEmail"), t("adminDashboard.csvTraining"), t("adminDashboard.csvType"), t("adminDashboard.csvStatus"), t("adminDashboard.csvProgress"), t("adminDashboard.csvCompletionDate"), t("adminDashboard.csvExpiration"), t("adminDashboard.csvCertificateNumber")];
-    const rows = complianceReport.map((r: any) => [
+  const exportComplianceCSV = async () => {
+    if(reportExport.current)return;
+    const controller = new AbortController();
+    reportExport.current = controller;
+    setExportNotice(null);
+    setExportedRows(0);
+    setExportingReport(true);
+    try{
+    const completeReport=await collectComplianceReport(cursor=>utils.admin.complianceReport.fetch({cursor,pageSize:250}), { signal: controller.signal, onProgress: setExportedRows });
+    const headers = [t("adminDashboard.csvLearner"), t("adminDashboard.csvEmail"), t("adminDashboard.csvTraining"), t("adminDashboard.csvType"), t("adminDashboard.csvStatus"), t("adminDashboard.csvProgress"), t("adminDashboard.csvCompletionDate"), certificateLabels.accessEnd, t("adminDashboard.csvCertificateNumber"),certificateLabels.status,certificateLabels.certificateEnd,certificateLabels.holder];
+    const rows = completeReport.map((r) => [
       r.userName, r.userEmail, r.trainingTitle, r.trainingType, r.status,
       `${r.progressPercent}%`,
       r.completedAt ? new Date(r.completedAt).toLocaleDateString("fr-FR") : "—",
       r.expiresAt ? new Date(r.expiresAt).toLocaleDateString("fr-FR") : "—",
-      r.certificateNumber ?? "—",
+      r.certificateNumber ?? "—",certificateLabels[r.certificateStatus],r.certificateExpiresAt?new Date(r.certificateExpiresAt).toLocaleDateString(lang):"—",r.certificateHolderName??"—",
     ]);
-    const csv = [headers, ...rows].map((r) => r.join(";")).join("\n");
+    const csv = spreadsheetCsv([headers,...rows]);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url; a.download = "rapport_conformite_r-aero.csv"; a.click();
     URL.revokeObjectURL(url);
     toast.success(t("adminDashboard.toastComplianceExported"));
+    }catch{setExportNotice(controller.signal.aborted ? 'cancelled' : 'error');}
+    finally{reportExport.current = null;setExportingReport(false);}
   };
 
   if (user?.role !== "admin") {
@@ -338,6 +386,7 @@ export default function AdminDashboard() {
               { key: "support", label: t("adminDashboard.navSupport"), icon: LifeBuoy, section: t("adminDashboard.secComms") },
               { key: "emails", label: t("adminDashboard.navEmails"), icon: Mail, section: t("adminDashboard.secComms") },
               // Conformité
+              { key: "certificates", label: lang==='fr'?'Certificats':lang==='ar'?'الشهادات':'Certificates', icon: GraduationCap, section: t("adminDashboard.secCompliance") },
               { key: "compliance", label: t("adminDashboard.navCompliance"), icon: BarChart3, section: t("adminDashboard.secCompliance") },
               // Configuration
               { key: "stripe", label: t("adminDashboard.navStripe"), icon: CreditCard, section: t("adminDashboard.secConfig") },
@@ -346,6 +395,7 @@ export default function AdminDashboard() {
             <div className="flex-1 min-w-0">
 
           {/* Trainings */}
+          <TabsContent value="certificates"><AdminCertificates /></TabsContent>
           <TabsContent value="trainings">
             <div className="flex gap-2 mb-5 border-b" style={{ borderColor: "oklch(88% 0.015 88)" }}>
               {([["catalogue", t("adminDashboard.subTabCatalogue")], ["content", t("adminDashboard.subTabContent")], ["sessions", t("adminDashboard.subTabSessions")]] as const).map(([k, l]) => (
@@ -396,7 +446,7 @@ export default function AdminDashboard() {
                           <Button variant="outline" size="sm" onClick={() => updateTraining.mutate({ id: tr.id, isPublished: !tr.isPublished })}>
                             {tr.isPublished ? t("adminDashboard.btnUnpublish") : t("adminDashboard.btnPublish")}
                           </Button>
-                          <button onClick={() => { if (confirm(t("adminDashboard.confirmDeleteTraining", { title: tr.title }))) deleteTrainingM.mutate({ id: tr.id }); }} title={t("adminDashboard.btnDelete")} className="p-1.5 rounded hover:bg-black/5 text-red-500"><Trash2 className="w-4 h-4" /></button>
+                          <button onClick={() => { if (confirm(t("contentArchive.confirm"))) deleteTrainingM.mutate({ id: tr.id }); }} title={t("contentArchive.action")} className="p-1.5 rounded hover:bg-black/5 text-red-500"><Trash2 className="w-4 h-4" /></button>
                         </div>
                       </td>
                     </tr>
@@ -408,7 +458,7 @@ export default function AdminDashboard() {
             ) : formSubTab === "content" ? (
               <AdminContentManager trainings={adminTrainings as any} />
             ) : (
-              <AdminSessions />
+              <><AdminSessions /><AdminWebinars /></>
             )}
           </TabsContent>
 
@@ -493,13 +543,13 @@ export default function AdminDashboard() {
                       <tr key={o.id} style={{ background: i % 2 === 0 ? "oklch(100% 0 0)" : "oklch(97% 0.01 88)", borderTop: "1px solid oklch(93% 0.015 88)" }}>
                         <td className="px-4 py-3 font-mono text-xs" style={{ color: "oklch(45% 0.02 240)" }}>{o.invoiceNumber ?? `#${o.id}`}</td>
                         <td className="px-4 py-3" style={{ color: "oklch(19% 0.08 252)" }}>{o.user?.name ?? o.user?.email ?? "—"}</td>
-                        <td className="px-4 py-3 font-medium" style={{ color: "oklch(19% 0.08 252)" }}>{Number(o.totalTtc).toFixed(2)} €</td>
+                        <td className="px-4 py-3 font-medium" style={{ color: "oklch(19% 0.08 252)" }}>{Number(o.totalTtc).toFixed(2)} €{o.refundedAmountCents > 0 && <><span className="block text-xs">{t("refund.amount", { amount: (o.refundedAmountCents / 100).toFixed(2) })}</span><RefundHistory orderId={o.id} /></>}</td>
                         <td className="px-4 py-3">
                           <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ color: statusConf.color, background: statusConf.color + " / 0.1" }}>
                             {t(statusConf.labelKey)}
                           </span>
                         </td>
-                        <td className="px-4 py-3 font-mono text-xs" style={{ color: "oklch(62% 0.02 240)" }}>{o.stripePaymentIntentId ? o.stripePaymentIntentId.slice(0, 16) + "..." : "—"}</td>
+                        <td className="px-4 py-3 font-mono text-xs" style={{ color: "oklch(62% 0.02 240)" }}>{o.stripePaymentIntentId ? o.stripePaymentIntentId.slice(0, 16) + "..." : "—"}<PaymentReconciliation orderId={o.id} sessionId={o.stripeSessionId} /></td>
                         <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{new Date(o.createdAt).toLocaleDateString("fr-FR")}</td>
                       </tr>
                     );
@@ -512,8 +562,12 @@ export default function AdminDashboard() {
           {/* Quotes */}
           <TabsContent value="quotes">
             <h2 className="font-semibold mb-4" style={{ color: "oklch(19% 0.08 252)" }}>{t("adminDashboard.quotesTitle")}</h2>
+            <Button variant="outline" disabled={quotesQuery.isFetching || updateQuoteStatus.isPending} onClick={async()=>{const result=await refetchQuotes();if(!result.isError)updateQuoteStatus.reset();}}>{t("quoteHistory.refresh")}</Button>
+            {quotesQuery.isError&&<p role="alert">{t("quoteHistory.listError")}</p>}
+            {quotesQuery.isPending&&<p role="status">{t("common.loading")}</p>}
+            {updateQuoteStatus.isError && <p role="alert" className="text-sm text-red-700 mb-3">{t("quoteHistory.updateError")}</p>}
             <div className="space-y-4">
-              {quotes.map((q: any) => {
+              {!quotesQuery.isError && quotes.map((q: any) => {
                 const statusConf = QUOTE_STATUS[q.status] ?? QUOTE_STATUS.received;
                 return (
                   <div key={q.id} className="rounded-xl p-5" style={{ background: "oklch(100% 0 0)", border: "1px solid oklch(88% 0.015 88)" }}>
@@ -530,7 +584,7 @@ export default function AdminDashboard() {
                         <div className="text-xs mt-2" style={{ color: "oklch(62% 0.02 240)" }}>{t("adminDashboard.receivedOn", { date: new Date(q.createdAt).toLocaleDateString("fr-FR") })}</div>
                       </div>
                       <div className="flex flex-col gap-2 items-end shrink-0">
-                        <select value={q.status} onChange={(e) => updateQuoteStatus.mutate({ id: q.id, status: e.target.value as any })} className="h-8 rounded-md border px-2 text-xs min-w-32" style={{ borderColor: "oklch(88% 0.015 88)" }}>
+                        <select disabled={updateQuoteStatus.isPending || quotesQuery.isFetching} value={q.status} onChange={(e) => updateQuoteStatus.mutate({ id: q.id, expectedRevision:q.revision, status: e.target.value as any })} className="h-8 rounded-md border px-2 text-xs min-w-32" style={{ borderColor: "oklch(88% 0.015 88)" }}>
                           {Object.entries(QUOTE_STATUS).map(([v, { labelKey }]) => <option key={v} value={v}>{t(labelKey)}</option>)}
                         </select>
                         <button onClick={() => setManageQuote(q)} className="text-xs px-3 py-1.5 rounded-md font-medium" style={{ background: "oklch(19% 0.08 252)", color: "white" }}>{t("adminDashboard.btnManageReply")}</button>
@@ -540,26 +594,34 @@ export default function AdminDashboard() {
                 );
               })}
             </div>
-            <QuoteManageDialog quote={manageQuote} meId={user?.id ?? 0} onClose={() => { setManageQuote(null); refetchQuotes(); }} />
+            <QuoteManageDialog key={manageQuote?.id ?? "closed"} quote={manageQuote} meId={user?.id ?? 0} onClose={() => { setManageQuote(null); refetchQuotes(); }} />
           </TabsContent>
 
           {/* Compliance */}
           <TabsContent value="compliance">
+            <ExamFinalizationAlerts />
             <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
               <h2 className="font-semibold" style={{ color: "oklch(19% 0.08 252)" }}>{t("adminDashboard.complianceTitle")}</h2>
-              <Button variant="outline" size="sm" onClick={exportComplianceCSV}>
-                <Download className="w-4 h-4 mr-1" /> {t("adminDashboard.btnExportCsvAudit")}
+              <Button variant="outline" size="sm" disabled={exportingReport} onClick={exportComplianceCSV}>
+                <Download className="w-4 h-4 mr-1" /> {exportingReport?reportText.exporting:t("adminDashboard.btnExportCsvAudit")}
               </Button>
             </div>
+            {exportingReport && <div className="flex flex-wrap items-center gap-3 mb-3">
+              <p role="status">{t('adminDashboard.exportProgress', { count: exportedRows })}</p>
+              <Button variant="outline" size="sm" onClick={() => reportExport.current?.abort()}>{t('adminDashboard.cancelExport')}</Button>
+            </div>}
+            {exportNotice && <p role={exportNotice === 'error' ? 'alert' : 'status'} className="mb-3">{t(exportNotice === 'error' ? 'adminDashboard.exportFailed' : 'adminDashboard.exportCancelled')}</p>}
+            {reportQuery.isLoading&&<p role="status">{reportText.loading}</p>}
+            {reportQuery.isError&&<div role="alert"><p>{reportText.error}</p><Button variant="outline" onClick={()=>void reportQuery.refetch()}>{reportText.retry}</Button></div>}
             <div className="rounded-xl overflow-x-auto" style={{ border: "1px solid oklch(88% 0.015 88)" }}>
               <table className="w-full text-sm min-w-[640px]">
                 <thead style={{ background: "oklch(93% 0.015 88)" }}>
-                  <tr>{[t("adminDashboard.thLearner"), t("adminDashboard.thTraining"), t("adminDashboard.thStatus"), t("adminDashboard.thProgress"), t("adminDashboard.thCompletion"), t("adminDashboard.thExpiration"), t("adminDashboard.thCertificate")].map((h) => (
+                  <tr>{[t("adminDashboard.thLearner"), t("adminDashboard.thTraining"), t("adminDashboard.thStatus"), t("adminDashboard.thProgress"), t("adminDashboard.thCompletion"), certificateLabels.accessEnd, t("adminDashboard.thCertificate")].map((h) => (
                     <th key={h} className="text-left px-4 py-3 font-semibold text-xs tracking-wide" style={{ color: "oklch(45% 0.02 240)" }}>{h}</th>
                   ))}</tr>
                 </thead>
                 <tbody>
-                  {complianceReport.map((r: any, i: number) => {
+                  {complianceReport.map((r, i) => {
                     const Icon = ENROLLMENT_STATUS_ICONS[r.status] ?? Clock;
                     const statusColors: Record<string, string> = {
                       completed: "oklch(55% 0.18 145)", in_progress: "oklch(42% 0.1 218)",
@@ -584,8 +646,11 @@ export default function AdminDashboard() {
                         <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{r.progressPercent}%</td>
                         <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{r.completedAt ? new Date(r.completedAt).toLocaleDateString("fr-FR") : "—"}</td>
                         <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{r.expiresAt ? new Date(r.expiresAt).toLocaleDateString("fr-FR") : "—"}</td>
-                        <td className="px-4 py-3 font-mono text-xs" style={{ color: r.certificateNumber ? "oklch(55% 0.18 145)" : "oklch(62% 0.02 240)" }}>
-                          {r.certificateNumber ?? "—"}
+                        <td className="px-4 py-3 font-mono text-xs" style={{ color: r.certificateStatus==='valid' ? "oklch(55% 0.18 145)" : "oklch(45% 0.02 240)" }}>
+                          <div>{r.certificateNumber ?? "—"}</div>
+                          <div className="font-sans text-sm">{certificateLabels[r.certificateStatus]}</div>
+                          {r.certificateExpiresAt&&<div className="font-sans text-sm">{certificateLabels.certificateEnd}: {new Date(r.certificateExpiresAt).toLocaleDateString(lang)}</div>}
+                          {r.certificateHolderName&&<div className="font-sans text-sm">{certificateLabels.holder}: {r.certificateHolderName}</div>}
                         </td>
                       </tr>
                     );
@@ -593,10 +658,12 @@ export default function AdminDashboard() {
                 </tbody>
               </table>
             </div>
+            {reportQuery.hasNextPage&&<Button variant="outline" className="mt-3" disabled={reportQuery.isFetchingNextPage} onClick={()=>void reportQuery.fetchNextPage()}>{reportQuery.isFetchingNextPage?reportText.loading:reportText.more}</Button>}
           </TabsContent>
 
           {/* Organizations */}
           <TabsContent value="organizations">
+            <p className="text-sm text-slate-600 mb-4">{lang === "fr" ? "Suspendez une compagnie pour bloquer ses accès tout en conservant ses formations, paiements et traces de conformité." : lang === "ar" ? "علّق الشركة لمنع وصولها مع الاحتفاظ بالتدريب والمدفوعات وسجلات الامتثال." : "Suspend a company to block access while retaining its training, payments and compliance records."}</p>
             <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
               <h2 className="font-semibold" style={{ color: "oklch(19% 0.08 252)" }}>{t("adminDashboard.organizationsTitle")}</h2>
               <Button size="sm" onClick={() => setOrgDialog({ mode: "new" })} style={{ background: "oklch(68% 0.1 78)", color: "oklch(19% 0.08 252)" }}><Plus className="w-4 h-4 mr-1" /> {t("adminDashboard.btnNewOrg")}</Button>
@@ -622,8 +689,8 @@ export default function AdminDashboard() {
                           <div className="flex items-center gap-1.5">
                             <Button variant="outline" size="sm" onClick={() => setMgrOrg(o)}><UserCog className="w-3.5 h-3.5 mr-1" /> {t("adminDashboard.btnManagers")}</Button>
                             <Button variant="outline" size="sm" onClick={() => setOrgDialog({ mode: "edit", org: o })}><Pencil className="w-3.5 h-3.5 mr-1" /> {t("adminDashboard.btnEdit")}</Button>
-                            <Button variant="outline" size="sm" onClick={() => setOrgStatus.mutate({ id: o.id, status: suspended ? "ACTIVE" : "SUSPENDED" })}>{suspended ? t("adminDashboard.btnActivate") : t("adminDashboard.btnSuspend")}</Button>
-                            <button title={t("adminDashboard.btnDelete")} onClick={() => { if (window.confirm(t("adminDashboard.confirmDeleteOrg", { name: o.name }))) deleteOrg.mutate({ id: o.id }); }} className="p-1.5 rounded hover:bg-black/5 text-red-500"><Trash2 className="w-4 h-4" /></button>
+                            <Button variant="outline" size="sm" onClick={() => setHistoryOrg(o.id)}>{lang === "fr" ? "Historique" : lang === "ar" ? "السجل" : "History"}</Button>
+                            <Button variant="outline" size="sm" disabled={setOrgStatus.isPending} onClick={() => setOrgStatus.mutate({ id: o.id, status: suspended ? "ACTIVE" : "SUSPENDED" })}>{suspended ? t("adminDashboard.btnActivate") : t("adminDashboard.btnSuspend")}</Button>
                           </div>
                         </td>
                       </tr>
@@ -672,6 +739,7 @@ export default function AdminDashboard() {
 
           {/* Support + broadcast */}
           <TabsContent value="support">
+            <SupportNotificationQueue />
             <div className="rounded-xl p-5 mb-5" style={{ background: "oklch(100% 0 0)", border: "1px solid oklch(88% 0.015 88)" }}>
               <div className="flex items-center gap-2 mb-2"><Megaphone className="w-4 h-4" style={{ color: "oklch(68% 0.1 78)" }} /><h3 className="font-semibold text-sm" style={{ color: "oklch(19% 0.08 252)" }}>{t("adminDashboard.broadcastTitle")}</h3></div>
               <div className="grid grid-cols-2 gap-2 mb-2">
@@ -686,27 +754,45 @@ export default function AdminDashboard() {
                   <input type="checkbox" checked={bcast.email} onChange={(e) => setBcast((b) => ({ ...b, email: e.target.checked }))} />
                   <span>{t("adminDashboard.broadcastAlsoEmail")}</span>
                 </label>
-                <Button size="sm" disabled={!bcast.title.trim() || broadcast.isPending} onClick={() => broadcast.mutate({ audience: bcast.audience, title: bcast.title, body: bcast.body || undefined, email: bcast.email })} style={{ background: "oklch(19% 0.08 252)", color: "white" }}>{t("adminDashboard.btnBroadcast")}</Button>
+                <Button size="sm" disabled={!bcast.title.trim() || broadcast.isPending} onClick={() => { const input = { audience: bcast.audience, title: bcast.title, body: bcast.body || undefined, email: bcast.email }; broadcast.mutate({...input, requestId: reuseRequest(input, broadcastRequest)}); }} style={{ background: "oklch(19% 0.08 252)", color: "white" }}>{t("adminDashboard.btnBroadcast")}</Button>
               </div>
             </div>
             <h2 className="font-semibold mb-4" style={{ color: "oklch(19% 0.08 252)" }}>{t("adminDashboard.supportTicketsTitle")}</h2>
-            <div className="space-y-3">
+            <p className="text-sm mb-3">{t("supportList.order")}</p>
+            <div className="flex gap-2 flex-wrap mb-3">
+              <Input aria-label={t("supportList.search")} placeholder={t("supportList.search")} maxLength={255} value={ticketSearch} onChange={e => {setTicketSearch(e.target.value);setTicketBeforeId(undefined);setOpenTicket(null);}} />
+              <select aria-label={t("supportList.status")} value={ticketStatusFilter} onChange={e => {setTicketStatusFilter(e.target.value as typeof ticketStatusFilter);setTicketBeforeId(undefined);setOpenTicket(null);}} className="border rounded px-2 py-1">
+                <option value="">{t("supportList.allStatuses")}</option>
+                <option value="OPEN">{t("support.statusOpen")}</option><option value="PENDING">{t("support.statusPending")}</option><option value="CLOSED">{t("support.statusClosed")}</option>
+              </select>
+              <Button variant="outline" disabled={ticketsQuery.isFetching} onClick={() => {setOpenTicket(null);if(ticketBeforeId !== undefined)setTicketBeforeId(undefined);else void refetchTickets();}}>{t("myQuotes.firstPage")}</Button>
+            </div>
+            {ticketsQuery.isError ? <div role="alert" className="mb-3"><p>{t("supportList.loadError")}</p><Button variant="outline" disabled={ticketsQuery.isFetching} onClick={() => void refetchTickets()}>{t("supportList.retry")}</Button></div> : ticketsQuery.isPending ? <p role="status">{t("common.loading")}</p> : <div className="space-y-3">
               {adminTickets.length === 0 && <p className="text-sm" style={{ color: "oklch(45% 0.02 240)" }}>{t("adminDashboard.noTickets")}</p>}
-              {adminTickets.map((tk: any) => (
+              {adminTickets.map((tk) => (
                 <div key={tk.id} className="rounded-xl" style={{ background: "oklch(100% 0 0)", border: "1px solid oklch(88% 0.015 88)" }}>
                   <div className="flex items-center justify-between gap-3 p-4">
                     <button onClick={() => setOpenTicket(openTicket === tk.id ? null : tk.id)} className="text-left flex-1 min-w-0">
-                      <div className="font-semibold truncate" style={{ color: "oklch(19% 0.08 252)" }}>{tk.subject}</div>
-                      <div className="text-xs" style={{ color: "oklch(45% 0.02 240)" }}>{tk.userName ?? "—"} · {tk.userEmail ?? ""} · {new Date(tk.updatedAt).toLocaleDateString("fr-FR")}</div>
+                      <div className="font-semibold truncate" style={{ color: "oklch(19% 0.08 252)" }}>{tk.subject}</div><div className="text-sm">{supportRequestLabels[lang][tk.requestKind as (typeof supportRequestKinds)[number]]}</div>
+                      <div className="text-xs" style={{ color: "oklch(45% 0.02 240)" }}>{tk.userName ?? "—"} · {tk.userEmail ?? ""} · {new Date(tk.updatedAt).toLocaleDateString(lang === "ar" ? "ar" : lang === "en" ? "en-GB" : "fr-FR")}</div>
                     </button>
-                    <select value={tk.status} onChange={(e) => setTicketStatus.mutate({ ticketId: tk.id, status: e.target.value as any })} className="h-8 rounded-md border px-2 text-xs shrink-0" style={{ borderColor: "oklch(88% 0.015 88)" }}>
+                    <select aria-label={t("supportList.status")} value={tk.status} disabled={setTicketStatus.isPending || ticketsQuery.isFetching} onChange={(e) => {
+                      const status=e.target.value as 'OPEN'|'PENDING'|'CLOSED';
+                      let reason:string|undefined;
+                      if(status==='CLOSED'&&tk.requestKind!=='GENERAL'){
+                        const text=window.prompt(lang==='fr'?'Expliquez au titulaire la clôture de sa demande (10 caractères minimum).':lang==='ar'?'اشرح لصاحب الطلب سبب إغلاقه (10 أحرف على الأقل).':'Explain the closure to the requester (at least 10 characters).');
+                        if(text===null)return;reason=text;
+                      }
+                      setTicketStatus.mutate({ticketId:tk.id,status,reason});
+                    }} className="h-8 rounded-md border px-2 text-xs shrink-0" style={{ borderColor: "oklch(88% 0.015 88)" }}>
                       <option value="OPEN">{t("adminDashboard.ticketStatusOpen")}</option><option value="PENDING">{t("adminDashboard.ticketStatusPending")}</option><option value="CLOSED">{t("adminDashboard.ticketStatusClosed")}</option>
                     </select>
                   </div>
                   {openTicket === tk.id && <div className="px-4 pb-4"><TicketThread ticketId={tk.id} meId={user?.id} /></div>}
                 </div>
               ))}
-            </div>
+              {ticketsQuery.data?.nextBeforeId != null && <Button variant="outline" disabled={ticketsQuery.isFetching} onClick={() => {setOpenTicket(null);setTicketBeforeId(ticketsQuery.data!.nextBeforeId!);}}>{t("supportList.next")}</Button>}
+            </div>}
           </TabsContent>
 
           {/* Emails — composer + SMTP configuration */}
@@ -752,8 +838,12 @@ export default function AdminDashboard() {
               <Input value={mail.subject} onChange={(e) => setMail((m) => ({ ...m, subject: e.target.value }))} placeholder={t("adminDashboard.mailSubject")} className="mb-2" />
               <textarea value={mail.body} onChange={(e) => setMail((m) => ({ ...m, body: e.target.value }))} placeholder={t("adminDashboard.mailBody")} rows={5} className="w-full rounded-md border px-3 py-2 text-sm mb-2" style={{ borderColor: "oklch(88% 0.015 88)" }} />
               <Button disabled={!mail.subject.trim() || sendMail.isPending} onClick={submitMail} style={{ background: "oklch(19% 0.08 252)", color: "white" }}><Send className="w-4 h-4 mr-1" /> {t("adminDashboard.mailSendButton")}</Button>
+              <p className="mt-3 text-sm">{t("adminDashboard.broadcastRecoveryInfo")}</p>
+              {sendMail.data && <p role="status" className="mt-3 text-sm">{t("adminDashboard.mailOutcome", {notifications: sendMail.data.sent, accepted: sendMail.data.email.accepted, failed: sendMail.data.email.failed, skipped: sendMail.data.email.skipped})}</p>}
               <p className="text-[11px] mt-2" style={{ color: "oklch(45% 0.02 240)" }}>{t("adminDashboard.mailAlsoInAppNote")}</p>
             </div>
+
+            <BroadcastHistory />
 
             {/* SMTP configuration */}
             <div className="rounded-xl p-5 max-w-2xl" style={{ background: "oklch(100% 0 0)", border: "1px solid oklch(88% 0.015 88)" }}>
@@ -850,6 +940,7 @@ export default function AdminDashboard() {
           </div>
         </Tabs>
         {userDialog && <UserFormDialog mode={userDialog.mode} user={userDialog.mode === "edit" ? userDialog.user : undefined} defaultRole={userDialog.mode === "new" ? userDialog.defaultRole : undefined} onClose={() => setUserDialog(null)} onSaved={() => { setUserDialog(null); utils.admin.users.invalidate(); }} />}
+        {historyOrg !== null && <OrganizationStatusHistory key={historyOrg} companyId={historyOrg} onClose={() => setHistoryOrg(null)} />}
         {orgDialog && <OrgFormDialog mode={orgDialog.mode} org={orgDialog.mode === "edit" ? orgDialog.org : undefined} onClose={() => setOrgDialog(null)} onSaved={() => { setOrgDialog(null); utils.admin.organizations.list.invalidate(); }} />}
         <OrgManagersDialog org={mgrOrg} onClose={() => setMgrOrg(null)} />
       </div>

@@ -1,3 +1,4 @@
+import { toast } from 'sonner';
 import { Link } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { useI18n } from "@/i18n";
@@ -22,12 +23,13 @@ function initials(name?: string | null, email?: string | null): string {
 
 /** Connected-user avatar + dropdown (profile, spaces, logout). */
 export default function UserMenu() {
-  const { user, logout } = useAuth();
-  const { t } = useI18n();
+  const { user, logout, loading } = useAuth();
+  const { t, lang } = useI18n();
   const { data: myOrgs = [] } = trpc.me.organizations.useQuery(undefined, { enabled: !!user });
   if (!user) return null;
   const isAdmin = (user as any).role === "admin";
-  const isManager = (user as any).role === "company_manager";
+  const isManager = myOrgs.some(o => o.role === "MANAGER");
+  const canAuthor = isAdmin || user.role === "instructor" || isManager;
 
   return (
     <DropdownMenu>
@@ -57,15 +59,20 @@ export default function UserMenu() {
         {isAdmin && (
           <DropdownMenuItem asChild><Link href="/admin"><Shield className="w-4 h-4 mr-2" /> {t("userMenu.administration")}</Link></DropdownMenuItem>
         )}
+        {isAdmin && <DropdownMenuItem asChild><Link href="/admin/approval"><Shield className="w-4 h-4 mr-2" /> {t("approval.menu")}</Link></DropdownMenuItem>}
         {isManager && (
           <DropdownMenuItem asChild><Link href="/entreprise"><LayoutDashboard className="w-4 h-4 mr-2" /> {t("userMenu.companySpace")}</Link></DropdownMenuItem>
         )}
         {!isAdmin && <DropdownMenuItem asChild><Link href="/dashboard"><LayoutDashboard className="w-4 h-4 mr-2" /> {t("userMenu.mySpace")}</Link></DropdownMenuItem>}
+        {(isManager || isAdmin) && <DropdownMenuItem asChild><Link href="/abonnements"><Building2 className="w-4 h-4 mr-2" />{lang === "fr" ? "Abonnements compagnie" : lang === "ar" ? "اشتراكات الشركات" : "Company subscriptions"}</Link></DropdownMenuItem>}
+        {canAuthor && <DropdownMenuItem asChild><Link href="/maker"><FileText className="w-4 h-4 mr-2" /> {t("maker.title")}</Link></DropdownMenuItem>}
+        <DropdownMenuItem asChild><Link href="/licences"><FileText className="w-4 h-4 mr-2" /> {t("licenses.title")}</Link></DropdownMenuItem>
+        <DropdownMenuItem asChild><Link href="/verifications"><Shield className="w-4 h-4 mr-2" /> {t("verification.menu")}</Link></DropdownMenuItem>
         <DropdownMenuItem asChild><Link href="/profil"><User className="w-4 h-4 mr-2" /> {t("userMenu.myProfile")}</Link></DropdownMenuItem>
         <DropdownMenuItem asChild><Link href="/mes-devis"><FileText className="w-4 h-4 mr-2" /> {t("userMenu.myQuotes")}</Link></DropdownMenuItem>
         <DropdownMenuItem asChild><Link href="/support"><LifeBuoy className="w-4 h-4 mr-2" /> {t("userMenu.support")}</Link></DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => logout()} style={{ color: RED }}>
+        <DropdownMenuItem disabled={loading} onClick={() => { void logout().catch(() => toast.error(t("userMenu.logoutUnconfirmed"))); }} style={{ color: RED }}>
           <LogOut className="w-4 h-4 mr-2" /> {t("userMenu.logout")}
         </DropdownMenuItem>
       </DropdownMenuContent>

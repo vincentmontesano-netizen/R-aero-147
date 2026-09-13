@@ -1,9 +1,16 @@
+import {addCalendarMonths} from "../shared/calendarMonths";
+import { certificateLanguage, certificateLabels, certificateDate, type CertificateLanguage } from "../shared/certificateLanguage";
+import { invoiceFontPath, invoiceText } from "./invoiceText";
+import {createHash} from "node:crypto";
+import {canonicalAppOrigin} from "./authOrigin";
+import {TRPCError} from "@trpc/server";
+import { readCurriculum } from "./curriculum";
 import PDFDocument from "pdfkit";
 import QRCode from "qrcode";
 import { nanoid } from "nanoid";
 import { getDb, createCredentialForIssuedCertificate } from "./db";
-import { certificates, certificateObjectives, learningObjectives, enrollments, trainings, users } from "../drizzle/schema";
-import { eq } from "drizzle-orm";
+import { certificates, certificateArchives, certificateObjectives, learningObjectives, enrollments, trainings, users, quizAttempts } from "../drizzle/schema";
+import { eq, and, isNull } from "drizzle-orm";
 import { storagePut } from "./storage";
 import https from "https";
 import http from "http";
@@ -31,7 +38,8 @@ function generateVerifCode(): string {
 }
 
 // ─── Build PDF buffer ─────────────────────────────────────────────────────────
-async function buildCertificatePDF(params: {
+export async function buildCertificatePDF(params: {
+  language?: CertificateLanguage;
   learnerName: string;
   trainingTitle: string;
   part147Reference: string;
@@ -50,6 +58,17 @@ async function buildCertificatePDF(params: {
     doc.on("data", (c: Buffer) => chunks.push(c));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
+
+    doc.registerFont('Invoice', invoiceFontPath);
+    const language = certificateLanguage(params.language), labels = certificateLabels[language];
+    const ltr = (text: string) => language === 'ar' ? `\u2066${text}\u2069` : text;
+    const fittedText = (text: string, x: number, y: number, width: number, height: number, maximum: number, minimum: number, color: string, align: 'left' | 'center' | 'right' = 'center') => {
+      for (let size = maximum; size >= minimum; size -= 0.5) {
+        const block = invoiceText(doc, text, width, size);
+        if (block.height <= height) { doc.fillColor(color); block.draw(x, y, align); return; }
+      }
+      throw new TRPCError({code:'PRECONDITION_FAILED', message:'Un nom ou libellé est trop long pour le certificat. Vérifiez les informations avant émission.'});
+    };
 
     const W = 841.89;
     const H = 595.28;
@@ -82,8 +101,7 @@ async function buildCertificatePDF(params: {
     }
 
     // ── Academy name ──
-    doc.font("Helvetica-Bold").fontSize(11).fillColor("#C9A55A")
-      .text("ORGANISME DE FORMATION AGRÉÉ EASA PART-147", 0, 120, { align: "center" });
+    fittedText(labels.tracking, 60, 116, W - 120, 20, 11, 9, '#7A622B');
 
     doc.font("Helvetica-Bold").fontSize(20).fillColor("#002554")
       .text("R-AERO TRAINING ACADEMY", 0, 138, { align: "center" });
@@ -92,57 +110,40 @@ async function buildCertificatePDF(params: {
     doc.moveTo(200, 168).lineTo(W - 200, 168).lineWidth(1.5).strokeColor("#C9A55A").stroke();
 
     // ── "Certificat de Formation" ──
-    doc.font("Helvetica-Bold").fontSize(13).fillColor("#5A6470")
-      .text("CERTIFICAT DE FORMATION", 0, 180, { align: "center" });
+    fittedText(labels.title, 60, 178, W - 120, 24, 13, 10, '#5A6470');
 
     // ── Learner name ──
-    doc.font("Helvetica-Bold").fontSize(28).fillColor("#002554")
-      .text(params.learnerName, 0, 202, { align: "center" });
+    fittedText(params.learnerName, 60, 204, W - 120, 48, 26, 10, '#002554');
 
     // ── "a complété avec succès" ──
-    doc.font("Helvetica").fontSize(11).fillColor("#5A6470")
-      .text("a complété avec succès la formation", 0, 242, { align: "center" });
+    fittedText(labels.completed, 60, 258, W - 120, 22, 11, 9, '#5A6470');
 
     // ── Training title ──
-    doc.font("Helvetica-Bold").fontSize(16).fillColor("#002554")
-      .text(params.trainingTitle, 60, 262, { align: "center", width: W - 120 });
+    fittedText(params.trainingTitle, 60, 282, W - 120, 70, 18, 10, '#002554');
 
     // ── Part-147 reference ──
     if (params.part147Reference) {
-      doc.font("Helvetica").fontSize(9).fillColor("#C9A55A")
-        .text(`Référence réglementaire : ${params.part147Reference}`, 0, 295, { align: "center" });
+      fittedText(`${labels.reference} : ${ltr(params.part147Reference)}`, 60, 362, W - 120, 24, 9, 7, '#7A622B');
     }
 
     // ── Gold divider ──
-    doc.moveTo(200, 315).lineTo(W - 200, 315).lineWidth(1).strokeColor("#C9A55A").stroke();
+    doc.moveTo(200, 390).lineTo(W - 200, 390).lineWidth(1).strokeColor("#C9A55A").stroke();
 
     // ── Details row ──
-    const detailY = 328;
+    const detailY = 405;
     const col1 = 120, col2 = 340, col3 = 560;
 
-    doc.font("Helvetica-Bold").fontSize(8).fillColor("#5A6470").text("DURÉE", col1, detailY, { align: "center", width: 120 });
-    doc.font("Helvetica-Bold").fontSize(13).fillColor("#002554").text(`${params.durationHours}h`, col1, detailY + 12, { align: "center", width: 120 });
+    fittedText(labels.duration, col1, detailY, 120, 16, 8, 7, '#5A6470');
+    fittedText(`${ltr(params.durationHours)} ${labels.hours}`, col1, detailY + 17, 120, 25, 13, 10, '#002554');
+    fittedText(labels.completedOn, col2, detailY, 160, 16, 8, 7, '#5A6470');
+    fittedText(certificateDate(params.completedAt, language), col2, detailY + 17, 160, 25, 13, 10, '#002554');
+    fittedText(labels.validUntil, col3, detailY, 140, 16, 8, 7, '#5A6470');
+    fittedText(params.expiresAt ? certificateDate(params.expiresAt, language) : labels.indefinite, col3, detailY + 17, 140, 25, 13, 10, '#002554');
 
-    doc.font("Helvetica-Bold").fontSize(8).fillColor("#5A6470").text("DATE DE COMPLÉTION", col2, detailY, { align: "center", width: 160 });
-    doc.font("Helvetica-Bold").fontSize(13).fillColor("#002554").text(params.completedAt.toLocaleDateString("fr-FR"), col2, detailY + 12, { align: "center", width: 160 });
-
-    doc.font("Helvetica-Bold").fontSize(8).fillColor("#5A6470").text("VALABLE JUSQU'AU", col3, detailY, { align: "center", width: 140 });
-    doc.font("Helvetica-Bold").fontSize(13).fillColor("#002554").text(
-      params.expiresAt ? params.expiresAt.toLocaleDateString("fr-FR") : "Indéterminé",
-      col3, detailY + 12, { align: "center", width: 140 }
-    );
-
-    // ── Signature line ──
-    doc.moveTo(W / 2 - 80, H - 90).lineTo(W / 2 + 80, H - 90).lineWidth(1).strokeColor("#002554").stroke();
-    doc.font("Helvetica").fontSize(8).fillColor("#5A6470").text("Directeur de la formation — R-AERO Training Academy", W / 2 - 100, H - 82, { align: "center", width: 200 });
-
-    // ── Certificate number ──
-    doc.font("Helvetica").fontSize(7).fillColor("#5A6470")
-      .text(`N° ${params.certificateNumber}`, 40, H - 60, { align: "left" });
-
-    // ── Verification URL ──
-    doc.font("Helvetica").fontSize(7).fillColor("#5A6470")
-      .text(`Vérification : ${params.verificationUrl}`, 40, H - 50, { align: "left" });
+    doc.moveTo(W / 2 - 100, H - 90).lineTo(W / 2 + 100, H - 90).lineWidth(1).strokeColor('#002554').stroke();
+    fittedText(labels.recorded, W / 2 - 150, H - 84, 300, 25, 8, 7, '#5A6470');
+    fittedText(`${labels.number}${language === 'ar' ? ' :' : ''} ${ltr(params.certificateNumber)}`, 40, H - 61, W - 190, 13, 7, 6, '#5A6470', 'left');
+    fittedText(`${labels.verification} : ${ltr(params.verificationUrl)}`, 40, H - 48, W - 190, 13, 7, 6, '#5A6470', 'left');
 
     // ── QR code ──
     const qrBuffer = Buffer.from(params.qrDataUrl.split(",")[1], "base64");
@@ -153,7 +154,7 @@ async function buildCertificatePDF(params: {
 }
 
 // ─── Issue certificate ────────────────────────────────────────────────────────
-export async function issueCertificate(enrollmentId: number, appOrigin: string): Promise<{
+export async function issueCertificate(enrollmentId: number, _appOrigin?: string): Promise<{
   certificateNumber: string;
   verificationCode: string;
   pdfUrl: string;
@@ -161,32 +162,50 @@ export async function issueCertificate(enrollmentId: number, appOrigin: string):
   const db = await getDb();
   if (!db) return null;
 
-  const enrollment = await db.select().from(enrollments).where(eq(enrollments.id, enrollmentId)).limit(1);
+  return db.transaction(async tx=>{
+  const db=tx;
+  const enrollment = await db.select().from(enrollments).where(eq(enrollments.id, enrollmentId)).limit(1).for("update");
   if (!enrollment[0] || enrollment[0].status !== "completed") return null;
 
+  // A client-reported completion percentage can never authorize certification.
+  const passed = await db.select({ id: quizAttempts.id }).from(quizAttempts).where(and(
+    eq(quizAttempts.enrollmentId, enrollmentId),
+    eq(quizAttempts.userId, enrollment[0].userId),
+    eq(quizAttempts.trainingId, enrollment[0].trainingId),
+    eq(quizAttempts.isPassed, true),
+    isNull(quizAttempts.moduleId),
+  )).limit(1);
+  if (!passed[0]) return null;
+
   const existing = await db.select().from(certificates).where(eq(certificates.enrollmentId, enrollmentId)).limit(1);
+  if(existing[0]&&(existing[0].userId!==enrollment[0].userId||existing[0].trainingId!==enrollment[0].trainingId))throw new TRPCError({code:'PRECONDITION_FAILED',message:'Le certificat existant ne correspond pas à cette inscription ; un rapprochement administratif est requis.'});
   if (existing[0]) return { certificateNumber: existing[0].certificateNumber, verificationCode: existing[0].verificationCode, pdfUrl: existing[0].pdfUrl ?? "" };
 
   const user = await db.select().from(users).where(eq(users.id, enrollment[0].userId)).limit(1);
-  const training = await db.select().from(trainings).where(eq(trainings.id, enrollment[0].trainingId)).limit(1);
+  const curriculum = await readCurriculum(enrollment[0].trainingVersionId,db);
+  const training = curriculum ? [curriculum.training] : await db.select().from(trainings).where(eq(trainings.id, enrollment[0].trainingId)).limit(1);
   if (!user[0] || !training[0]) return null;
 
+  if(!enrollment[0].completedAt)throw new TRPCError({code:"PRECONDITION_FAILED",message:"La date de réussite doit être rapprochée avant émission."});
   const certNumber = generateCertNumber();
   const verifCode = generateVerifCode();
-  const verificationUrl = `${appOrigin}/verification/${verifCode}`;
+  let origin:string;
+  try{origin=canonicalAppOrigin();}catch{throw new TRPCError({code:'PRECONDITION_FAILED',message:'L’adresse officielle du site doit être configurée avant émission du certificat.'});}
+  const verificationUrl = `${origin}/verification/${verifCode}`;
 
   const qrDataUrl = await QRCode.toDataURL(verificationUrl, { width: 200, margin: 1, color: { dark: "#002554", light: "#F7F5EF" } });
 
   let expiresAt: Date | null = null;
   if (training[0].recurrencyMonths) {
-    expiresAt = new Date(enrollment[0].completedAt ?? new Date());
-    expiresAt.setMonth(expiresAt.getMonth() + training[0].recurrencyMonths);
+    expiresAt = addCalendarMonths(enrollment[0].completedAt, training[0].recurrencyMonths);
   }
 
   // Use the drawn vector emblem (self-contained, no external asset fetch).
   const logoBuffer: Buffer | null = null;
 
+  const documentLanguage = certificateLanguage(training[0].language);
   const pdfBuffer = await buildCertificatePDF({
+    language: documentLanguage,
     learnerName: user[0].name ?? "Apprenant",
     trainingTitle: training[0].title,
     part147Reference: training[0].part147Reference ?? "",
@@ -201,7 +220,7 @@ export async function issueCertificate(enrollmentId: number, appOrigin: string):
   });
 
   const fileKey = `certificates/${certNumber}.pdf`;
-  const { url: pdfUrl } = await storagePut(fileKey, pdfBuffer, "application/pdf");
+  const { url: pdfUrl, key: storageKey } = await storagePut(fileKey, pdfBuffer, "application/pdf");
 
   const inserted = await db.insert(certificates).values({
     enrollmentId,
@@ -218,13 +237,16 @@ export async function issueCertificate(enrollmentId: number, appOrigin: string):
   // Record which Part-66 objectives this certificate covers (training-level proof).
   const certId = inserted[0]?.id;
   if (certId) {
-    const objs = await db.select().from(learningObjectives).where(eq(learningObjectives.trainingId, enrollment[0].trainingId));
+    const objs = curriculum?.objectives ?? await db.select().from(learningObjectives).where(eq(learningObjectives.trainingId, enrollment[0].trainingId));
     if (objs.length > 0) {
       await db.insert(certificateObjectives).values(objs.map((o) => ({ certificateId: certId, objectiveId: o.id })));
     }
+    await db.insert(certificateArchives).values({certificateId:certId,storageKey,sha256:createHash('sha256').update(pdfBuffer).digest('hex'),byteSize:pdfBuffer.length,
+      snapshot:{language:documentLanguage,learnerName:user[0].name??'Apprenant',training:{title:training[0].title,part147Reference:training[0].part147Reference??null,durationHours:training[0].durationHours?.toString()??null},completedAt:enrollment[0].completedAt!.toISOString(),trainingVersionId:enrollment[0].trainingVersionId??null,passedAttemptId:passed[0].id,verificationUrl,objectives:objs.map(o=>({id:o.id,title:o.title,code:o.code??null}))}});
     // Back the certificate with a LIVING credential (INV-6: dual-state, person-owned).
-    await createCredentialForIssuedCertificate(certId);
+    await createCredentialForIssuedCertificate(certId,db);
   }
 
   return { certificateNumber: certNumber, verificationCode: verifCode, pdfUrl };
+  });
 }

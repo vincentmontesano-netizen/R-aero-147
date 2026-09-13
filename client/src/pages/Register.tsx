@@ -1,3 +1,6 @@
+import { announceSessionChange } from '@/lib/sessionChange';
+import { useQueryClient } from '@tanstack/react-query';
+import { clearSessionCache } from '@/lib/sessionCache';
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -16,6 +19,7 @@ export default function Register() {
   const { t } = useI18n();
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
+  const queryClient = useQueryClient();
   // Job title / Part-66 licence are filled later in the ID module, not at sign-up.
   const [form, setForm] = useState({
     name: "",
@@ -30,8 +34,9 @@ export default function Register() {
 
   const register = trpc.auth.register.useMutation({
     onSuccess: async (user) => {
-      await utils.auth.me.invalidate();
+      await clearSessionCache(queryClient);
       utils.auth.me.setData(undefined, user as any);
+      announceSessionChange();
       toast.success(t("register.toastSuccess"));
       setLocation("/dashboard");
     },

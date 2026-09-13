@@ -1,6 +1,10 @@
 # R-AERO Training Academy — TODO / État
 
-> Resynchronisé sur le code réel. Tout ce qui est ✅ est implémenté **et vérifié** (typecheck + 21 tests tRPC + vérifs tRPC/DB de bout en bout). Démo testable en local : `docker start raero-pg` puis `pnpm dev` → http://localhost:3000. Comptes : `admin@r-aero.academy` / `Admin1234!`, `jean.dupont@example.com` / `Learner1234!`, `manager@demo.example` / `Manager1234!`.
+> **Historique V1.** Pour la refonte du 13 septembre 2026, voir `plan.md`. Les cases historiques ci-dessous ne valent pas validation de production ; l’audit a révélé des défauts d’accès et d’examen malgré les anciens tests.
+
+> **État actuel :** consulter [l’audit opérationnel](docs/operational-readiness.md) et les derniers lots de `plan.md`. Les listes V1 ci-dessous sont archivées ; leurs coches et anciens comptes de démonstration ne constituent pas des preuves actuelles. L’accès local utilise les identifiants privés du fichier `../Acces-R-AERO-local.txt`, pas des mots de passe documentés ici.
+
+
 
 ## ✅ MVP / V1
 - [x] Design system, schéma DB (Drizzle/PostgreSQL), migrations, tRPC, auth email/mot de passe

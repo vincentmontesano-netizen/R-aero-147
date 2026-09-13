@@ -1,0 +1,64 @@
+{
+  "observedAt": "2026-09-13T18:27:16.731Z",
+  "scope": "Isolated PostgreSQL; in-process tRPC calls including access audit; no HTTP/browser/CSV serialization",
+  "counts": {
+    "enrollments": 17712,
+    "certificates": 4203
+  },
+  "sequential": [
+    {
+      "elapsedMs": 1769,
+      "pages": 355,
+      "entries": 17712,
+      "maxPageMs": 10,
+      "unique": 17712
+    },
+    {
+      "elapsedMs": 2072,
+      "pages": 355,
+      "entries": 17712,
+      "maxPageMs": 12,
+      "unique": 17712
+    },
+    {
+      "elapsedMs": 1878,
+      "pages": 355,
+      "entries": 17712,
+      "maxPageMs": 11,
+      "unique": 17712
+    }
+  ],
+  "concurrent": {
+    "wallMs": 2196,
+    "runs": [
+      {
+        "elapsedMs": 2163,
+        "pages": 355,
+        "entries": 17712,
+        "maxPageMs": 14,
+        "unique": 17712
+      },
+      {
+        "elapsedMs": 2182,
+        "pages": 355,
+        "entries": 17712,
+        "maxPageMs": 20,
+        "unique": 17712
+      },
+      {
+        "elapsedMs": 2189,
+        "pages": 355,
+        "entries": 17712,
+        "maxPageMs": 20,
+        "unique": 17712
+      },
+      {
+        "elapsedMs": 2195,
+        "pages": 355,
+        "entries": 17712,
+        "maxPageMs": 20,
+        "unique": 17712
+      }
+    ]
+  }
+}

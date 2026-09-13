@@ -1,0 +1,36 @@
+import {beforeAll,describe,expect,it} from 'vitest';
+import {randomUUID} from 'node:crypto';
+import {eq} from 'drizzle-orm';
+import {getDb,adminUpdateModule,adminUpdateQuestion} from './db';
+import {appRouter} from './routers';
+import {users,trainings,trainingModules,quizQuestions} from '../drizzle/schema';
+import type {TrpcContext} from './_core/context';
+const url=process.env.RAERO_TEST_DATABASE_URL;
+describe.skipIf(!url)('author content revisions · PostgreSQL',()=>{
+ beforeAll(()=>{process.env.DATABASE_URL=url!;});
+ it.each(['module','question'] as const)('protects stale %s edits and keeps previous APIs compatible',async kind=>{
+  const db=(await getDb())!;
+  const [actor]=await db.insert(users).values({openId:randomUUID(),role:'instructor'}).returning();
+  const [course]=await db.insert(trainings).values({ownerUserId:actor.id,title:'Revision course',slug:randomUUID()}).returning();
+  const caller=appRouter.createCaller({user:actor,affiliations:[],req:{headers:{}},res:{}} as unknown as TrpcContext);
+  const api=kind==='module'?caller.maker.content.modules:caller.maker.content.questions;
+  const table=kind==='module'?trainingModules:quizQuestions;
+  const initial=kind==='module'?(await db.insert(trainingModules).values({trainingId:course.id,title:'Chapter'}).returning())[0]:(await db.insert(quizQuestions).values({trainingId:course.id,question:'Choose',options:['A','B'],correctAnswer:[0]}).returning())[0];
+  const patch=(value:number)=>kind==='module'?{quizPassingScore:value}:{correctAnswer:[value===80?0:1]};
+  const results=await Promise.allSettled([80,90].map(value=>api.update({id:initial.id,expectedRevision:initial.revision,...patch(value)})));
+  expect(results.filter(r=>r.status==='fulfilled')).toHaveLength(1);
+  expect(results.find(r=>r.status==='rejected')).toMatchObject({reason:{code:'CONFLICT'}});
+  const read=async()=> (await db.select().from(table).where(eq(table.id,initial.id)))[0];
+  const saved=await read();expect(saved.revision).toBe(initial.revision+1);
+  await expect(api.update({id:initial.id,expectedRevision:initial.revision,sortOrder:99})).rejects.toMatchObject({code:'CONFLICT'});
+  expect(await read()).toEqual(saved);
+  await db.update(table).set({sortOrder:3}).where(eq(table.id,initial.id));
+  await expect(api.update({id:initial.id,expectedRevision:saved.revision,sortOrder:4})).rejects.toMatchObject({code:'CONFLICT'});
+  const latest=await read();await api.update({id:initial.id,expectedRevision:latest.revision,sortOrder:5});
+  await api.update({id:initial.id,sortOrder:6});expect((await read()).revision).toBe(latest.revision+2);
+  for(const expectedRevision of [-1,1.5,2147483648])await expect(api.update({id:initial.id,expectedRevision,sortOrder:7})).rejects.toMatchObject({code:'BAD_REQUEST'});
+  await api.delete({id:initial.id});
+  const update=kind==='module'?adminUpdateModule:adminUpdateQuestion;
+  await expect(update(initial.id,{sortOrder:8})).rejects.toMatchObject({code:'CONFLICT'});
+ });
+});

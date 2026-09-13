@@ -1,3 +1,6 @@
+import LearningImage from "@/components/LearningImage";
+import LearningVideo from "./LearningVideo";
+import { placeVideoItem } from "../../../shared/videoPlacement";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/i18n";
@@ -42,12 +45,14 @@ export default function SlideDeck({
   onSlideEnter,
   onFinish,
   finishLabel,
+  contentLanguage,
 }: {
   slides: DeckSlide[];
   title?: string;
   onSlideEnter?: (index: number) => void;
   onFinish?: () => void;
   finishLabel?: string;
+  contentLanguage?: string | null;
 }) {
   const { t, lang } = useI18n();
   const [index, setIndex] = useState(0);
@@ -55,11 +60,14 @@ export default function SlideDeck({
   const [checked, setChecked] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [failedAudio,setFailedAudio]=useState<string|null>(null);
   const [activeCue, setActiveCue] = useState<number | null>(null);
   const [answeredCues, setAnsweredCues] = useState<Set<number>>(new Set());
   const [cueSelected, setCueSelected] = useState<number[]>([]);
   const [cueChecked, setCueChecked] = useState(false);
   const [cueDrops, setCueDrops] = useState<Record<string, string>>({}); // dragdrop: zoneId → itemId
+
+  const [dragSelection, setDragSelection] = useState<string | null>(null);
 
   // ── Text-to-speech of the slide text (browser SpeechSynthesis, no server/cost) ──
   const [speaking, setSpeaking] = useState(false);
@@ -70,7 +78,9 @@ export default function SlideDeck({
     if (!text.trim()) return;
     synth.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = lang === "fr" ? "fr-FR" : lang === "ar" ? "ar-SA" : "en-US";
+    const courseLanguage=contentLanguage?.trim().toLowerCase().split("-")[0];
+    const speechLanguage=courseLanguage === "fr" || courseLanguage === "en" || courseLanguage === "ar" ? courseLanguage : lang;
+    u.lang = speechLanguage === "fr" ? "fr-FR" : speechLanguage === "ar" ? "ar-SA" : "en-US";
     u.rate = 1;
     u.onend = () => setSpeaking(false);
     u.onerror = () => setSpeaking(false);
@@ -78,7 +88,7 @@ export default function SlideDeck({
     synth.speak(u);
   };
   // Stop narration when the slide changes or the component unmounts.
-  useEffect(() => { window.speechSynthesis?.cancel(); setSpeaking(false); }, [index]);
+  useEffect(() => { window.speechSynthesis?.cancel(); setSpeaking(false); }, [index, contentLanguage]);
   useEffect(() => () => { window.speechSynthesis?.cancel(); }, []);
 
   const slide = slides[index];
@@ -94,6 +104,8 @@ export default function SlideDeck({
     setAnsweredCues(new Set());
     setCueSelected([]);
     setCueChecked(false);
+    setDragSelection(null);
+    setCueDrops({});
     onSlideEnter?.(index);
     // Try to play narration automatically when there is no video.
     if (slide?.audioUrl && !slide?.videoUrl && audioRef.current) {
@@ -144,8 +156,8 @@ export default function SlideDeck({
         {/* Media */}
         {slide.videoUrl ? (
           <div className="relative mb-4">
-            <video
-              ref={videoRef}
+            <LearningVideo key={slide.id}
+              mediaRef={videoRef}
               src={slide.videoUrl}
               controls
               className="w-full rounded-xl"
@@ -155,7 +167,7 @@ export default function SlideDeck({
                 if (activeCue !== null || cues.length === 0) return;
                 const tt = e.currentTarget.currentTime;
                 const idx = cues.findIndex((c, i) => !answeredCues.has(i) && tt >= c.atSeconds);
-                if (idx >= 0) { setActiveCue(idx); setCueSelected([]); setCueChecked(false); setCueDrops({}); e.currentTarget.pause(); }
+                if (idx >= 0) { setActiveCue(idx); setCueSelected([]); setCueChecked(false); setCueDrops({}); setDragSelection(null); e.currentTarget.pause(); }
               }}
             />
             {activeCue !== null && slide.videoCues?.[activeCue] && (() => {
@@ -207,32 +219,37 @@ export default function SlideDeck({
               if (kind === "dragdrop") {
                 const zones = cue.dropZones ?? [];
                 const items = cue.dragItems ?? [];
+                const dropped = (id:string) => Object.hasOwn(cueDrops,id) ? cueDrops[id] : undefined;
+                const place = (zoneId:string,itemId:string) => { if(cueChecked)return; setCueDrops(d=>placeVideoItem(d,zoneId,itemId,zones.map(z=>z.id),items.map(i=>i.id))); setDragSelection(null); };
+                const instructions = lang === "fr" ? "Sélectionnez un élément, puis sa zone, ou faites-le glisser." : lang === "ar" ? "اختر عنصراً ثم منطقته، أو اسحبه إليها." : "Select an item, then its zone, or drag it into place.";
                 const placedIds = new Set(Object.values(cueDrops));
-                const allFilled = zones.length > 0 && zones.every((z) => cueDrops[z.id]);
-                const allCorrect = zones.length > 0 && zones.every((z) => cueDrops[z.id] === z.correctItemId);
+                const allFilled = zones.length > 0 && zones.every((z) => dropped(z.id));
+                const allCorrect = zones.length > 0 && zones.every((z) => dropped(z.id) === z.correctItemId);
                 return (
                   <div className="absolute inset-0 rounded-xl" style={{ background: "oklch(19% 0.08 252 / 0.55)" }}>
-                    <div className="absolute top-2 inset-x-0 text-center text-xs font-semibold tracking-widest" style={{ color: GOLD }}>{cue.question || t("slideDeck.dragEachItem")}</div>
+                    <div className="absolute top-2 inset-x-0 text-center text-xs font-semibold tracking-widest" style={{ color: GOLD }}>{cue.question || t("slideDeck.dragEachItem")}<p className="normal-case tracking-normal font-normal mt-1 text-white">{instructions}</p></div>
                     {zones.map((z) => {
-                      const placed = items.find((it) => it.id === cueDrops[z.id]);
-                      const ok = cueChecked && cueDrops[z.id] === z.correctItemId;
-                      const bad = cueChecked && !!cueDrops[z.id] && cueDrops[z.id] !== z.correctItemId;
+                      const placed = items.find((it) => it.id === dropped(z.id));
+                      const ok = cueChecked && dropped(z.id) === z.correctItemId;
+                      const bad = cueChecked && !!dropped(z.id) && dropped(z.id) !== z.correctItemId;
                       return (
-                        <div key={z.id}
+                        <button type="button" key={z.id} disabled={cueChecked}
+                          aria-label={`${z.label || z.id}: ${placed?.label ?? "—"}`}
+                          onClick={() => { if(dragSelection)place(z.id,dragSelection); }}
                           onDragOver={(e) => e.preventDefault()}
-                          onDrop={(e) => { e.preventDefault(); const id = e.dataTransfer.getData("text/plain"); if (id && !cueChecked) setCueDrops((d) => ({ ...d, [z.id]: id })); }}
-                          className="absolute rounded-lg flex items-center justify-center text-center text-[11px] px-1"
+                          onDrop={(e) => { e.preventDefault(); const id = e.dataTransfer.getData("text/plain"); place(z.id,id); }}
+                          className="absolute focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white rounded-lg flex items-center justify-center text-center text-[11px] px-1"
                           style={{ left: `${z.xPct}%`, top: `${z.yPct}%`, width: `${z.wPct}%`, height: `${z.hPct}%`, border: `2px dashed ${ok ? GREEN : bad ? RED : GOLD}`, background: "oklch(100% 0 0 / 0.12)", color: "white" }}>
                           {placed ? placed.label : (z.label ?? "")}
-                        </div>
+                        </button>
                       );
                     })}
                     <div className="absolute bottom-12 inset-x-2 flex flex-wrap gap-2 justify-center">
                       {items.filter((it) => !placedIds.has(it.id)).map((it) => (
-                        <div key={it.id} draggable={!cueChecked} onDragStart={(e) => e.dataTransfer.setData("text/plain", it.id)}
-                          className="px-2 py-1 rounded-md text-xs cursor-move" style={{ background: GOLD, color: DEEP_BLUE }}>
+                        <button type="button" key={it.id} disabled={cueChecked} aria-pressed={dragSelection===it.id} onClick={() => setDragSelection(d=>d===it.id?null:it.id)} draggable={!cueChecked} onDragStart={(e) => e.dataTransfer.setData("text/plain", it.id)}
+                          className="px-2 py-1 rounded-md text-xs cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white" style={{ background: GOLD, color: DEEP_BLUE, outline:dragSelection===it.id?"2px solid white":undefined }}>
                           {it.label}
-                        </div>
+                        </button>
                       ))}
                     </div>
                     <div className="absolute bottom-2 inset-x-0 flex items-center justify-center gap-3">
@@ -241,7 +258,7 @@ export default function SlideDeck({
                       ) : allCorrect ? (
                         <Button onClick={() => resumeCue(cue.onCorrectSeek)} style={{ background: GREEN, color: "white" }}>{t("common.next")} ▶</Button>
                       ) : (
-                        <><span className="text-sm" style={{ color: RED }}>{t("player.incorrect")}</span><button className="text-xs underline text-white/80" onClick={() => { setCueChecked(false); setCueDrops({}); }}>{t("slideDeck.retry")}</button></>
+                        <><span className="text-sm" style={{ color: RED }}>{t("player.incorrect")}</span><button className="text-xs underline text-white/80" onClick={() => { setCueChecked(false); setCueDrops({}); setDragSelection(null); }}>{t("slideDeck.retry")}</button></>
                       )}
                     </div>
                   </div>
@@ -298,16 +315,17 @@ export default function SlideDeck({
             })()}
           </div>
         ) : slide.imageUrl ? (
-          <img src={slide.imageUrl} alt={slide.title ?? ""} className="w-full rounded-xl mb-4 object-cover" style={{ maxHeight: 380 }} />
+          <LearningImage key={`${slide.id}:${slide.imageUrl}`} src={slide.imageUrl} alt={slide.title ?? ""} />
         ) : null}
 
         {/* Narration audio (when no video) */}
         {slide.audioUrl && !slide.videoUrl && (
-          <div className="mb-4 flex items-center gap-3 p-3 rounded-lg" style={{ background: "white", border: "1px solid oklch(88% 0.015 88)" }}>
+          <div className="mb-4 flex flex-wrap items-center gap-3 p-3 rounded-lg" style={{ background: "white", border: "1px solid oklch(88% 0.015 88)" }}>
             <Button size="sm" variant="outline" onClick={() => { if (audioRef.current) { audioRef.current.currentTime = 0; audioRef.current.play().catch(() => {}); } }}>
               <Volume2 className="w-4 h-4 mr-1" /> {t("player.playNarration")}
             </Button>
-            <audio ref={audioRef} src={slide.audioUrl} controls className="h-8 flex-1" />
+            <audio ref={audioRef} src={slide.audioUrl} onError={()=>setFailedAudio(slide.audioUrl??null)} onLoadedData={()=>setFailedAudio(null)} controls className="h-8 flex-1" />
+            {failedAudio===slide.audioUrl&&<div role="alert" className="w-full text-sm space-y-2"><p>{t("learningMedia.audioError")}</p><Button variant="outline" onClick={()=>{setFailedAudio(null);audioRef.current?.load();}}>{t("learningMedia.reload")}</Button></div>}
           </div>
         )}
 

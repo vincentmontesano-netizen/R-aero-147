@@ -1,3 +1,5 @@
+import {certificateStatus} from "../shared/certificateStatus";
+import { personalExportDetails } from "./personalExport";
 // ─── Access & permissions layer (person-centric compliance, RGPD) ─────────────
 // Enforces the brief's invariants on top of the additive schema:
 //   INV-2  org access is bounded by an ACTIVE affiliation
@@ -7,7 +9,7 @@
 // The org-scoped view is built as a NEW whitelisted object — we never spread a raw
 // row — which is the structural guarantee that personal/elective data can't leak.
 
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, getTableColumns, isNull } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { getDb, computeRecurrencyStatus, ruleMatchesEmployee } from "./db";
 import {
@@ -21,8 +23,8 @@ import {
 export async function getActiveAffiliations(personId: number): Promise<Affiliation[]> {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(affiliations)
-    .where(and(eq(affiliations.personId, personId), eq(affiliations.status, "ACTIVE")));
+  return db.select(getTableColumns(affiliations)).from(affiliations).innerJoin(companies,eq(companies.id,affiliations.orgId))
+    .where(and(eq(affiliations.personId, personId), eq(affiliations.status, "ACTIVE"),eq(companies.status,"ACTIVE")));
 }
 
 /** INV-2: an organisation may only reach a person's file through an ACTIVE
@@ -31,7 +33,8 @@ export async function getActiveAffiliations(personId: number): Promise<Affiliati
 export async function assertActiveAffiliation(personId: number, orgId: number): Promise<Affiliation> {
   const db = await getDb();
   if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Base de données indisponible." });
-  const rows = await db.select().from(affiliations).where(and(
+  const rows = await db.select(getTableColumns(affiliations)).from(affiliations).innerJoin(companies,eq(companies.id,affiliations.orgId)).where(and(
+    eq(companies.status,"ACTIVE"),
     eq(affiliations.personId, personId),
     eq(affiliations.orgId, orgId),
     eq(affiliations.status, "ACTIVE"),
@@ -47,7 +50,8 @@ export async function assertActiveAffiliation(personId: number, orgId: number): 
 export async function resolveActorAffiliationRole(actorPersonId: number, orgId: number): Promise<"MANAGER" | "MEMBER" | null> {
   const db = await getDb();
   if (!db) return null;
-  const rows = await db.select().from(affiliations).where(and(
+  const rows = await db.select(getTableColumns(affiliations)).from(affiliations).innerJoin(companies,eq(companies.id,affiliations.orgId)).where(and(
+    eq(companies.status,"ACTIVE"),
     eq(affiliations.personId, actorPersonId),
     eq(affiliations.orgId, orgId),
     eq(affiliations.status, "ACTIVE"),
@@ -92,8 +96,7 @@ export async function logAccess(input: LogAccessInput): Promise<void> {
 /** Best-effort client IP from an Express request, for public access logging. */
 export function ipFromReq(req: any): string | null {
   if (!req) return null;
-  const xf = req.headers?.["x-forwarded-for"];
-  if (typeof xf === "string" && xf.length) return xf.split(",")[0]!.trim();
+  // Express resolves this using the configured trusted proxy chain.
   return req.ip ?? req.socket?.remoteAddress ?? null;
 }
 
@@ -132,9 +135,11 @@ export function projectOrgScopedView(input: {
   orgId: number;
   matchedRules: { trainingId: number; periodMonths: number; trainingTitle: string | null }[];
   recurrencies: { trainingId: number; nextDueAt: Date | null; lastCompletedAt: Date | null }[];
-  certificates: { trainingId: number; isValid: boolean | null; certificateNumber: string; expiresAt: Date | null; issuedAt: Date | null }[];
-  credentials: { trainingId: number | null; origin: string; surfacedByPersonAt: Date | null; part66Coverage: number[] | null }[];
+  certificates: { id:number; trainingId: number; isValid: boolean | null; certificateNumber: string; expiresAt: Date | null; issuedAt: Date | null }[];
+  credentials: { certificateId:number|null;state:string;expiresAt:Date|null; trainingId: number | null; origin: string; surfacedByPersonAt: Date | null; part66Coverage: number[] | null }[];
 }): OrgScopedView {
+  const now=Date.now();
+  const validCertificates=new Map(input.certificates.filter(c=>certificateStatus(c,now)==='valid').map(c=>[c.id,c]));
   const requiredTrainingIds = new Set(input.matchedRules.map((r) => r.trainingId));
 
   const recByTraining = new Map<number, (typeof input.recurrencies)[number]>();
@@ -143,7 +148,7 @@ export function projectOrgScopedView(input: {
   // Valid certificates, restricted to required trainings only (INV-3).
   const certByTraining = new Map<number, (typeof input.certificates)[number]>();
   for (const c of input.certificates) {
-    if (c.isValid === false) continue;
+    if (certificateStatus(c,now)!=='valid') continue;
     if (!requiredTrainingIds.has(c.trainingId)) continue;
     const prev = certByTraining.get(c.trainingId);
     const newer = (c.issuedAt?.getTime() ?? 0) >= (prev?.issuedAt?.getTime() ?? -1);
@@ -155,7 +160,9 @@ export function projectOrgScopedView(input: {
   for (const cr of input.credentials) {
     const visible = cr.origin === "ORG_ASSIGNED" || cr.surfacedByPersonAt != null;
     if (!visible) continue;
-    if (cr.trainingId != null && !requiredTrainingIds.has(cr.trainingId)) continue;
+    if(cr.state!=='LIVING'||(cr.expiresAt&&cr.expiresAt.getTime()<=now))continue;
+    if(cr.trainingId==null||!requiredTrainingIds.has(cr.trainingId))continue;
+    if(cr.certificateId!=null&&validCertificates.get(cr.certificateId)?.trainingId!==cr.trainingId)continue;
     for (const oid of cr.part66Coverage ?? []) coverage.add(oid);
   }
 
@@ -203,7 +210,7 @@ export async function getOrgScopedView(affiliation: Affiliation, subjectPersonId
       .where(and(eq(employees.companyId, orgId), eq(employees.userId, subjectPersonId))).limit(1))[0];
   }
 
-  const allRules = (await db.select().from(roleRequirements)).filter((r) => r.companyId == null || r.companyId === orgId);
+  const allRules = (await db.select().from(roleRequirements).where(isNull(roleRequirements.archivedAt))).filter((r) => r.companyId == null || r.companyId === orgId);
   const matched = emp ? allRules.filter((r) => ruleMatchesEmployee(emp, r)) : [];
   const recs = emp ? await db.select().from(recurrencies).where(eq(recurrencies.employeeId, emp.id)) : [];
 
@@ -220,15 +227,22 @@ export async function getOrgScopedView(affiliation: Affiliation, subjectPersonId
   }
 
   const certs = await db.select().from(certificates).where(eq(certificates.userId, subjectPersonId));
-  const creds = await db.select().from(credentials).where(eq(credentials.personId, subjectPersonId));
+  // A proof belongs to the affiliation through which it was assigned or shared.
+  // Unbound historical proofs stay private until their destination is established.
+  const creds = await db.select().from(credentials).where(and(eq(credentials.personId, subjectPersonId),eq(credentials.affiliationId,affiliation.id)));
+
+  const visibleCertificateIds=new Set(creds.filter(c=>
+    (c.origin==='ORG_ASSIGNED'||c.surfacedByPersonAt!=null)&&c.state==='LIVING'&&
+    (c.expiresAt==null||c.expiresAt.getTime()>Date.now())
+  ).map(c=>`${c.certificateId}:${c.trainingId}`));
 
   return projectOrgScopedView({
     subjectPersonId,
     orgId,
     matchedRules,
     recurrencies: recs.map((r) => ({ trainingId: r.trainingId, nextDueAt: r.nextDueAt, lastCompletedAt: r.lastCompletedAt })),
-    certificates: certs.map((c) => ({ trainingId: c.trainingId, isValid: c.isValid, certificateNumber: c.certificateNumber, expiresAt: c.expiresAt, issuedAt: c.issuedAt })),
-    credentials: creds.map((c) => ({ trainingId: c.trainingId, origin: c.origin, surfacedByPersonAt: c.surfacedByPersonAt, part66Coverage: c.part66Coverage })),
+    certificates: certs.filter(c=>visibleCertificateIds.has(`${c.id}:${c.trainingId}`)).map((c) => ({ id:c.id,trainingId: c.trainingId, isValid: c.isValid, certificateNumber: c.certificateNumber, expiresAt: c.expiresAt, issuedAt: c.issuedAt })),
+    credentials: creds.map((c) => ({ certificateId:c.certificateId,state:c.state,expiresAt:c.expiresAt,trainingId: c.trainingId, origin: c.origin, surfacedByPersonAt: c.surfacedByPersonAt, part66Coverage: c.part66Coverage })),
   });
 }
 
@@ -238,9 +252,7 @@ export async function getOrgScopedView(affiliation: Affiliation, subjectPersonId
 export async function orgScopedViewForSubject(orgId: number, subjectPersonId: number): Promise<OrgScopedView> {
   const db = await getDb();
   if (!db) return { subjectPersonId, orgId, requiredModules: [], part66Coverage: [], expiringSoon: 0, overdue: 0 };
-  const aff = (await db.select().from(affiliations)
-    .where(and(eq(affiliations.personId, subjectPersonId), eq(affiliations.orgId, orgId))).limit(1))[0]
-    ?? ({ id: 0, orgId, personId: subjectPersonId, employeeId: null } as unknown as Affiliation);
+  const aff = await assertActiveAffiliation(subjectPersonId,orgId);
   return getOrgScopedView(aff, subjectPersonId);
 }
 
@@ -250,8 +262,8 @@ export type SelfView = {
   // Exactly what each employer sees of this person (one entry per active affiliation).
   orgViews: { orgId: number; orgName: string | null; view: OrgScopedView }[];
   // The private layer the org never sees.
-  privateCredentials: (Credential & { displayTitle: string })[];
-  certificates: unknown[];
+  privateCredentials: (Credential & { displayTitle: string; destinationOrgId:number|null; destinationOrgName:string|null })[];
+  certificates: (typeof certificates.$inferSelect)[];
   enrollments: unknown[];
   // Person consent: when true, affiliated orgs may view the whole ID module (documents).
   passportShared: boolean;
@@ -274,14 +286,16 @@ export async function getSelfView(personId: number): Promise<SelfView> {
   for (const c of creds) {
     let title = c.label ?? null;
     if (!title && c.trainingId) title = (await db.select().from(trainings).where(eq(trainings.id, c.trainingId)).limit(1))[0]?.title ?? null;
-    base.privateCredentials.push({ ...c, displayTitle: title ?? `Credential #${c.id}` });
+    const [sourceAff]=c.affiliationId==null?[]:await db.select().from(affiliations).where(and(eq(affiliations.id,c.affiliationId),eq(affiliations.personId,personId)));
+    const [destination]=sourceAff?await db.select().from(companies).where(eq(companies.id,sourceAff.orgId)):[];
+    base.privateCredentials.push({ ...c, displayTitle: title ?? `Credential #${c.id}`,destinationOrgId:destination?.id??null,destinationOrgName:destination?.name??null });
   }
   base.certificates = await db.select().from(certificates).where(eq(certificates.userId, personId));
   base.enrollments = await db.select().from(enrollments).where(eq(enrollments.userId, personId));
   return base;
 }
 
-// RGPD data portability — a full machine-readable copy of the person's data, assembled
+// Self-service data export for the supported personal categories, assembled
 // from the self view + their orders + the access log of reads about them.
 export async function exportPersonData(personId: number) {
   const db = await getDb();
@@ -289,7 +303,7 @@ export async function exportPersonData(personId: number) {
   const self = await getSelfView(personId);
   const u = (await db.select().from(users).where(eq(users.id, personId)).limit(1))[0];
   const profile = u ? {
-    id: u.id, name: u.name, email: u.email, licenseNumber: u.licenseNumber,
+    id: u.id, name: u.name, firstName: u.firstName, lastName: u.lastName, bio: u.bio, timezone: u.timezone, passportShared: u.passportShared, email: u.email, licenseNumber: u.licenseNumber,
     licenseCategories: u.licenseCategories, typeRatings: u.typeRatings, jobTitle: u.jobTitle,
     preferredLanguage: u.preferredLanguage, marketingOptIn: u.marketingOptIn,
     dataProcessingConsentAt: u.dataProcessingConsentAt, createdAt: u.createdAt,
@@ -302,7 +316,9 @@ export async function exportPersonData(personId: number) {
   }
   const logs = await db.select().from(accessLogs).where(eq(accessLogs.subjectPersonId, personId)).orderBy(desc(accessLogs.at));
   return {
-    exportedAt: new Date().toISOString(),
+    formatVersion: 3, exportedAt: new Date().toISOString(),
+    filesIncluded: false,
+    ...await personalExportDetails(personId),
     profile,
     affiliationsView: self.orgViews,
     credentials: self.privateCredentials,

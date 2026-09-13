@@ -2,7 +2,7 @@
 # Front-end + back-end + PostgreSQL in one container. Build once, run anywhere:
 #   docker build -t r-aero-academy .
 #   docker run -p 3000:3000 r-aero-academy
-# Then open http://localhost:3000 (admin@r-aero.academy / Admin1234!).
+# Set ADMIN_EMAIL and ADMIN_PASSWORD for the first installation.
 FROM node:20-bookworm
 
 # Install PostgreSQL server (embedded database) + CA certs.
@@ -15,7 +15,7 @@ RUN npm install -g pnpm@10.4.1
 WORKDIR /app
 
 # Install dependencies first (better layer caching). Full install: the build,
-# drizzle-kit (schema push) and tsx (seed) are all needed at container start.
+# tsx (versioned migrations and first admin) are needed at container start.
 COPY package.json pnpm-lock.yaml ./
 COPY patches/ ./patches/
 RUN pnpm install --frozen-lockfile
@@ -40,6 +40,6 @@ RUN mkdir -p /app/storage /var/lib/postgresql/data \
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=45s --retries=5 \
-  CMD node -e "fetch('http://localhost:'+(process.env.PORT||3000)+'/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+  CMD node -e "fetch('http://localhost:'+(process.env.PORT||3000)+'/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 ENTRYPOINT ["./docker-entrypoint.sh"]

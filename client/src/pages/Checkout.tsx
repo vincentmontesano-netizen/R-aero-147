@@ -10,6 +10,8 @@ import { toast } from "sonner";
 export default function Checkout() {
   const { t } = useI18n();
   const { user, isAuthenticated } = useAuth();
+  const [companyId, setCompanyId] = useState("");
+  const organizations = trpc.me.organizations.useQuery(undefined, { enabled: isAuthenticated });
   const [isRedirecting, setIsRedirecting] = useState(false);
   const { data: cartItems = [], isLoading } = trpc.cart.list.useQuery(undefined, { enabled: isAuthenticated, retry: false });
 
@@ -35,7 +37,7 @@ export default function Checkout() {
   const handleCheckout = () => {
     if (!isAuthenticated) { toast.error(t("checkout.toastLoginRequired")); return; }
     setIsRedirecting(true);
-    createSession.mutate({ origin: window.location.origin });
+    createSession.mutate({ origin: window.location.origin, companyId: companyId ? Number(companyId) : undefined });
   };
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center" style={{ background: "oklch(97% 0.01 88)" }}><div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "oklch(68% 0.1 78)", borderTopColor: "transparent" }} /></div>;
@@ -86,6 +88,7 @@ export default function Checkout() {
             {/* Summary + payment */}
             <div className="space-y-4">
               <div className="rounded-xl p-6" style={{ background: "oklch(100% 0 0)", border: "1px solid oklch(88% 0.015 88)" }}>
+                <label className="block text-sm mb-4">{t("licenses.buyer")}<select className="border rounded p-2 w-full mt-2" value={companyId} onChange={e => setCompanyId(e.target.value)}><option value="">{t("licenses.personal")}</option>{organizations.data?.filter(o => o.role === "MANAGER").map(o => <option key={o.orgId} value={o.orgId}>{o.name}</option>)}</select></label>
                 <h2 className="font-semibold mb-4" style={{ color: "oklch(19% 0.08 252)" }}>{t("checkout.summaryTitle")}</h2>
                 <div className="space-y-2 mb-4">
                   <div className="flex justify-between text-sm" style={{ color: "oklch(45% 0.02 240)" }}>

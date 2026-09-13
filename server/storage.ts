@@ -8,8 +8,12 @@ import path from "node:path";
 export const STORAGE_DIR =
   process.env.STORAGE_DIR ?? path.join(process.cwd(), "storage");
 
-function normalizeKey(relKey: string): string {
-  return relKey.replace(/^\/+/, "");
+export function normalizeStorageKey(relKey: string): string {
+  if (!relKey || relKey.includes("\\") || relKey.includes("\0") || relKey.startsWith("/") ||
+      relKey.split("/").some(segment => !segment || segment === "." || segment === "..")) {
+    throw new Error("Invalid storage key");
+  }
+  return relKey;
 }
 
 function appendHashSuffix(relKey: string): string {
@@ -24,19 +28,19 @@ export async function storagePut(
   data: Buffer | Uint8Array | string,
   _contentType = "application/octet-stream",
 ): Promise<{ key: string; url: string }> {
-  const key = appendHashSuffix(normalizeKey(relKey));
+  const key = appendHashSuffix(normalizeStorageKey(relKey));
   const filePath = path.join(STORAGE_DIR, key);
   await fs.mkdir(path.dirname(filePath), { recursive: true });
   const buf = typeof data === "string" ? Buffer.from(data) : Buffer.from(data as Uint8Array);
-  await fs.writeFile(filePath, buf);
+  await fs.writeFile(filePath, buf, { flag: "wx" });
   return { key, url: `/storage/${key}` };
 }
 
 export async function storageGet(relKey: string): Promise<{ key: string; url: string }> {
-  const key = normalizeKey(relKey);
+  const key = normalizeStorageKey(relKey);
   return { key, url: `/storage/${key}` };
 }
 
 export async function storageGetSignedUrl(relKey: string): Promise<string> {
-  return `/storage/${normalizeKey(relKey)}`;
+  return `/storage/${normalizeStorageKey(relKey)}`;
 }

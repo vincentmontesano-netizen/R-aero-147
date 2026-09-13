@@ -78,7 +78,7 @@ export default function Webinars() {
                     <Button onClick={() => setLocation(`/live/webinar/${w.id}`)} className="w-full" style={{ background: "oklch(55% 0.22 27)", color: "white" }}>
                       <Radio className="w-4 h-4 mr-2" /> {t("webinars.joinLive")}
                     </Button>
-                  ) : isPast && w.replayUrl ? (
+                  ) : isPast && w.hasReplay ? (
                     <Button onClick={() => setLocation(`/live/webinar/${w.id}`)} variant="outline" className="w-full"><PlayCircle className="w-4 h-4 mr-2" /> {t("webinars.watchReplay")}</Button>
                   ) : isPast ? (
                     <Button disabled variant="outline" className="w-full">{t("webinars.sessionEnded")}</Button>

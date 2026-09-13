@@ -1,5 +1,8 @@
-import { useState, useEffect, useRef } from "react";
-import { useParams, Link } from "wouter";
+import {selectLearningEnrollment} from "../../../shared/learningEnrollment";
+import LearningVideo from "@/components/LearningVideo";
+import ExamAttemptHistory from "@/components/ExamAttemptHistory";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useParams, useSearch, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -12,73 +15,149 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/i18n";
+import { createExamCountdown } from "@/lib/examCountdown";
 
 // ─── Quiz Component ───────────────────────────────────────────────────────────
 function QuizView({
   questions: initialQuestions,
   enrollmentId,
   trainingId,
+  moduleId,
   attemptNumber,
   passingScore,
   maxAttempts,
   onComplete,
+  onActiveChange,
 }: {
   questions: any[];
   enrollmentId: number;
   trainingId: number;
+  moduleId?: number;
   attemptNumber: number;
   passingScore: number;
   maxAttempts: number;
   onComplete: (result: any) => void;
+  onActiveChange: (active: boolean) => void;
 }) {
   const { t } = useI18n();
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [submitted, setSubmitted] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [attempt, setAttempt] = useState(attemptNumber);
+  const [serverAttempt, setServerAttempt] = useState(attemptNumber);
+  const [sessionPassingScore, setSessionPassingScore] = useState(passingScore);
+  const [startRetry, setStartRetry] = useState(0);
   const [questions, setQuestions] = useState<any[]>(initialQuestions);
+  const [startError, setStartError] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [expiresAt, setExpiresAt] = useState<number | null>(null);
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  const countdown = useRef<(() => number) | null>(null);
   const [tabSwitches, setTabSwitches] = useState(0);
   const submittedRef = useRef(false);
+  const submissionAnswers = useRef<Record<string, any> | null>(null);
+  const expirySubmitted = useRef(false);
+  const [submissionStarted, setSubmissionStarted] = useState(false);
+  const [submissionError, setSubmissionError] = useState(false);
+  const revisionRef = useRef(0);
+  const savedFingerprint = useRef("{}");
+  const currentSession = useRef<number | null>(null);
+  const saveBusy = useRef(false);
+  const [saveTick, setSaveTick] = useState(0);
+  const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "error">("saved");
+  const saveAnswers = trpc.learning.saveExamAnswers.useMutation();
 
   const startExam = trpc.learning.startExam.useMutation();
   const logEvent = trpc.learning.logProctoringEvent.useMutation();
   const submitQuiz = trpc.learning.submitQuiz.useMutation({
-    onSuccess: (data) => { submittedRef.current = true; setResult(data); setSubmitted(true); onComplete(data); },
-    onError: () => toast.error(t("learningPlayer.quizSubmitError")),
+    onSuccess: (data) => {
+      if (!data) { submittedRef.current = false; setSubmissionError(true); return; }
+      submittedRef.current = true; setResult(data); setSubmitted(true); onComplete(data);
+    },
+    onError: () => { submittedRef.current = false; setSubmissionError(true); toast.error(t("learningPlayer.quizSubmitError")); },
   });
 
   const doSubmit = () => {
-    if (submittedRef.current) return;
-    submitQuiz.mutate({ enrollmentId, trainingId, answers, attemptNumber: attempt, sessionId: sessionId ?? undefined });
+    if (submittedRef.current || !sessionId || submitQuiz.isPending) return;
+    submittedRef.current = true;
+    submissionAnswers.current ??= answers;
+    setSubmissionStarted(true);
+    setSubmissionError(false);
+    submitQuiz.mutate({ enrollmentId, trainingId, answers: submissionAnswers.current, attemptNumber: serverAttempt, sessionId });
   };
 
   // Start (and restart on retry) the proctored exam session: random subset + server timer.
   useEffect(() => {
     let cancelled = false;
     submittedRef.current = false;
+    submissionAnswers.current = null;
+    expirySubmitted.current = false;
+    setSubmissionStarted(false);
+    setSubmissionError(false);
+    setSessionId(null);
+    countdown.current = null;
+    setExpiresAt(null);
+    setSecondsLeft(null);
+    setStartError(null);
     (async () => {
       try {
-        const r = await startExam.mutateAsync({ enrollmentId, trainingId, attemptNumber: attempt });
-        if (cancelled || !r) return;
+        const r = await startExam.mutateAsync({ enrollmentId, trainingId, moduleId, attemptNumber: attempt });
+        if (cancelled) return;
+        if (!r) { setStartError(t("learningPlayer.examStartUnavailable")); return; }
+        setServerAttempt(r.attemptNumber);
+        setSessionPassingScore(r.passingScore);
+        currentSession.current = r.sessionId;
+        revisionRef.current = r.answerRevision;
+        savedFingerprint.current = JSON.stringify(r.savedAnswers);
+        setAnswers(r.savedAnswers);
+        setSaveStatus("saved");
         if (r.sessionId) setSessionId(r.sessionId);
         setQuestions(r.questions?.length ? r.questions : initialQuestions);
-        setExpiresAt(r.expiresAt ? new Date(r.expiresAt).getTime() : null);
-      } catch { if (!cancelled) { setQuestions(initialQuestions); setExpiresAt(null); } }
+        const deadline = r.expiresAt ? new Date(r.expiresAt).getTime() : null;
+        countdown.current = deadline == null ? null : createExamCountdown(deadline, r.serverNow);
+        setExpiresAt(deadline);
+        if (r.completed) {
+          submittedRef.current = true; submissionAnswers.current = {}; setSubmissionStarted(true);
+          submitQuiz.mutate({ enrollmentId, trainingId, sessionId: r.sessionId, answers: {} });
+        }
+      } catch (error) { if (!cancelled) setStartError(error instanceof Error ? error.message : t("learningPlayer.quizSubmitError")); }
     })();
-    return () => { cancelled = true; };
+    return () => { cancelled = true; currentSession.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [attempt]);
+  }, [attempt, startRetry]);
+
+  // Serialize saves; a compare-and-set revision detects edits from another browser tab.
+  useEffect(() => {
+    if (!sessionId || submitted || submissionStarted || submittedRef.current || saveBusy.current) return;
+    const fingerprint = JSON.stringify(answers);
+    if (fingerprint === savedFingerprint.current) return;
+    setSaveStatus("saving");
+    const timer = setTimeout(async () => {
+      if (submittedRef.current || submissionAnswers.current) return;
+      saveBusy.current = true;
+      try {
+        const saved = await saveAnswers.mutateAsync({ sessionId, revision: revisionRef.current, answers });
+        if (currentSession.current === sessionId) {
+          revisionRef.current = saved.revision;
+          savedFingerprint.current = fingerprint;
+          setSaveStatus("saved");
+          setSaveTick(n => n + 1);
+        }
+      } catch { if (currentSession.current === sessionId) setSaveStatus("error"); }
+      finally { saveBusy.current = false; }
+    }, 400);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [answers, sessionId, submitted, submissionStarted, saveTick]);
 
   // Countdown + auto-submit at expiry.
   useEffect(() => {
-    if (!expiresAt || submitted) return;
+    if (!expiresAt || submitted || !countdown.current) return;
     const tick = () => {
-      const left = Math.max(0, Math.round((expiresAt - Date.now()) / 1000));
+      if (!countdown.current) return;
+      const left = countdown.current();
       setSecondsLeft(left);
-      if (left <= 0) doSubmit();
+      if (left <= 0 && !expirySubmitted.current) { expirySubmitted.current = true; doSubmit(); }
     };
     tick();
     const id = setInterval(tick, 1000);
@@ -97,10 +176,21 @@ function QuizView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, submitted]);
 
+  // Navigation never pauses the server timer, even when the latest answers were saved.
+  useEffect(() => {
+    const active = !submitted && !startError;
+    onActiveChange(active);
+    const beforeUnload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
+    if (active) window.addEventListener('beforeunload', beforeUnload);
+    return () => { onActiveChange(false); window.removeEventListener('beforeunload', beforeUnload); };
+  }, [submitted, startError, onActiveChange]);
+
   const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
+  const answerLocked = submitted || submissionStarted || (secondsLeft !== null && secondsLeft <= 0);
+
   const toggleAnswer = (questionId: number, optionIndex: number, type: string) => {
-    if (submitted) return;
+    if (answerLocked) return;
     setAnswers((prev) => {
       const current: number[] = Array.isArray(prev[String(questionId)]) ? prev[String(questionId)] : [];
       if (type === "qcu" || type === "true_false") {
@@ -121,6 +211,13 @@ function QuizView({
     return Array.isArray(a) && a.length > 0;
   });
 
+  if (startError) return <div className="p-6 rounded-xl border border-destructive/30 space-y-4">
+    <p role="alert" className="text-destructive">{startError}</p>
+    <p className="text-sm">{t('learningPlayer.examStartRetryInfo')}</p>
+    <Button disabled={startExam.isPending} onClick={() => { setStartError(null); setStartRetry(value => value + 1); }}>{t('learningPlayer.save.retry')}</Button>
+  </div>;
+  if (!sessionId) return <p role="status" className="p-6">{t("common.loading")}</p>;
+
   if (submitted && result) {
     return (
       <div className="text-center py-10">
@@ -130,7 +227,7 @@ function QuizView({
             : <AlertCircle className="w-10 h-10 text-red-500" />}
         </div>
         <h2 className="font-serif text-2xl font-bold mb-2" style={{ color: "oklch(19% 0.08 252)" }}>
-          {result.isPassed ? t("learningPlayer.congratulations") : t("learningPlayer.insufficientScore")}
+          {result.isPassed ? t("learningPlayer.congratulations") : result.expired ? t("learningPlayer.examExpired") : t("learningPlayer.insufficientScore")}
         </h2>
         <p className="text-lg font-semibold mb-1" style={{ color: result.isPassed ? "oklch(55% 0.18 145)" : "oklch(55% 0.22 27)" }}>
           {t("learningPlayer.scoreSummary", { percentage: result.percentage, score: result.score, maxScore: result.maxScore })}
@@ -140,11 +237,11 @@ function QuizView({
         </p>
         {result.isPassed ? (
           <p className="text-sm font-medium" style={{ color: "oklch(55% 0.18 145)" }}>
-            {t("learningPlayer.trainingValidatedCertAvailable")}
+            {moduleId ? t("learningPlayer.chapterPassed") : t("learningPlayer.trainingValidated")}
           </p>
-        ) : attempt < maxAttempts ? (
+        ) : serverAttempt < maxAttempts ? (
           <Button onClick={() => { setSubmitted(false); setResult(null); setAnswers({}); setSessionId(null); setExpiresAt(null); setSecondsLeft(null); setAttempt((a) => a + 1); }} variant="outline">
-            <RotateCcw className="w-4 h-4 mr-2" /> {t("learningPlayer.retryAttempt", { current: attempt + 1, max: maxAttempts })}
+            <RotateCcw className="w-4 h-4 mr-2" /> {t("learningPlayer.retryAttempt", { current: serverAttempt + 1, max: maxAttempts })}
           </Button>
         ) : (
           <p className="text-sm" style={{ color: "oklch(55% 0.22 27)" }}>
@@ -152,6 +249,7 @@ function QuizView({
           </p>
         )}
 
+        {result.feedbackAvailable === false && <p role="status" className="mt-6 text-sm">{t("learningPlayer.historicalFeedbackUnavailable")}</p>}
         {/* Feedback per question */}
         <div className="mt-8 text-left space-y-4 max-w-2xl mx-auto">
           {result.feedback?.map((fb: any, i: number) => {
@@ -174,6 +272,10 @@ function QuizView({
 
   return (
     <div className="space-y-6">
+      {!submissionStarted && <div role="status" className={`text-sm flex items-center gap-3 ${saveStatus === "error" ? "text-red-700" : "text-slate-600"}`}>
+        {t(`learningPlayer.save.${saveStatus}`)}
+        {saveStatus === "error" && !submissionStarted && <button className="underline" onClick={() => setSaveTick(n => n + 1)}>{t("learningPlayer.save.retry")}</button>}
+      </div>}
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <h2 className="font-semibold text-lg" style={{ color: "oklch(19% 0.08 252)" }}>
           {t("learningPlayer.assessmentHeader", { count: questions.length })}
@@ -185,7 +287,7 @@ function QuizView({
             </span>
           )}
           <span className="text-sm" style={{ color: "oklch(45% 0.02 240)" }}>
-            {t("learningPlayer.scoreRequiredAttempt", { score: passingScore, attempt, max: maxAttempts })}
+            {t("learningPlayer.scoreRequiredAttempt", { score: sessionPassingScore, attempt: serverAttempt, max: maxAttempts })}
           </span>
         </div>
       </div>
@@ -209,7 +311,8 @@ function QuizView({
             {q.type === "free_text" ? (
               <textarea
                 value={typeof answers[qid] === "string" ? answers[qid] : ""}
-                onChange={(e) => { if (!submitted) setAnswers((p) => ({ ...p, [qid]: e.target.value })); }}
+                disabled={answerLocked}
+                onChange={(e) => { if (!answerLocked) setAnswers((p) => ({ ...p, [qid]: e.target.value })); }}
                 placeholder={t("learningPlayer.freeTextPlaceholder")}
                 className="w-full rounded-lg border px-4 py-3 text-sm h-24 resize-y" style={{ borderColor: "oklch(88% 0.015 88)" }}
               />
@@ -222,7 +325,7 @@ function QuizView({
                     <div key={li} className="flex items-center gap-2">
                       <span className="text-sm flex-1 min-w-0" style={{ color: "oklch(19% 0.08 252)" }}>{left}</span>
                       <span style={{ color: "oklch(45% 0.02 240)" }}>→</span>
-                      <select value={cur ?? ""} disabled={submitted}
+                      <select value={cur ?? ""} disabled={answerLocked}
                         onChange={(e) => setAnswers((p) => {
                           const others = (Array.isArray(p[qid]) ? p[qid] : []).filter((x: number[]) => x[0] !== li);
                           return { ...p, [qid]: e.target.value === "" ? others : [...others, [li, Number(e.target.value)]] };
@@ -240,7 +343,7 @@ function QuizView({
                 {opts.map((opt, oi) => {
                   const isSelected = Array.isArray(answers[qid]) && answers[qid].includes(oi);
                   return (
-                    <button key={oi} onClick={() => toggleAnswer(q.id, oi, q.type)}
+                    <button key={oi} type="button" disabled={answerLocked} aria-pressed={isSelected} onClick={() => toggleAnswer(q.id, oi, q.type)}
                       className="w-full text-left rounded-lg px-4 py-3 text-sm transition-all"
                       style={{ background: isSelected ? "oklch(19% 0.08 252 / 0.08)" : "oklch(97% 0.01 88)", border: `1px solid ${isSelected ? "oklch(19% 0.08 252)" : "oklch(88% 0.015 88)"}`, color: "oklch(19% 0.08 252)" }}>
                       <span className="font-semibold mr-2">{String.fromCharCode(65 + oi)}.</span>
@@ -254,73 +357,143 @@ function QuizView({
         );
       })}
 
+      {submissionError && <p role="alert" className="text-sm text-red-700">{t('learningPlayer.submissionUnconfirmed')}</p>}
       <div className="flex justify-end pt-4">
         <Button
           size="lg"
           onClick={doSubmit}
-          disabled={!allAnswered || submitQuiz.isPending}
+          disabled={(!submissionStarted && !allAnswered) || submitQuiz.isPending}
           style={{ background: "oklch(68% 0.1 78)", color: "oklch(19% 0.08 252)" }}
         >
-          {submitQuiz.isPending ? t("learningPlayer.grading") : t("learningPlayer.submitAnswers")}
+          {submitQuiz.isPending ? t("learningPlayer.grading") : submissionStarted ? t("learningPlayer.save.retry") : t("learningPlayer.submitAnswers")}
         </Button>
       </div>
     </div>
   );
 }
 
-// ─── Main Player ──────────────────────────────────────────────────────────────
-export default function LearningPlayer() {
+function LearningLoadState({ failed = false, busy = false, retry }: { failed?: boolean; busy?: boolean; retry?: () => void }) {
   const { t } = useI18n();
+  return <div className="p-8 flex flex-col items-center justify-center gap-4">
+    <p role={failed ? 'alert' : 'status'}>{t(failed ? 'learningPlayer.loadError' : 'common.loading')}</p>
+    {failed && retry && <Button onClick={retry} disabled={busy}>{t(busy ? 'common.loading' : 'learningPlayer.save.retry')}</Button>}
+  </div>;
+}
+
+function ExamEntry({ attempts, timeLimitMin, historyError, historyLoading, retryHistory, ...quiz }: Parameters<typeof QuizView>[0] & {
+  attempts: Parameters<typeof ExamAttemptHistory>[0]['attempts']; timeLimitMin: number | null;
+  historyError: boolean; historyLoading: boolean; retryHistory: () => void;
+}) {
+  const { t } = useI18n();
+  const [started, setStarted] = useState(false);
+  if (started) return <QuizView {...quiz} />;
+  const remaining = Math.max(0, quiz.maxAttempts - attempts.length);
+  return <section className="space-y-4">
+    <h2 className="text-xl font-semibold">{t('examEntry.title')}</h2>
+    <p>{t('learningPlayer.minimumScoreRequired', {score: quiz.passingScore})}</p>
+    <p>{timeLimitMin ? t('examEntry.duration', {minutes: timeLimitMin}) : t('examEntry.untimed')}</p>
+    <p>{t('examEntry.remaining', {remaining, max: quiz.maxAttempts})}</p>
+    <p className="text-sm text-muted-foreground">{t('examEntry.timerInfo')}</p>
+    {historyError ? <div role="alert" className="space-y-2">
+      <p>{t('examEntry.readError')}</p>
+      <Button variant="outline" disabled={historyLoading} onClick={retryHistory}>{t('learningPlayer.save.retry')}</Button>
+    </div> : <>
+      {historyLoading && <p role="status">{t('common.loading')}</p>}
+      {remaining > 0 ? <Button disabled={historyLoading} onClick={() => setStarted(true)}>{t('examEntry.start')}</Button> : <p>{t('learningPlayer.maxAttemptsReached', {max: quiz.maxAttempts})}</p>}
+      <ExamAttemptHistory attempts={attempts} title={quiz.moduleId == null ? t('examHistory.finalTitle') : undefined} />
+    </>}
+  </section>;
+}
+
+// ─── Main Player ──────────────────────────────────────────────────────────────
+function ChapterAssessment({ enrollmentId, trainingId, moduleId, passingScore, maxAttempts, timeLimitMin, onPassed, onActiveChange }: {
+  enrollmentId: number; trainingId: number; moduleId: number; passingScore: number; maxAttempts: number; timeLimitMin: number | null; onPassed: () => void; onActiveChange: (active: boolean) => void;
+}) {
+  const { t } = useI18n();
+  const utils = trpc.useUtils();
+  const questions = trpc.learning.quizQuestions.useQuery({ trainingId, moduleId, enrollmentId });
+  const attempts = trpc.learning.quizAttempts.useQuery({ enrollmentId, moduleId });
+  if (questions.data === undefined || attempts.data === undefined) return <LearningLoadState failed={questions.isError || attempts.isError} busy={questions.isFetching || attempts.isFetching} retry={() => { void questions.refetch(); void attempts.refetch(); }} />;
+  const refreshFailed = questions.isError || attempts.isError;
+  const refreshBusy = questions.isFetching || attempts.isFetching;
+  const retry = () => { void questions.refetch(); void attempts.refetch(); };
+  const refreshNotice = refreshFailed ? <div role="alert" className="bg-amber-50 p-3 mb-3 text-sm"><p>{t('learningPlayer.refreshFailed')}</p><Button variant="outline" disabled={refreshBusy} onClick={retry}>{t('learningPlayer.save.retry')}</Button></div> : null;
+  if (attempts.data?.some(a => a.isPassed)) return <>{refreshNotice}<p className="text-green-700 font-medium">{t("learningPlayer.chapterPassed")}</p><ExamAttemptHistory attempts={attempts.data} /></>;
+  if (!questions.data?.length) return <>{refreshNotice}<p role="status" className="text-amber-800">{t("learningPlayer.chapterUnavailable")}</p></>;
+  return <>{refreshNotice}<ExamEntry attempts={attempts.data} timeLimitMin={timeLimitMin} historyError={refreshFailed} historyLoading={refreshBusy} retryHistory={retry} questions={questions.data} enrollmentId={enrollmentId} trainingId={trainingId} moduleId={moduleId}
+    attemptNumber={(attempts.data?.length ?? 0) + 1} passingScore={passingScore} maxAttempts={maxAttempts} onActiveChange={onActiveChange}
+    onComplete={result => { void attempts.refetch(); void utils.learning.objectiveProgress.invalidate({ enrollmentId }); if (result.isPassed) onPassed(); }} /></>;
+}
+
+export default function LearningPlayer() {
   const { slug } = useParams<{ slug: string }>();
-  const { user, isAuthenticated } = useAuth();
+  const search = useSearch();
+  const { user } = useAuth();
+  // A different course or account must not inherit a local result, answers or certificate request.
+  return <LearningPlayerCourse key={`${user?.id ?? 'anonymous'}:${slug}:${search}`} slug={slug} search={search} />;
+}
+
+function LearningPlayerCourse({ slug, search }: { slug: string; search: string }) {
+  const { t } = useI18n();
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [activeModuleIdx, setActiveModuleIdx] = useState(0);
   const [showQuiz, setShowQuiz] = useState(false);
   const [quizAttemptNumber, setQuizAttemptNumber] = useState(1);
   const [quizPassed, setQuizPassed] = useState(false);
-  const startTimeRef = useRef(Date.now());
+  const examActive = useRef(false);
+  const onExamActiveChange = useCallback((active: boolean) => { examActive.current = active; }, []);
+  const confirmLeaveExam = () => !examActive.current || window.confirm(t('learningPlayer.leaveExamWarning'));
+  const navigateWithinCourse = (action: () => void) => { if (confirmLeaveExam()) action(); };
   const utils = trpc.useUtils();
 
-  const { data: training } = trpc.public.trainingBySlug.useQuery({ slug: slug ?? "" });
-  const { data: enrollments = [] } = trpc.dashboard.enrollments.useQuery();
-  const enrollment = enrollments.find((e: any) => e.training?.slug === slug);
+  const enrollmentsQuery = trpc.dashboard.enrollments.useQuery(undefined, { enabled: isAuthenticated });
+  const enrollments = enrollmentsQuery.data ?? [];
+  const enrollment = selectLearningEnrollment(enrollments, slug, search);
+  const training = enrollment?.training;
 
-  const { data: slideData = [] } = trpc.learning.slides.useQuery(
-    { trainingId: training?.id ?? 0 },
+  const slideDataQuery = trpc.learning.slides.useQuery(
+    { trainingId: training?.id ?? 0, enrollmentId: enrollment?.id },
     { enabled: !!training?.id }
   );
   const [slideFinished, setSlideFinished] = useState(false);
 
-  const { data: modules = [] } = trpc.learning.modules.useQuery(
-    { trainingId: training?.id ?? 0 },
+  const modulesQuery = trpc.learning.modules.useQuery(
+    { trainingId: training?.id ?? 0, enrollmentId: enrollment?.id },
     { enabled: !!training?.id }
   );
-  const { data: modProgress = [] } = trpc.learning.moduleProgress.useQuery(
+  const modProgressQuery = trpc.learning.moduleProgress.useQuery(
     { enrollmentId: enrollment?.id ?? 0 },
     { enabled: !!enrollment?.id }
   );
-  const { data: questions = [] } = trpc.learning.quizQuestions.useQuery(
-    { trainingId: training?.id ?? 0 },
+  const questionsQuery = trpc.learning.quizQuestions.useQuery(
+    { trainingId: training?.id ?? 0, enrollmentId: enrollment?.id },
     { enabled: !!training?.id }
   );
-  const { data: attempts = [] } = trpc.learning.quizAttempts.useQuery(
+  const attemptsQuery = trpc.learning.quizAttempts.useQuery(
     { enrollmentId: enrollment?.id ?? 0 },
     { enabled: !!enrollment?.id }
   );
-  const { data: objectiveProgress = [] } = trpc.learning.objectiveProgress.useQuery(
+  const objectiveProgressQuery = trpc.learning.objectiveProgress.useQuery(
     { enrollmentId: enrollment?.id ?? 0 },
     { enabled: !!enrollment?.id }
   );
 
-  const completeModule = trpc.learning.completeModule.useMutation({
-    onSuccess: () => utils.learning.moduleProgress.invalidate(),
-  });
+  const slideData = slideDataQuery.data ?? [];
+  const modules = modulesQuery.data ?? [];
+  const modProgress = modProgressQuery.data ?? [];
+  const questions = questionsQuery.data ?? [];
+  const attempts = attemptsQuery.data ?? [];
+  const objectiveProgress = objectiveProgressQuery.data ?? [];
+
   const issueCert = trpc.learning.issueCertificate.useMutation({
     onSuccess: (data) => {
       if (data) toast.success(t("learningPlayer.certificateGenerated", { number: data.certificateNumber }));
+      else toast.error(t("learningPlayer.certificateError"));
       utils.dashboard.certificates.invalidate();
     },
     onError: () => toast.error(t("learningPlayer.certificateError")),
   });
+  const progressTarget=useRef(0);
   const updateProgress = trpc.dashboard.updateProgress.useMutation({
     onSuccess: () => { utils.dashboard.enrollments.invalidate(); },
   });
@@ -330,19 +503,21 @@ export default function LearningPlayer() {
     if (!enrollment?.id || slideData.length === 0) return;
     const pct = Math.min(99, Math.round(((idx + 1) / slideData.length) * 100));
     if ((enrollment.progressPercent ?? 0) < pct) {
-      updateProgress.mutate({ enrollmentId: enrollment.id, progressPercent: pct, status: "in_progress" });
+      progressTarget.current=Math.max(progressTarget.current,pct);
+      updateProgress.mutate({ enrollmentId: enrollment.id, progressPercent: progressTarget.current, status: "in_progress" });
     }
   };
   const handleSlideFinish = () => {
     if (!enrollment?.id) return;
-    updateProgress.mutate({ enrollmentId: enrollment.id, progressPercent: 100, status: "completed" });
-    issueCert.mutate({ enrollmentId: enrollment.id, origin: window.location.origin });
+    progressTarget.current=100;
+    updateProgress.mutate({ enrollmentId: enrollment.id, progressPercent: 100, status: "in_progress" });
     setSlideFinished(true);
   };
 
   const activeModule = modules[activeModuleIdx];
   const isModuleCompleted = (moduleId: number) => modProgress.some((p: any) => p.moduleId === moduleId && p.isCompleted);
   const completedCount = modules.filter((m: any) => isModuleCompleted(m.id)).length;
+  const finalExamLocked = modules.some(m => m.isRequired !== false && !isModuleCompleted(m.id));
   const progressPercent = modules.length > 0 ? Math.round((completedCount / modules.length) * 100) : 0;
 
   const lastAttempt = attempts[0] as any;
@@ -350,31 +525,23 @@ export default function LearningPlayer() {
   const maxAttempts = training?.maxAttempts ?? 3;
   const canRetakeQuiz = attemptCount < maxAttempts && !quizPassed && !(lastAttempt?.isPassed);
 
-  // Mark module as complete and track time
-  const handleCompleteModule = () => {
-    if (!enrollment?.id || !activeModule) return;
-    const timeSpent = Math.round((Date.now() - startTimeRef.current) / 60000);
-    completeModule.mutate({ enrollmentId: enrollment.id, moduleId: activeModule.id, timeSpentMinutes: timeSpent });
-    startTimeRef.current = Date.now();
-    toast.success(t("learningPlayer.moduleCompletedToast"));
-    if (activeModuleIdx < modules.length - 1) {
-      setActiveModuleIdx(activeModuleIdx + 1);
-    } else if (questions.length > 0) {
-      setShowQuiz(true);
-    }
-  };
-
   const handleQuizComplete = (result: any) => {
+    void attemptsQuery.refetch();
+    void utils.learning.objectiveProgress.invalidate({ enrollmentId: enrollment?.id ?? 0 });
+    void utils.dashboard.enrollments.invalidate();
+    void utils.dashboard.enrollment.invalidate();
     if (result.isPassed) {
       setQuizPassed(true);
       // Issue certificate
       if (enrollment?.id) {
-        issueCert.mutate({ enrollmentId: enrollment.id, origin: window.location.origin });
+        issueCert.mutate({ enrollmentId: enrollment.id });
       }
     } else {
       setQuizAttemptNumber((n) => n + 1);
     }
   };
+
+  if (authLoading) return <LearningLoadState />;
 
   if (!isAuthenticated) {
     return (
@@ -388,48 +555,92 @@ export default function LearningPlayer() {
     );
   }
 
+  if (enrollmentsQuery.data === undefined) return <LearningLoadState failed={enrollmentsQuery.isError} retry={() => { void enrollmentsQuery.refetch(); }} busy={enrollmentsQuery.isFetching} />;
+
   if (!enrollment) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: "oklch(97% 0.01 88)" }}>
         <div className="text-center max-w-sm">
           <Lock className="w-12 h-12 mx-auto mb-4" style={{ color: "oklch(68% 0.1 78)" }} />
           <h2 className="font-serif text-2xl font-bold mb-2" style={{ color: "oklch(19% 0.08 252)" }}>{t("learningPlayer.accessDenied")}</h2>
-          <p className="text-sm mb-4" style={{ color: "oklch(45% 0.02 240)" }}>{t("learningPlayer.notEnrolled")}</p>
-          <Link href={`/formation/${slug}`}><Button style={{ background: "oklch(19% 0.08 252)", color: "oklch(97% 0.01 88)" }}>{t("learningPlayer.viewTraining")}</Button></Link>
+          <p className="text-sm mb-4" style={{ color: "oklch(45% 0.02 240)" }}>{t("learningPlayer.selectEnrollment")}</p>
+          <Link href="/dashboard"><Button style={{ background: "oklch(19% 0.08 252)", color: "oklch(97% 0.01 88)" }}>{t("learningPlayer.myEnrollments")}</Button></Link>
         </div>
       </div>
     );
   }
 
+  const courseQueries = [enrollmentsQuery, slideDataQuery, modulesQuery, modProgressQuery, questionsQuery, attemptsQuery, objectiveProgressQuery];
+  const missingQueries = courseQueries.filter(query => query.data === undefined);
+  if (missingQueries.length) return <LearningLoadState failed={missingQueries.some(query => query.isError)} busy={missingQueries.some(query => query.isFetching)} retry={() => { for (const query of missingQueries) void query.refetch(); }} />;
+
+  const failedRefreshes = courseQueries.filter(query => query.isError);
+  const refreshNotice = failedRefreshes.length > 0 ? <div role="alert" className="border-b bg-amber-50 p-4 flex flex-wrap items-center gap-3 text-sm">
+    <p>{t('learningPlayer.refreshFailed')}</p>
+    <Button variant="outline" disabled={failedRefreshes.some(query => query.isFetching)} onClick={() => { for (const query of failedRefreshes) void query.refetch(); }}>{t('learningPlayer.save.retry')}</Button>
+  </div> : null;
+
+  const progressNotice=updateProgress.isError?<div role="alert" className="bg-amber-50 border-b p-4 text-sm flex flex-wrap items-center gap-3">
+    <p>{t("learningPlayer.progressUnconfirmed")}</p>
+    <Button variant="outline" disabled={updateProgress.isPending} onClick={()=>updateProgress.mutate({enrollmentId:enrollment.id,progressPercent:progressTarget.current,status:"in_progress"})}>{t("learningPlayer.save.retry")}</Button>
+  </div>:null;
+
+  const certificateActions = <div className="space-y-4 my-6 text-center">
+    <p role={issueCert.isError || (issueCert.isSuccess && !issueCert.data) ? 'alert' : 'status'}>
+      {issueCert.isPending ? t('learningPlayer.certificatePreparing')
+        : issueCert.data ? t('learningPlayer.certificateRecorded', { number: issueCert.data.certificateNumber })
+        : issueCert.error?.data?.code === 'PRECONDITION_FAILED' ? issueCert.error.message
+        : issueCert.isError || issueCert.isSuccess ? t('learningPlayer.certificateRetryInfo')
+        : t('learningPlayer.certificateRequestInfo')}
+    </p>
+    {!issueCert.data && <Button disabled={issueCert.isPending} onClick={() => issueCert.mutate({ enrollmentId: enrollment.id })}>
+      {t(issueCert.isPending ? 'common.loading' : issueCert.isError || issueCert.isSuccess ? 'learningPlayer.save.retry' : 'learningPlayer.certificateRequest')}
+    </Button>}
+    <div><Link href="/dashboard" onClick={event => { if (!confirmLeaveExam()) event.preventDefault(); }}><Button variant="outline">{t('learningPlayer.mySpace')}</Button></Link></div>
+  </div>;
+
   // ── Slide-based course (built with the AI maker) ──
-  if (slideData.length > 0) {
+  if (slideData.length > 0 && modules.length === 0) {
     const deck: DeckSlide[] = (slideData as any[]).map((s) => ({
-      id: s.id, title: s.title, body: s.body, imageUrl: s.imageUrl, videoUrl: s.videoUrl, audioUrl: s.audioUrl,
+      id: s.id, title: s.title, body: s.body, imageUrl: s.imageUrl, videoUrl: s.videoUrl, audioUrl: s.audioUrl, videoCues: s.videoCues,
       quizQuestion: s.quizQuestion, quizOptions: s.quizOptions, quizCorrect: s.quizCorrect, quizExplanation: s.quizExplanation,
     }));
     return (
       <div className="min-h-screen flex flex-col" style={{ background: "oklch(97% 0.01 88)" }}>
         <div className="flex items-center h-12 px-4 shrink-0" style={{ background: "oklch(19% 0.08 252)" }}>
-          <Link href="/dashboard">
+          <Link href="/dashboard" onClick={event => { if (!confirmLeaveExam()) event.preventDefault(); }}>
             <button className="flex items-center gap-1 text-sm text-white/60 hover:text-white transition-colors">
               <ChevronLeft className="w-4 h-4" /> {t("learningPlayer.mySpace")}
             </button>
           </Link>
         </div>
+        {refreshNotice}{progressNotice}
         <div className="flex-1 min-h-0">
-          {slideFinished || enrollment.status === "completed" ? (
+          {(!slideFinished || quizPassed || lastAttempt?.isPassed) && <div className="max-w-3xl mx-auto px-6"><ExamAttemptHistory attempts={attempts} title={t("examHistory.finalTitle")} /></div>}
+          {quizPassed || lastAttempt?.isPassed ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center max-w-sm px-6">
                 <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: "oklch(55% 0.18 145 / 0.12)" }}>
                   <Trophy className="w-10 h-10" style={{ color: "oklch(55% 0.18 145)" }} />
                 </div>
                 <h2 className="font-serif text-2xl font-bold mb-2" style={{ color: "oklch(19% 0.08 252)" }}>{t("learningPlayer.trainingValidated")}</h2>
-                <p className="text-sm mb-6" style={{ color: "oklch(45% 0.02 240)" }}>{t("learningPlayer.certAvailableInSpace")}</p>
-                <Link href="/dashboard"><Button style={{ background: "oklch(19% 0.08 252)", color: "oklch(97% 0.01 88)" }}><Award className="w-4 h-4 mr-2" /> {t("learningPlayer.viewMyCertificate")}</Button></Link>
+                {certificateActions}
               </div>
             </div>
+          ) : slideFinished && questions.length > 0 ? (
+            <div className="max-w-3xl mx-auto p-6">
+              <ExamEntry attempts={attempts} timeLimitMin={training?.examTimeLimitMin ?? null} historyError={attemptsQuery.isError || questionsQuery.isError} historyLoading={attemptsQuery.isFetching || questionsQuery.isFetching} retryHistory={() => { void attemptsQuery.refetch(); void questionsQuery.refetch(); }} questions={questions} enrollmentId={enrollment.id} trainingId={enrollment.trainingId}
+                attemptNumber={quizAttemptNumber} passingScore={training?.passingScore ?? 75}
+                maxAttempts={maxAttempts} onComplete={handleQuizComplete} onActiveChange={onExamActiveChange} />
+            </div>
+          ) : slideFinished ? (
+            <div className="max-w-xl mx-auto p-8 text-center space-y-4">
+              <BookOpen className="w-12 h-12 mx-auto" />
+              <p>{t("learningPlayer.assessmentUnavailable")}</p>
+              <Link href="/dashboard" onClick={event => { if (!confirmLeaveExam()) event.preventDefault(); }}><Button>{t("learningPlayer.mySpace")}</Button></Link>
+            </div>
           ) : (
-            <SlideDeck slides={deck} title={training?.title} onSlideEnter={handleSlideEnter} onFinish={handleSlideFinish} />
+            <SlideDeck contentLanguage={training?.language} slides={deck} title={training?.title} onSlideEnter={handleSlideEnter} onFinish={handleSlideFinish} />
           )}
         </div>
       </div>
@@ -440,15 +651,16 @@ export default function LearningPlayer() {
     <div className="min-h-screen flex flex-col" style={{ background: "oklch(97% 0.01 88)" }}>
       {/* Top bar */}
       <div className="sticky top-0 z-40 border-b" style={{ background: "oklch(19% 0.08 252)", borderColor: "oklch(68% 0.1 78 / 0.2)" }}>
-        <div className="container flex items-center justify-between h-14">
-          <div className="flex items-center gap-3">
-            <Link href="/dashboard">
-              <button className="flex items-center gap-1 text-sm text-white/60 hover:text-white transition-colors">
+        <div className="container flex flex-wrap gap-2 items-center justify-between min-h-14 py-2">
+          <div className="flex items-center gap-3 min-w-0 max-w-full">
+            <Link href="/dashboard" onClick={event => { if (!confirmLeaveExam()) event.preventDefault(); }}>
+              <button className="flex shrink-0 items-center gap-1 text-sm text-white/60 hover:text-white transition-colors">
                 <ChevronLeft className="w-4 h-4" /> {t("learningPlayer.mySpace")}
               </button>
             </Link>
             <span className="text-white/30">|</span>
             <span className="text-sm font-medium text-white truncate max-w-xs">{training?.title}</span>
+            <span className="text-xs text-white/70">{enrollment?.trainingVersionId ? t("curriculum.version", { version: training?.version ?? 1 }) : t("curriculum.legacy")}</span>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs text-white/60">{t("learningPlayer.percentCompleted", { percent: progressPercent })}</span>
@@ -458,6 +670,29 @@ export default function LearningPlayer() {
           </div>
         </div>
       </div>
+
+      {refreshNotice}{progressNotice}
+      <nav aria-label={t('learningPlayer.modulesLabel')} className="lg:hidden border-b bg-white p-4 space-y-3">
+        <label htmlFor="learning-chapter" className="block text-sm font-medium">{t('learningPlayer.modulesLabel')}</label>
+        <select id="learning-chapter" className="w-full min-w-0 rounded-md border p-3 bg-white text-sm" value={showQuiz ? 'exam' : String(activeModuleIdx)}
+          onChange={event => {
+            const value = event.target.value;
+            navigateWithinCourse(() => {
+              if (value === 'exam') { if (!finalExamLocked) setShowQuiz(true); }
+              else { setActiveModuleIdx(Number(value)); setShowQuiz(false); }
+            });
+          }}>
+          {modules.length === 0 && <option value="0">{t('learningPlayer.noModuleAvailable')}</option>}
+          {modules.map((module, index) => <option key={module.id} value={String(index)}>
+            {index + 1}. {module.title}{isModuleCompleted(module.id) ? ` — ${t('learningPlayer.moduleCompleted')}` : ''}
+          </option>)}
+          {questions.length > 0 && <option value="exam" disabled={finalExamLocked}>{t('learningPlayer.finalExam')}</option>}
+        </select>
+        {questions.length > 0 && <div className="space-y-2">
+          <Button className="w-full" disabled={finalExamLocked || showQuiz} onClick={() => navigateWithinCourse(() => setShowQuiz(true))}>{t('learningPlayer.finalExam')}</Button>
+          {finalExamLocked && <p className="text-sm text-slate-600">{t('learningPlayer.chapterRequired')}</p>}
+        </div>}
+      </nav>
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar — module list */}
@@ -474,7 +709,7 @@ export default function LearningPlayer() {
               return (
                 <button
                   key={mod.id}
-                  onClick={() => { setActiveModuleIdx(idx); setShowQuiz(false); }}
+                  onClick={() => navigateWithinCourse(() => { setActiveModuleIdx(idx); setShowQuiz(false); })}
                   className="w-full text-left rounded-lg px-3 py-3 mb-1 flex items-start gap-2 transition-all"
                   style={{
                     background: isActive ? "oklch(19% 0.08 252 / 0.08)" : "transparent",
@@ -493,8 +728,10 @@ export default function LearningPlayer() {
             })}
             {questions.length > 0 && (
               <button
-                onClick={() => setShowQuiz(true)}
-                className="w-full text-left rounded-lg px-3 py-3 mb-1 flex items-start gap-2 transition-all"
+                onClick={() => navigateWithinCourse(() => setShowQuiz(true))}
+                disabled={finalExamLocked}
+                title={t("learningPlayer.chapterRequired")}
+                className="disabled:opacity-50 w-full text-left rounded-lg px-3 py-3 mb-1 flex items-start gap-2 transition-all"
                 style={{
                   background: showQuiz ? "oklch(68% 0.1 78 / 0.1)" : "transparent",
                   border: showQuiz ? "1px solid oklch(68% 0.1 78 / 0.3)" : "1px solid transparent",
@@ -521,6 +758,7 @@ export default function LearningPlayer() {
                     </div>
                     <div className="text-xs leading-snug" style={{ color: o.isCompleted ? "oklch(19% 0.08 252)" : "oklch(55% 0.02 240)" }}>
                       {o.code ? <span style={{ color: "oklch(68% 0.1 78)" }}>{o.code} </span> : null}{o.title}
+                      {o.unavailableQuestionCount > 0 && <p className="mt-1 text-muted-foreground">{t("learningPlayer.objectiveEvidenceUnavailable")}</p>}
                     </div>
                   </div>
                 ))}
@@ -530,7 +768,8 @@ export default function LearningPlayer() {
         </aside>
 
         {/* Main content */}
-        <main className="flex-1 overflow-y-auto p-6 lg:p-10">
+        <main className="flex-1 min-w-0 overflow-y-auto p-6 lg:p-10">
+          {!showQuiz && <div className="max-w-3xl mx-auto"><ExamAttemptHistory attempts={attempts} title={t("examHistory.finalTitle")} /></div>}
           {showQuiz ? (
             <div className="max-w-3xl mx-auto">
               {lastAttempt?.isPassed ? (
@@ -538,14 +777,11 @@ export default function LearningPlayer() {
                   <Trophy className="w-16 h-16 mx-auto mb-4" style={{ color: "oklch(68% 0.1 78)" }} />
                   <h2 className="font-serif text-2xl font-bold mb-2" style={{ color: "oklch(19% 0.08 252)" }}>{t("learningPlayer.trainingValidated")}</h2>
                   <p className="text-sm mb-6" style={{ color: "oklch(45% 0.02 240)" }}>{t("learningPlayer.examPassedScore", { score: lastAttempt.score, maxScore: lastAttempt.maxScore })}</p>
-                  <Link href="/dashboard">
-                    <Button style={{ background: "oklch(19% 0.08 252)", color: "oklch(97% 0.01 88)" }}>
-                      <Award className="w-4 h-4 mr-2" /> {t("learningPlayer.viewMyCertificate")}
-                    </Button>
-                  </Link>
+                  {certificateActions}
                 </div>
               ) : (
-                <QuizView
+                <ExamEntry
+                  attempts={attempts} timeLimitMin={training?.examTimeLimitMin ?? null} historyError={attemptsQuery.isError || questionsQuery.isError} historyLoading={attemptsQuery.isFetching || questionsQuery.isFetching} retryHistory={() => { void attemptsQuery.refetch(); void questionsQuery.refetch(); }}
                   questions={questions as any}
                   enrollmentId={enrollment.id}
                   trainingId={training?.id ?? 0}
@@ -553,8 +789,11 @@ export default function LearningPlayer() {
                   passingScore={training?.passingScore ?? 75}
                   maxAttempts={maxAttempts}
                   onComplete={handleQuizComplete}
+                  onActiveChange={onExamActiveChange}
                 />
               )}
+              {lastAttempt?.isPassed && <ExamAttemptHistory attempts={attempts} title={t("examHistory.finalTitle")} />}
+              {quizPassed && !lastAttempt?.isPassed && certificateActions}
             </div>
           ) : activeModule ? (
             <div className="max-w-3xl mx-auto">
@@ -571,6 +810,9 @@ export default function LearningPlayer() {
                 )}
               </div>
 
+              {slideData.some(s => s.moduleId === activeModule.id || (s.moduleId == null && activeModuleIdx === 0)) && <div className="mb-6 border rounded-xl overflow-hidden">
+                <SlideDeck contentLanguage={training?.language} key={activeModule.id} title={activeModule.title} slides={slideData.filter(s => s.moduleId === activeModule.id || (s.moduleId == null && activeModuleIdx === 0)).map(s => ({ id: s.id, title: s.title, body: s.body, imageUrl: s.imageUrl, videoUrl: s.videoUrl, audioUrl: s.audioUrl, videoCues: s.videoCues, quizQuestion: s.quizQuestion, quizOptions: s.quizOptions, quizCorrect: s.quizCorrect, quizExplanation: s.quizExplanation }))} />
+              </div>}
               {/* Module content */}
               <div className="rounded-xl p-6 mb-6" style={{ background: "oklch(100% 0 0)", border: "1px solid oklch(88% 0.015 88)" }}>
                 {activeModule.description && (
@@ -589,8 +831,8 @@ export default function LearningPlayer() {
                   </div>
                 )}
                 {activeModule.videoUrl && (
-                  <div className="mt-4 rounded-lg overflow-hidden aspect-video bg-black">
-                    <video src={activeModule.videoUrl} controls className="w-full h-full" />
+                  <div className="mt-4 rounded-lg overflow-hidden">
+                    <LearningVideo key={activeModule.videoUrl} src={activeModule.videoUrl} controls className="w-full aspect-video bg-black" />
                   </div>
                 )}
                 {activeModule.pdfUrl && (
@@ -600,11 +842,17 @@ export default function LearningPlayer() {
                 )}
               </div>
 
+              <section className="rounded-xl border bg-white p-6 mb-6">
+                <h2 className="font-sans text-lg font-semibold mb-4">{t("learningPlayer.chapterQuiz")}</h2>
+                <ChapterAssessment key={activeModule.id} enrollmentId={enrollment.id} trainingId={enrollment.trainingId} moduleId={activeModule.id}
+                  passingScore={activeModule.quizPassingScore} maxAttempts={activeModule.quizMaxAttempts} timeLimitMin={activeModule.quizTimeLimitMin} onActiveChange={onExamActiveChange}
+                  onPassed={() => { void utils.learning.moduleProgress.invalidate({ enrollmentId: enrollment.id }); void utils.dashboard.enrollment.invalidate(); void utils.dashboard.enrollments.invalidate(); }} />
+              </section>
               {/* Navigation */}
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap gap-4 items-center justify-between">
                 <Button
                   variant="outline"
-                  onClick={() => setActiveModuleIdx(Math.max(0, activeModuleIdx - 1))}
+                  onClick={() => navigateWithinCourse(() => setActiveModuleIdx(Math.max(0, activeModuleIdx - 1)))}
                   disabled={activeModuleIdx === 0}
                 >
                   <ChevronLeft className="w-4 h-4 mr-1" /> {t("learningPlayer.previous")}
@@ -614,25 +862,19 @@ export default function LearningPlayer() {
                   <div className="flex items-center gap-2 text-sm font-medium" style={{ color: "oklch(55% 0.18 145)" }}>
                     <CheckCircle className="w-4 h-4" /> {t("learningPlayer.moduleCompleted")}
                   </div>
-                ) : (
-                  <Button
-                    onClick={handleCompleteModule}
-                    disabled={completeModule.isPending}
-                    style={{ background: "oklch(68% 0.1 78)", color: "oklch(19% 0.08 252)" }}
-                  >
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    {activeModuleIdx < modules.length - 1 ? t("learningPlayer.validateAndContinue") : questions.length > 0 ? t("learningPlayer.validateAndTakeExam") : t("learningPlayer.finishTraining")}
-                  </Button>
-                )}
+                ) : <span className="text-sm text-slate-600">{t("learningPlayer.chapterRequired")}</span>}
 
                 {activeModuleIdx < modules.length - 1 && (
                   <Button
                     variant="outline"
-                    onClick={() => setActiveModuleIdx(activeModuleIdx + 1)}
+                    onClick={() => navigateWithinCourse(() => setActiveModuleIdx(activeModuleIdx + 1))}
                   >
                     {t("learningPlayer.next")} <ChevronRight className="w-4 h-4 ml-1" />
                   </Button>
                 )}
+                {activeModuleIdx === modules.length - 1 && questions.length > 0 && <Button disabled={finalExamLocked} onClick={() => navigateWithinCourse(() => setShowQuiz(true))}>
+                  {t('learningPlayer.finalExam')} <Award aria-hidden="true" className="w-4 h-4 ms-1" />
+                </Button>}
               </div>
             </div>
           ) : (

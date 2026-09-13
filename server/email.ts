@@ -1,9 +1,4 @@
-/**
- * Minimal SMTP email sender. No-op (logs only) when SMTP_* env vars are absent,
- * so the whole app stays testable without an email provider — consistent with the
- * Stripe "demo mode" philosophy. Configure SMTP_HOST / SMTP_PORT / SMTP_USER /
- * SMTP_PASS / SMTP_FROM in .env to enable real delivery.
- */
+/** SMTP acceptance is not proof of inbox delivery. No automatic retries. */
 import nodemailer from "nodemailer";
 
 // SMTP config is read LAZILY from process.env (populated from .env AND from the admin
@@ -25,17 +20,17 @@ let transportSig = "";
 
 function getTransport(): nodemailer.Transporter | null {
   const { host, port, user, pass } = smtpConfig();
-  if (!host || !user || !pass) { transporter = null; transportSig = ""; return null; }
+  if (!host || !user || !pass || !Number.isInteger(port) || port < 1 || port > 65535) { transporter = null; transportSig = ""; return null; }
   const sig = `${host}:${port}:${user}:${pass}`;
   if (transporter && sig === transportSig) return transporter;
-  transporter = nodemailer.createTransport({ host, port, secure: port === 465, auth: { user, pass } });
+  transporter = nodemailer.createTransport({ host, port, secure: port === 465, auth: { user, pass }, connectionTimeout: 10000, greetingTimeout: 10000, socketTimeout: 20000 });
   transportSig = sig;
   return transporter;
 }
 
 export function isEmailConfigured(): boolean {
-  const { host, user, pass } = smtpConfig();
-  return !!(host && user && pass);
+  const { host, port, user, pass } = smtpConfig();
+  return !!(host && user && pass && Number.isInteger(port) && port >= 1 && port <= 65535);
 }
 
 /** Address that receives event alerts (new quote, ticket, reply, signup).
@@ -45,19 +40,24 @@ export function adminNotifyEmail(): string | null {
 }
 
 export async function sendEmail(opts: { to: string; subject: string; html: string; text?: string }): Promise<{ sent: boolean; error?: string }> {
-  const tx = getTransport();
-  if (!tx) {
-    console.log(`[email] (SMTP non configuré — ignoré) → ${opts.to} : ${opts.subject}`);
-    return { sent: false, error: "SMTP non configuré." };
-  }
   try {
-    await tx.sendMail({ from: smtpConfig().from, to: opts.to, subject: opts.subject, html: opts.html, text: opts.text });
-    console.log(`[email] envoyé → ${opts.to} : ${opts.subject}`);
+    const tx = getTransport();
+    if (!tx) return { sent: false, error: "Configuration SMTP absente ou invalide." };
+    const result = await tx.sendMail({ from: smtpConfig().from, to: opts.to, subject: opts.subject, html: opts.html, text: opts.text });
+    if (!Array.isArray(result?.accepted) || result.accepted.length === 0 || !Array.isArray(result?.rejected) || result.rejected.length > 0) {
+      console.warn('[email] smtp_acceptance_unconfirmed');
+      return { sent: false, error: "L’acceptation SMTP de tous les destinataires n’a pas été confirmée." };
+    }
+    console.log('[email] smtp_accepted');
     return { sent: true };
-  } catch (e: any) {
-    const msg = e?.response || e?.message || String(e);
-    console.warn("[email] échec d'envoi:", msg);
-    return { sent: false, error: msg };
+  } catch (error: unknown) {
+    const code = error && typeof error === 'object' && 'code' in error ? error.code : undefined;
+    if (code === 'EAUTH') {
+      console.warn('[email] smtp_authentication_failed');
+      return { sent: false, error: "Authentification SMTP refusée. Vérifiez la configuration." };
+    }
+    console.warn('[email] smtp_acceptance_unconfirmed');
+    return { sent: false, error: "Envoi SMTP non confirmé. Vérifiez le fournisseur avant toute nouvelle tentative." };
   }
 }
 
@@ -92,12 +92,14 @@ export function orderConfirmationEmail(params: { name: string; orderId: number; 
   };
 }
 
-export function twoFactorCodeEmail(params: { name: string; code: string }): { subject: string; html: string } {
+export function twoFactorCodeEmail(params: { name: string; code: string; action?: "enable" | "disable" }): { subject: string; html: string } {
+  const purpose = params.action === "enable" ? "activation de la double authentification" : params.action === "disable" ? "désactivation de la double authentification" : "connexion";
+  const name = params.name.replace(/[&<>"]/g, value => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[value]!));
   return {
-    subject: `Votre code de connexion R-AERO : ${params.code}`,
-    html: SHELL("Code de connexion", `
-      <p>Bonjour ${params.name || ""},</p>
-      <p>Voici votre code de connexion à usage unique (valable 10 minutes) :</p>
+    subject: `Confirmation de ${purpose} — R-AERO`,
+    html: SHELL("Code de confirmation", `
+      <p>Bonjour ${name},</p>
+      <p>Voici votre code pour confirmer votre ${purpose} (valable 10 minutes) :</p>
       <p style="font-size:28px;font-weight:700;letter-spacing:6px;color:#0f1b2d;margin:16px 0">${params.code}</p>
       <p style="font-size:12px;color:#7a8290">Si vous n'êtes pas à l'origine de cette connexion, ignorez cet email et changez votre mot de passe.</p>`),
   };

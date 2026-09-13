@@ -1,0 +1,62 @@
+import {beforeAll,describe,it,expect} from 'vitest';
+import {randomUUID} from 'node:crypto';
+import {eq} from 'drizzle-orm';
+import {getDb} from './db';
+import {orgScopedViewForSubject} from './access';
+import {appRouter} from './routers';
+import {users,companies,employees,affiliations,trainings,recurrencies,credentials,signoffs,certificates,certificateObjectives,learningObjectives} from '../drizzle/schema';
+const url=process.env.RAERO_TEST_DATABASE_URL;
+describe.skipIf(!url)('credential company destination · PostgreSQL',()=>{
+ beforeAll(()=>{process.env.DATABASE_URL=url!;});
+ it('shares only with the selected affiliation and refuses foreign or unbound proof in a signature',async()=>{
+  const db=(await getDb())!;
+  const [a,b,foreign]=await db.insert(companies).values([{name:'Scope A'},{name:'Scope B'},{name:'Foreign scope'}]).returning();
+  const [holder,manager]=await db.insert(users).values([{openId:randomUUID()},{openId:randomUUID(),role:'company_manager'}]).returning();
+  const [ea,eb]=await db.insert(employees).values([a,b].map(org=>({companyId:org.id,userId:holder.id,firstName:'Scope',lastName:'Holder',email:`${randomUUID()}@example.test`}))).returning();
+  const [aa,ab]=await db.insert(affiliations).values([{personId:holder.id,orgId:a.id,employeeId:ea.id},{personId:holder.id,orgId:b.id,employeeId:eb.id},{personId:manager.id,orgId:a.id,role:'MANAGER'},{personId:manager.id,orgId:b.id,role:'MANAGER'}]).returning();
+  const [course]=await db.insert(trainings).values({title:'Scope course',slug:randomUUID()}).returning();
+  await db.insert(recurrencies).values([ea,eb].map(e=>({employeeId:e.id,companyId:e.companyId,trainingId:course.id,periodMonths:12})));
+  const self=appRouter.createCaller({user:holder,req:{headers:{}},res:{}} as any);
+  const boss=appRouter.createCaller({user:manager,req:{headers:{}},res:{}} as any);
+  const pa=await self.me.surfaceCredential({orgId:a.id,label:'Shared with A',trainingId:course.id,objectiveIds:[111]});
+  const pb=await self.me.surfaceCredential({orgId:b.id,label:'Shared with B',trainingId:course.id,objectiveIds:[222]});
+  expect(pa?.affiliationId).toBe(aa.id);expect(pb?.affiliationId).toBe(ab.id);
+  const [cert]=await db.insert(certificates).values({userId:holder.id,trainingId:course.id,enrollmentId:-holder.id,certificateNumber:randomUUID(),verificationCode:randomUUID().replaceAll('-',''),isValid:true}).returning();
+  const [assigned,unbound]=await db.insert(credentials).values([
+   {personId:holder.id,trainingId:course.id,origin:'ORG_ASSIGNED',affiliationId:aa.id,certificateId:cert.id,part66Coverage:[333]},
+   {personId:holder.id,trainingId:course.id,origin:'INDEPENDENT',surfacedByPersonAt:new Date(),part66Coverage:[444]},
+  ]).returning();
+  expect((await orgScopedViewForSubject(a.id,holder.id)).part66Coverage.sort()).toEqual([111,333]);
+  expect((await orgScopedViewForSubject(b.id,holder.id)).part66Coverage).toEqual([222]);
+  expect((await orgScopedViewForSubject(a.id,holder.id)).requiredModules[0]).toMatchObject({hasValidCertificate:true,certificateNumber:cert.certificateNumber});
+  expect((await orgScopedViewForSubject(b.id,holder.id)).requiredModules[0]).toMatchObject({hasValidCertificate:false,certificateNumber:null});
+  for(const proof of [pa!,assigned,unbound])await expect(boss.company.signoff({requestId:randomUUID(),employeeId:eb.id,credentialId:proof.id})).rejects.toMatchObject({code:'FORBIDDEN'});
+  await expect(boss.company.signoff({requestId:randomUUID(),employeeId:eb.id,credentialId:pa!.id,decision:'REJECTED'})).rejects.toMatchObject({code:'FORBIDDEN'});
+  expect(await db.select().from(signoffs).where(eq(signoffs.subjectPersonId,holder.id))).toHaveLength(0);
+  await expect(self.me.surfaceCredential({orgId:foreign.id,label:'No affiliation'})).rejects.toMatchObject({code:'FORBIDDEN'});
+  await self.me.unsurfaceCredential({credentialId:pa!.id});
+  expect((await orgScopedViewForSubject(a.id,holder.id)).part66Coverage).toEqual([333]);
+  expect((await orgScopedViewForSubject(b.id,holder.id)).part66Coverage).toEqual([222]);
+  const [objective]=await db.insert(learningObjectives).values({trainingId:course.id,title:'Certified objective'}).returning();
+  await db.insert(certificateObjectives).values({certificateId:cert.id,objectiveId:objective.id});
+  const request={orgId:b.id,certificateId:cert.id};
+  const [shared,repeated]=await Promise.all([self.me.shareCertificate(request),self.me.shareCertificate(request)]);
+  expect(repeated.id).toBe(shared.id);
+  expect((await self.me.credentialSharingHistory({})).entries.filter(e=>e.credentialId===shared.id)).toHaveLength(1);
+  expect(shared).toMatchObject({personId:holder.id,affiliationId:ab.id,certificateId:cert.id,origin:'INDEPENDENT',part66Coverage:[objective.id]});
+  expect((await orgScopedViewForSubject(b.id,holder.id)).requiredModules[0]).toMatchObject({hasValidCertificate:true,certificateNumber:cert.certificateNumber});
+  expect((await self.me.selfView()).privateCredentials.find(p=>p.id===shared.id)).toMatchObject({destinationOrgId:b.id,destinationOrgName:b.name});
+  await expect(boss.me.shareCertificate(request)).rejects.toMatchObject({code:'FORBIDDEN'});
+  await self.me.unsurfaceCredential({credentialId:shared.id});
+  expect((await orgScopedViewForSubject(b.id,holder.id)).requiredModules[0].hasValidCertificate).toBe(false);
+  expect((await orgScopedViewForSubject(a.id,holder.id)).requiredModules[0].hasValidCertificate).toBe(true);
+  const reshared=await self.me.shareCertificate(request);expect(reshared.id).not.toBe(shared.id);
+  expect((await db.select().from(credentials).where(eq(credentials.id,shared.id)))[0].surfacedByPersonAt).toBeNull();
+  await db.update(certificates).set({isValid:false}).where(eq(certificates.id,cert.id));
+  await expect(self.me.shareCertificate(request)).rejects.toMatchObject({code:'PRECONDITION_FAILED'});
+  await db.update(certificates).set({isValid:true,expiresAt:new Date(0)}).where(eq(certificates.id,cert.id));
+  await expect(self.me.shareCertificate(request)).rejects.toMatchObject({code:'PRECONDITION_FAILED'});
+  await db.update(companies).set({status:'SUSPENDED'}).where(eq(companies.id,a.id));
+  await expect(self.me.surfaceCredential({orgId:a.id,label:'Suspended destination'})).rejects.toMatchObject({code:'FORBIDDEN'});
+ });
+});

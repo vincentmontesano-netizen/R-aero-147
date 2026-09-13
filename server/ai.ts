@@ -1,3 +1,4 @@
+import { z } from "zod";
 /**
  * Multi-provider AI service for the e-learning maker.
  *  - Text  : OpenAI · Anthropic (Claude) · Google (Gemini) · Mistral
@@ -6,10 +7,13 @@
  * Keys come from environment variables; missing keys degrade gracefully.
  * Generated media is persisted through the local storage layer.
  */
-import { storagePut } from "./storage";
+import { saveCourseMedia } from "./courseMedia";
 
 export type AIProvider = "openai" | "anthropic" | "google" | "mistral";
 export type AICapability = "text" | "image" | "tts";
+
+// Bound each provider request, including reading its response body.
+function aiFetch(url:string,init?:RequestInit){return fetch(url,{...init,signal:AbortSignal.timeout(180000)});}
 
 export class AIError extends Error {}
 
@@ -74,7 +78,7 @@ export async function generateText(opts: {
       max_tokens: maxTokens,
     };
     if (json) body.response_format = { type: "json_object" };
-    const res = await fetch(`${base}/chat/completions`, {
+    const res = await aiFetch(`${base}/chat/completions`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${KEY[provider]()}` },
       body: JSON.stringify(body),
@@ -85,7 +89,7 @@ export async function generateText(opts: {
   }
 
   if (provider === "anthropic") {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
+    const res = await aiFetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -106,7 +110,7 @@ export async function generateText(opts: {
 
   // google (gemini)
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL.google()}:generateContent?key=${KEY.google()}`;
-  const res = await fetch(url, {
+  const res = await aiFetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -122,6 +126,7 @@ export async function generateText(opts: {
 
 /** Parse JSON from a model response, tolerating ```json fences and surrounding prose. */
 export function parseJsonLoose<T = any>(text: string): T {
+  if (typeof text !== "string" || text.length > 200000) throw new AIError("La réponse IA est vide, trop volumineuse ou invalide. Réessayez avec une demande plus courte.");
   let t = text.trim();
   const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i);
   if (fence) t = fence[1].trim();
@@ -130,7 +135,7 @@ export function parseJsonLoose<T = any>(text: string): T {
   const lastArr = t.lastIndexOf("]");
   const last = Math.max(lastObj, lastArr);
   if (first !== Infinity && last !== -1) t = t.slice(first, last + 1);
-  return JSON.parse(t) as T;
+  try { return JSON.parse(t) as T; } catch { throw new AIError("La réponse IA ne contient pas un JSON exploitable. Réessayez."); }
 }
 
 // ─── Image generation ─────────────────────────────────────────────────────────
@@ -148,7 +153,7 @@ function pickProvider(pref: AIProvider | undefined, cap: "image" | "tts"): AIPro
 let _mistralImageAgentId: string | null = null;
 async function mistralImageAgent(): Promise<string> {
   if (_mistralImageAgentId) return _mistralImageAgentId;
-  const res = await fetch("https://api.mistral.ai/v1/agents", {
+  const res = await aiFetch("https://api.mistral.ai/v1/agents", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${KEY.mistral()}` },
     body: JSON.stringify({ model: MODEL.mistralImage(), name: "R-AERO image generator", tools: [{ type: "image_generation" }] }),
@@ -161,7 +166,7 @@ async function mistralImageAgent(): Promise<string> {
 
 async function mistralGenerateImage(prompt: string): Promise<Buffer> {
   const agentId = await mistralImageAgent();
-  const convRes = await fetch("https://api.mistral.ai/v1/conversations", {
+  const convRes = await aiFetch("https://api.mistral.ai/v1/conversations", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${KEY.mistral()}` },
     body: JSON.stringify({ agent_id: agentId, inputs: prompt }),
@@ -170,21 +175,20 @@ async function mistralGenerateImage(prompt: string): Promise<Buffer> {
   const conv = await convRes.json();
   const fileId: string | undefined = (JSON.stringify(conv).match(/"file_id":"([^"]+)"/) || [])[1];
   if (!fileId) throw new AIError("Mistral n'a retourné aucune image.");
-  const fileRes = await fetch(`https://api.mistral.ai/v1/files/${fileId}/content`, {
+  const fileRes = await aiFetch(`https://api.mistral.ai/v1/files/${fileId}/content`, {
     headers: { Authorization: `Bearer ${KEY.mistral()}` },
   });
   if (!fileRes.ok) throw new AIError(`mistral file: ${fileRes.status}`.slice(0, 300));
   return Buffer.from(await fileRes.arrayBuffer());
 }
 
-export async function generateImage(opts: { provider?: AIProvider; prompt: string }): Promise<{ url: string }> {
+export async function generateImage(opts: { provider?: AIProvider; prompt: string; actor: { id: number; role: string }; trainingId: number }): Promise<{ url: string }> {
   const provider = pickProvider(opts.provider, "image");
   let buffer: Buffer;
-  let ext = "png";
   let contentType = "image/png";
 
   if (provider === "openai") {
-    const res = await fetch("https://api.openai.com/v1/images/generations", {
+    const res = await aiFetch("https://api.openai.com/v1/images/generations", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${KEY.openai()}` },
       body: JSON.stringify({ model: MODEL.openaiImage(), prompt: opts.prompt, n: 1, size: "1024x1024" }),
@@ -194,10 +198,10 @@ export async function generateImage(opts: { provider?: AIProvider; prompt: strin
     buffer = Buffer.from(data.data[0].b64_json, "base64");
   } else if (provider === "mistral") {
     buffer = await mistralGenerateImage(opts.prompt);
-    ext = "jpg"; contentType = "image/jpeg";
+    contentType = "image/jpeg";
   } else {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL.googleImage()}:predict?key=${KEY.google()}`;
-    const res = await fetch(url, {
+    const res = await aiFetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ instances: [{ prompt: opts.prompt }], parameters: { sampleCount: 1 } }),
@@ -209,66 +213,83 @@ export async function generateImage(opts: { provider?: AIProvider; prompt: strin
     buffer = Buffer.from(b64, "base64");
   }
 
-  const { url } = await storagePut(`courses/images/slide-${Date.now()}.${ext}`, buffer, contentType);
-  return { url };
+  return saveCourseMedia(opts.actor, opts.trainingId, buffer, contentType);
+}
+
+async function speechBase64(response: Response, field: string): Promise<Buffer> {
+  const data = await response.json().catch(() => { throw new AIError("Réponse audio JSON invalide."); });
+  const value = data?.[field];
+  if (typeof value !== "string" || !value.length || value.length > 69905068 || value.length % 4 !== 0 || /[^A-Za-z0-9+/=]/.test(value)) throw new AIError("Réponse audio encodée invalide.");
+  const bytes = Buffer.from(value, "base64");
+  if (bytes.toString("base64") !== value) throw new AIError("Réponse audio encodée invalide.");
+  return bytes;
 }
 
 // ─── Speech (text-to-speech) ────────────────────────────────────────────────
-export async function generateSpeech(opts: { provider?: AIProvider; text: string; language?: string }): Promise<{ url: string }> {
+export async function generateSpeech(opts: { provider?: AIProvider; text: string; language?: string; actor: { id: number; role: string }; trainingId: number }): Promise<{ url: string }> {
+  const language = z.enum(["fr", "en", "ar"]).parse(opts.language ?? "en");
+  const text = z.string().trim().min(1).max(20000).parse(opts.text);
   const provider = pickProvider(opts.provider, "tts");
   let buffer: Buffer;
   let contentType = "audio/mpeg";
-  let ext = "mp3";
 
   if (provider === "openai") {
-    const res = await fetch("https://api.openai.com/v1/audio/speech", {
+    const res = await aiFetch("https://api.openai.com/v1/audio/speech", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${KEY.openai()}` },
-      body: JSON.stringify({ model: MODEL.openaiTTS(), voice: MODEL.openaiVoice(), input: opts.text, response_format: "mp3" }),
+      body: JSON.stringify({ model: MODEL.openaiTTS(), voice: MODEL.openaiVoice(), input: text, response_format: "mp3" }),
     });
-    if (!res.ok) throw new AIError(`openai tts: ${res.status} ${await res.text().catch(() => "")}`.slice(0, 300));
+    if (!res.ok) throw new AIError(`openai : génération audio refusée (HTTP ${res.status}).`);
     buffer = Buffer.from(await res.arrayBuffer());
   } else if (provider === "mistral") {
-    const res = await fetch("https://api.mistral.ai/v1/audio/speech", {
+    const res = await aiFetch("https://api.mistral.ai/v1/audio/speech", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${KEY.mistral()}` },
-      body: JSON.stringify({ model: MODEL.mistralTTS(), input: opts.text, voice_id: MODEL.mistralVoice(), response_format: "mp3", stream: false }),
+      body: JSON.stringify({ model: MODEL.mistralTTS(), input: text, voice_id: MODEL.mistralVoice(), response_format: "mp3", stream: false }),
     });
-    if (!res.ok) throw new AIError(`mistral tts: ${res.status} ${await res.text().catch(() => "")}`.slice(0, 300));
-    const data = await res.json();
-    if (!data.audio_data) throw new AIError("Mistral TTS n'a retourné aucun audio.");
-    buffer = Buffer.from(data.audio_data, "base64");
+    if (!res.ok) throw new AIError(`mistral : génération audio refusée (HTTP ${res.status}).`);
+    buffer = await speechBase64(res, "audio_data");
   } else {
-    const langCode = (opts.language ?? "en").startsWith("fr") ? "fr-FR" : "en-US";
+    const langCode = { fr: "fr-FR", en: "en-US", ar: "ar-XA" }[language];
     const url = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${KEY.google()}`;
-    const res = await fetch(url, {
+    const res = await aiFetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        input: { text: opts.text },
+        input: { text },
         voice: { languageCode: langCode, ssmlGender: "NEUTRAL" },
         audioConfig: { audioEncoding: "MP3" },
       }),
     });
-    if (!res.ok) throw new AIError(`google tts: ${res.status} ${await res.text().catch(() => "")}`.slice(0, 300));
-    const data = await res.json();
-    if (!data.audioContent) throw new AIError("Google TTS n'a retourné aucun audio.");
-    buffer = Buffer.from(data.audioContent, "base64");
+    if (!res.ok) throw new AIError(`google : génération audio refusée (HTTP ${res.status}).`);
+    buffer = await speechBase64(res, "audioContent");
   }
 
-  const { url } = await storagePut(`courses/audio/narration-${Date.now()}.${ext}`, buffer, contentType);
-  return { url };
+  if (!buffer.length || buffer.length > 50 * 1024 * 1024 || !(buffer.subarray(0, 3).toString() === "ID3" || (buffer[0] === 255 && (buffer[1] & 0xe0) === 0xe0))) throw new AIError("Réponse audio vide, trop volumineuse ou format MP3 non reconnu.");
+  return saveCourseMedia(opts.actor, opts.trainingId, buffer, contentType);
 }
 
 // ─── High-level authoring helpers ─────────────────────────────────────────────
-const LANG_NAME = (l?: string) => (l?.startsWith("fr") ? "français" : "English");
+const LANG_NAME = (l?: string) => (l?.startsWith("ar") ? "العربية" : l?.startsWith("fr") ? "français" : "English");
 
-export type GeneratedSlide = {
-  title: string;
-  body: string;
-  imagePrompt: string;
-  quiz?: { question: string; options: string[]; correct: number[]; explanation: string };
-};
+const generatedQuizSchema = z.object({
+  question:z.string().trim().min(2).max(2000),
+  options:z.array(z.string().trim().min(1).max(2000)).length(4),
+  correct:z.array(z.number().int().min(0).max(3)).min(1).max(4),
+  explanation:z.string().trim().min(1).max(5000),
+}).strict().refine(q=>new Set(q.correct).size===q.correct.length && new Set(q.options.map(option=>option.toLowerCase())).size===4);
+const generatedSlideSchema = z.object({
+  title:z.string().trim().min(1).max(255),body:z.string().trim().min(1).max(20000),
+  imagePrompt:z.string().trim().max(10000).default(""),
+  quiz:generatedQuizSchema.nullish().transform(value=>value??undefined),
+}).strict();
+export const generatedOutlineSchema=z.object({title:z.string().trim().min(1).max(255),description:z.string().trim().min(1).max(10000),slides:z.array(generatedSlideSchema).min(2).max(14)}).strict();
+export type GeneratedSlide=z.infer<typeof generatedSlideSchema>;
+function validatedAiJson<T>(raw:string,schema:z.ZodType<T>):T {
+ const result=schema.safeParse(parseJsonLoose<unknown>(raw));
+ if(!result.success)throw new AIError("La réponse IA contient une structure ou un QCM invalide. Aucune diapositive n’a été ajoutée. Réessayez.");
+ return result.data;
+}
 
 export async function aiGenerateOutline(opts: {
   provider: AIProvider;
@@ -297,19 +318,21 @@ ${opts.level ? `Difficulty level: ${opts.level}.\n` : ""}${opts.tone ? `Writing 
 {"title": string, "description": string, "slides": [{"title": string, "body": string (2-5 sentences of learner-facing content), "imagePrompt": string (a concise English prompt to illustrate the slide), "quiz": {"question": string, "options": [string, string, string, string], "correct": [number] (indices of correct options), "explanation": string} | null }]}
 ${quizRule} Keep "body" suitable to be read aloud as narration.`;
   const raw = await generateText({ provider: opts.provider, system, prompt, json: true, maxTokens: 3500 });
-  const parsed = parseJsonLoose<{ title: string; description: string; slides: GeneratedSlide[] }>(raw);
-  parsed.slides = (parsed.slides ?? []).map((s) => ({
-    title: s.title ?? "",
-    body: s.body ?? "",
-    imagePrompt: s.imagePrompt ?? "",
-    quiz: s.quiz && s.quiz.question ? s.quiz : undefined,
-  }));
+  const parsed=validatedAiJson(raw,generatedOutlineSchema);
+  const quizCount=parsed.slides.filter(slide=>slide.quiz!=null).length;
+  const coverage=opts.quizCoverage??"some";
+  if(parsed.slides.length!==n || (coverage==="all"&&quizCount!==n) || (coverage==="none"&&quizCount!==0) || (coverage==="some"&&(quizCount===0||quizCount===n))) {
+    throw new AIError("La réponse IA ne respecte pas le nombre de diapositives ou la répartition des QCM demandés. Réessayez.");
+  }
   return parsed;
 }
 
 export async function aiWriteSlideText(opts: { provider: AIProvider; instruction: string; language?: string }): Promise<string> {
   const system = `You are an instructional designer. Write in ${LANG_NAME(opts.language)}. Return only the slide body text (2-5 sentences), no markdown headings.`;
-  return (await generateText({ provider: opts.provider, system, prompt: opts.instruction, maxTokens: 600 })).trim();
+  const raw=await generateText({ provider: opts.provider, system, prompt: opts.instruction, maxTokens: 600 });
+  const text=z.string().trim().min(1).max(20000).safeParse(raw);
+  if(!text.success)throw new AIError("Le texte produit par l’IA est vide ou trop long. Réessayez.");
+  return text.data;
 }
 
 export async function aiGenerateQuiz(opts: { provider: AIProvider; content: string; language?: string }): Promise<GeneratedSlide["quiz"]> {
@@ -318,5 +341,5 @@ export async function aiGenerateQuiz(opts: { provider: AIProvider; content: stri
 Content: """${opts.content}"""
 JSON: {"question": string, "options": [string,string,string,string], "correct": [number], "explanation": string}`;
   const raw = await generateText({ provider: opts.provider, system, prompt, json: true, maxTokens: 500 });
-  return parseJsonLoose(raw);
+  return validatedAiJson(raw,generatedQuizSchema);
 }

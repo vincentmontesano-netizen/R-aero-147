@@ -1,3 +1,7 @@
+import { useQueryClient } from '@tanstack/react-query';
+import { clearSessionCache } from '@/lib/sessionCache';
+import { announceSessionChange } from '@/lib/sessionChange';
+import TwoFactorSettings from "@/components/TwoFactorSettings";
 import { useState, useEffect } from "react";
 import { trpc } from "@/lib/trpc";
 import BackButton from "@/components/BackButton";
@@ -9,10 +13,30 @@ import { toast } from "sonner";
 import { useI18n } from "@/i18n";
 
 export default function UserProfile() {
-  const { t, setLang } = useI18n();
+  const queryClient = useQueryClient();
+  const { t, setLang, lang } = useI18n();
   const { user, isAuthenticated } = useAuth();
   const utils = trpc.useUtils();
   const [saved, setSaved] = useState(false);
+  const [sessionPassword, setSessionPassword] = useState("");
+  const revokeSessions = trpc.auth.revokeAllSessions.useMutation({
+    onSuccess: async () => { setSessionPassword(""); await clearSessionCache(queryClient); utils.auth.me.setData(undefined, null); announceSessionChange(); window.location.assign("/login"); },
+    onError: () => {
+      setSessionPassword("");
+      toast.error(lang === "fr" ? "Déconnexion impossible. Vérifiez votre mot de passe ou reconnectez-vous. Après plusieurs essais, attendez quelques minutes." : lang === "ar" ? "تعذر تسجيل الخروج. تحقق من كلمة المرور أو سجّل الدخول مجددًا. انتظر بضع دقائق بعد محاولات متكررة." : "Could not sign out. Check your password or sign in again. After repeated attempts, wait a few minutes.");
+    },
+  });
+  const [exporting, setExporting] = useState(false);
+  const downloadExport = async () => {
+    setExporting(true);
+    try {
+      const data = await utils.me.dataExport.fetch();
+      const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+      const link = document.createElement("a"); link.href = url; link.download = `raero-personal-data-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(link); link.click(); link.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) { toast.error(error instanceof Error ? error.message : "Export failed"); }
+    finally { setExporting(false); }
+  };
   // Part-66 licence/categories now live in the ID module (Passport › Qualification),
   // so the profile form no longer manages them.
   const [form, setForm] = useState({
@@ -48,10 +72,6 @@ export default function UserProfile() {
   const marketingOptIn = !!(user as any)?.marketingOptIn;
   const dataConsent = !!(user as any)?.dataProcessingConsentAt;
   const twoFactorEnabled = !!(user as any)?.twoFactorEnabled;
-  const setTwoFactor = trpc.auth.setTwoFactor.useMutation({
-    onSuccess: (_r, v) => { toast.success(v.enabled ? t("userProfile.twoFactorOn") : t("userProfile.twoFactorOff")); utils.auth.me.invalidate(); },
-    onError: () => toast.error(t("userProfile.toastUpdateError")),
-  });
   const requestReset = trpc.auth.requestPasswordReset.useMutation({
     onSuccess: () => toast.success(t("userProfile.passwordLinkSent")),
     onError: () => toast.success(t("userProfile.passwordLinkSent")),
@@ -150,22 +170,27 @@ export default function UserProfile() {
             </Button>
           </div>
 
-          {/* Email two-factor authentication (2FA) */}
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <div className="text-sm font-medium" style={{ color: "oklch(19% 0.08 252)" }}>{t("userProfile.twoFactorTitle")}</div>
-              <p className="text-xs mt-0.5" style={{ color: "oklch(45% 0.02 240)" }}>{t("userProfile.twoFactorDesc")}</p>
-            </div>
-            <button
-              type="button" role="switch" aria-checked={twoFactorEnabled} disabled={setTwoFactor.isPending}
-              onClick={() => setTwoFactor.mutate({ enabled: !twoFactorEnabled })}
-              className="relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors"
-              style={{ background: twoFactorEnabled ? "oklch(55% 0.18 145)" : "oklch(80% 0.02 240)" }}
-            >
-              <span className="inline-block h-5 w-5 transform rounded-full bg-white transition-transform" style={{ transform: twoFactorEnabled ? "translateX(22px)" : "translateX(2px)" }} />
-            </button>
-          </div>
+          <TwoFactorSettings enabled={twoFactorEnabled} />
         </div>
+
+        <section className="rounded-xl border bg-white p-8 mt-6 space-y-3" aria-labelledby="session-security-title">
+          <h2 id="session-security-title" className="font-semibold">{lang === "fr" ? "Mes appareils connectés" : lang === "ar" ? "أجهزتي المتصلة" : "My signed-in devices"}</h2>
+          <p className="text-sm text-slate-600">{lang === "fr" ? "Déconnectez toutes les sessions de votre compte, y compris cet appareil. Vos formations, documents et résultats sont conservés. Vous devrez vous reconnecter." : lang === "ar" ? "سجّل الخروج من جميع جلسات حسابك، بما فيها هذا الجهاز. ستبقى تدريباتك ومستنداتك ونتائجك محفوظة. ستحتاج إلى تسجيل الدخول مجددًا." : "Sign out of every account session, including this device. Your training, documents and results are preserved. You will need to sign in again."}</p>
+          <form className="space-y-3" onSubmit={event => { event.preventDefault(); if (sessionPassword && !revokeSessions.isPending) revokeSessions.mutate({password: sessionPassword}); }}>
+            <label className="block text-sm font-medium" htmlFor="session-password">{lang === "fr" ? "Mot de passe actuel" : lang === "ar" ? "كلمة المرور الحالية" : "Current password"}</label>
+            <Input id="session-password" type="password" autoComplete="current-password" maxLength={1024} required value={sessionPassword} onChange={event => setSessionPassword(event.target.value)} disabled={revokeSessions.isPending} />
+            <Button type="submit" variant="outline" disabled={!sessionPassword || revokeSessions.isPending}>
+              {revokeSessions.isPending && <Loader2 className="w-4 h-4 me-2 animate-spin" />}
+              {lang === "fr" ? "Déconnecter tous mes appareils" : lang === "ar" ? "تسجيل الخروج من جميع أجهزتي" : "Sign out all my devices"}
+            </Button>
+          </form>
+        </section>
+
+        <section className="rounded-xl border bg-white p-8 mt-6 space-y-3">
+          <h2 className="font-semibold">{lang === "fr" ? "Mes données personnelles" : lang === "ar" ? "بياناتي الشخصية" : "My personal data"}</h2>
+          <p className="text-sm text-slate-600">{lang === "fr" ? "Téléchargez vos données de compte, documents du coffre, parcours, vérifications d’identité et assistance en JSON. Les fichiers sont référencés par leurs liens privés et ne sont pas inclus dans ce téléchargement." : lang === "ar" ? "نزّل بيانات الحساب والخزنة والتدريب والتحقق من الهوية والدعم بصيغة JSON. يتضمن التصدير روابط خاصة للملفات وليس الملفات نفسها." : "Download account, vault, learning, identity verification and support data as JSON. Files are referenced through private links; their contents are not included."}</p>
+          <Button variant="outline" disabled={exporting} onClick={downloadExport}>{exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : lang === "fr" ? "Télécharger mes données" : lang === "ar" ? "تنزيل بياناتي" : "Download my data"}</Button>
+        </section>
 
         {/* RGPD consents — not relevant for an admin account. */}
         {(user as any)?.role !== "admin" && (
