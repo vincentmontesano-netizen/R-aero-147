@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import { PanelLeft } from "lucide-react";
+import { useI18n } from "@/i18n";
 
 const BLUE = "oklch(19% 0.08 252)";
 const GOLD = "oklch(68% 0.1 78)";
@@ -18,6 +19,7 @@ export default function DashboardSidebar({ items, active, onSelect, heading }: {
   onSelect: (key: string) => void;
   heading?: string;
 }) {
+  const { t } = useI18n();
   const [collapsed, setCollapsed] = useState(false);
   return (
     <aside
@@ -29,8 +31,9 @@ export default function DashboardSidebar({ items, active, onSelect, heading }: {
         {!collapsed && heading && <span className="text-[11px] font-semibold tracking-widest px-1.5 truncate flex-1" style={{ color: MUTED }}>{heading}</span>}
         <button
           onClick={() => setCollapsed((c) => !c)}
-          title={collapsed ? "Déplier" : "Replier"}
-          aria-label={collapsed ? "Déplier le menu" : "Replier le menu"}
+          title={t(collapsed ? "sidebar.expand" : "sidebar.collapse")}
+          aria-label={t(collapsed ? "sidebar.expand" : "sidebar.collapse")}
+          aria-expanded={!collapsed}
           className="p-1.5 rounded-md hover:bg-black/5 ml-auto shrink-0"
           style={{ color: MUTED }}
         >

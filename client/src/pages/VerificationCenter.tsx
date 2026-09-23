@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { getLoginUrl } from "@/const";
 
 export default function VerificationCenter() {
   const { user } = useAuth();
@@ -125,7 +126,7 @@ function VerificationWorkspace() {
     }
   };
   if (loading) return <p role="status" className="p-12">{tr("Chargement…", "Loading…", "جار التحميل…")}</p>;
-  if (!user) return <div className="min-h-screen grid place-items-center"><Link href="/login"><Button>{tr("Connectez-vous pour accéder à vos dossiers", "Sign in to access your files", "سجّل الدخول للوصول إلى ملفاتك")}</Button></Link></div>;
+  if (!user) return <div className="min-h-screen grid place-items-center"><Link href={getLoginUrl()}><Button>{tr("Connectez-vous pour accéder à vos dossiers", "Sign in to access your files", "سجّل الدخول للوصول إلى ملفاتك")}</Button></Link></div>;
   const rows = queue ? admin : mine;
   const changeMinePage=(cursor?:number)=>{
     if(busy||mine.isFetching||!canLeave())return;

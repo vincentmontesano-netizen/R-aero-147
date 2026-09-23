@@ -461,7 +461,7 @@
   "cart.emptyDescription": "Découvrez notre catalogue de formations.",
   "cart.viewCatalogue": "Voir le catalogue",
   "cart.defaultTrainingTitle": "Formation",
-  "cart.priceTtcSuffix": "€ TTC",
+  "cart.priceTtcSuffix": "TTC",
   "cart.clearCart": "Vider le panier",
   "cart.summary": "Récapitulatif",
   "cart.subtotalHt": "Sous-total HT",
@@ -1094,7 +1094,7 @@
   "adminDashboard.stripeKeysTitle": "Clés API",
   "adminDashboard.stripeDescription": "Connectez votre compte Stripe pour encaisser de vrais paiements.",
   "adminDashboard.stripeConfigured": "Configuré ✓",
-  "adminDashboard.stripeNotConfigured": "Non configuré (paiements en mode démo).",
+  "adminDashboard.stripeNotConfigured": "Non configuré (paiement en ligne indisponible : les clients sont orientés vers un devis).",
   "adminDashboard.stripePublishable": "Clé publique",
   "adminDashboard.stripeSecret": "Clé secrète",
   "adminDashboard.stripeWebhook": "Secret de signature webhook",
@@ -1991,5 +1991,14 @@
   "supportQueue.confirm": "Envoyer la notification du ticket #{id} à {email} ? Le message invite à consulter le ticket sans recopier son contenu.",
   "notificationBell.unavailableLabel": "Notifications indisponibles",
   "notificationBell.loadError": "Les notifications ou leur compteur n’ont pas pu être actualisés. Réessayez.",
-  "notificationBell.markError": "Le marquage comme lu n’est pas confirmé. Actualisez pour vérifier l’état des notifications."
+  "notificationBell.markError": "Le marquage comme lu n’est pas confirmé. Actualisez pour vérifier l’état des notifications.",
+  "sidebar.expand": "Déplier le menu",
+  "sidebar.collapse": "Replier le menu",
+  "common.back": "Retour",
+  "common.backToSite": "Retour au site",
+  "adminDashboard.confirmRoleChange": "Changer le rôle de {user} en « {role} » ?",
+  "checkout.paymentsUnavailableTitle": "Paiement en ligne indisponible",
+  "checkout.paymentsUnavailableText": "Le paiement par carte n’est pas encore ouvert. Demandez un devis : notre équipe vous répond sous 24 à 48 h et active votre accès.",
+  "checkout.requestQuote": "Demander un devis",
+  "slideDeck.answerToContinue": "Répondez correctement à la question pour continuer."
 }

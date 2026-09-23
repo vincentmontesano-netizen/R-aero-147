@@ -1,54 +1,33 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle, Home } from "lucide-react";
-import { useLocation } from "wouter";
+import { Compass, Home, Search } from "lucide-react";
+import { Link } from "wouter";
 import { useI18n } from "@/i18n";
+import PublicNav from "@/components/PublicNav";
+
+const DEEP_BLUE = "oklch(19% 0.08 252)";
+const GOLD = "oklch(68% 0.1 78)";
 
 export default function NotFound() {
   const { t } = useI18n();
-  const [, setLocation] = useLocation();
-
-  const handleGoHome = () => {
-    setLocation("/");
-  };
-
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
-      <Card className="w-full max-w-lg mx-4 shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-        <CardContent className="pt-8 pb-8 text-center">
-          <div className="flex justify-center mb-6">
-            <div className="relative">
-              <div className="absolute inset-0 bg-red-100 rounded-full animate-pulse" />
-              <AlertCircle className="relative h-16 w-16 text-red-500" />
-            </div>
-          </div>
-
-          <h1 className="text-4xl font-bold text-slate-900 mb-2">404</h1>
-
-          <h2 className="text-xl font-semibold text-slate-700 mb-4">
-            {t("notFound.title")}
-          </h2>
-
-          <p className="text-slate-600 mb-8 leading-relaxed">
+    <div className="min-h-screen w-full" style={{ background: "oklch(97% 0.01 88)" }}>
+      <PublicNav />
+      <main className="container flex items-center justify-center min-h-screen pt-16">
+        <div className="w-full max-w-lg text-center rounded-xl bg-white p-8" style={{ border: "1px solid oklch(88% 0.015 88)" }}>
+          <Compass className="h-12 w-12 mx-auto mb-4" style={{ color: GOLD }} aria-hidden="true" />
+          <h1 className="font-serif text-4xl font-bold mb-2" style={{ color: DEEP_BLUE }}>404</h1>
+          <h2 className="text-xl font-semibold mb-4" style={{ color: DEEP_BLUE }}>{t("notFound.title")}</h2>
+          <p className="mb-8 leading-relaxed" style={{ color: "oklch(45% 0.02 240)" }}>
             {t("notFound.description")}
             <br />
             {t("notFound.descriptionSecondary")}
           </p>
-
-          <div
-            id="not-found-button-group"
-            className="flex flex-col sm:flex-row gap-3 justify-center"
-          >
-            <Button
-              onClick={handleGoHome}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg"
-            >
-              <Home className="w-4 h-4 mr-2" />
-              {t("notFound.goHome")}
-            </Button>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link href="/"><Button className="w-full" style={{ background: DEEP_BLUE, color: "white" }}><Home className="w-4 h-4 mr-2" />{t("notFound.goHome")}</Button></Link>
+            <Link href="/catalogue"><Button variant="outline" className="w-full"><Search className="w-4 h-4 mr-2" />{t("nav.catalogue")}</Button></Link>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </main>
     </div>
   );
 }

@@ -11,7 +11,7 @@ const IVORY = "oklch(97% 0.01 88)";
 const MUTED = "oklch(45% 0.02 240)";
 
 export default function News() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { data: articles = [], isLoading } = trpc.public.articles.useQuery();
 
   return (
@@ -47,7 +47,7 @@ export default function News() {
                     <h3 className="font-serif text-lg font-bold mb-2 leading-snug" style={{ color: DEEP_BLUE }}>{a.title}</h3>
                     {a.excerpt && <p className="text-sm flex-1" style={{ color: MUTED }}>{a.excerpt}</p>}
                     <div className="flex items-center justify-between mt-4 text-xs" style={{ color: "oklch(62% 0.02 240)" }}>
-                      <span>{a.publishedAt ? new Date(a.publishedAt).toLocaleDateString("fr-FR") : ""}</span>
+                      <span>{a.publishedAt ? new Date(a.publishedAt).toLocaleDateString(lang) : ""}</span>
                       <span className="inline-flex items-center gap-1 font-medium" style={{ color: DEEP_BLUE }}>{t("news.read")} <ArrowRight className="w-3 h-3" /></span>
                     </div>
                   </div>

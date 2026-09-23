@@ -25,6 +25,7 @@ import CompanyMembers from "@/components/CompanyMembers";
 import Passport from "@/components/Passport";
 import { toast } from "sonner";
 import { useI18n } from "@/i18n";
+import { useUrlTab } from "@/hooks/useUrlTab";
 
 const RECURRENCY_STATUS: Record<string, { color: string; bg: string }> = {
   ok: { color: "oklch(55% 0.18 145)", bg: "oklch(55% 0.18 145 / 0.1)" },
@@ -221,7 +222,7 @@ export default function CompanyDashboard() {
   const subscriptionQuery = trpc.company.subscription.useQuery(undefined, { enabled: isAuthenticated });
   const { data: subscription, refetch: refetchSubscription } = subscriptionQuery;
   const [fileEmployee, setFileEmployee] = useState<number | null>(null);
-  const [tab, setTab] = useState("employees");
+  const [tab, setTab] = useUrlTab("employees");
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [recurrencyFilter, setRecurrencyFilter] = useState("all");
   const consolidatedQuery = trpc.company.consolidated.useQuery(undefined, { enabled: isAuthenticated });
@@ -513,8 +514,8 @@ export default function CompanyDashboard() {
                           <td className="px-4 py-3 font-medium" style={{ color: "oklch(19% 0.08 252)" }}>{rec.employee?.firstName} {rec.employee?.lastName}</td>
                           <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{rec.training?.title ?? "—"}</td>
                           <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{t("companyDashboard.periodMonths", { count: rec.periodMonths })}</td>
-                          <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{rec.lastCompletedAt ? new Date(rec.lastCompletedAt).toLocaleDateString("fr-FR") : "—"}</td>
-                          <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{rec.nextDueAt ? new Date(rec.nextDueAt).toLocaleDateString("fr-FR") : "—"}</td>
+                          <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{rec.lastCompletedAt ? new Date(rec.lastCompletedAt).toLocaleDateString(lang) : "—"}</td>
+                          <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{rec.nextDueAt ? new Date(rec.nextDueAt).toLocaleDateString(lang) : "—"}</td>
                           <td className="px-4 py-3">
                             <span className="text-xs font-semibold px-2 py-1 rounded-full" style={{ color: statusConf.color, background: statusConf.bg }}>{t(`companyDashboard.status_${rec.status ?? "not_started"}`)}</span>
                           </td>
@@ -580,7 +581,7 @@ export default function CompanyDashboard() {
                       </div>
                       <div className="text-sm" style={{ color: "oklch(45% 0.02 240)" }}>
                         {t("companyDashboard.subscriptionStatusLabel", { status: subscription.subscriptionStatus ?? t("companyDashboard.subscriptionStatusUnknown") })}
-                        {subscription.subscriptionExpiresAt ? t("companyDashboard.subscriptionNextDue", { date: new Date(subscription.subscriptionExpiresAt).toLocaleDateString("fr-FR") }) : ""}
+                        {subscription.subscriptionExpiresAt ? t("companyDashboard.subscriptionNextDue", { date: new Date(subscription.subscriptionExpiresAt).toLocaleDateString(lang) }) : ""}
                       </div>
                     </div>
                   </div>

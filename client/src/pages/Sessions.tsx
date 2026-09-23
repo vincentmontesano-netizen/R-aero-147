@@ -8,6 +8,7 @@ import BackButton from "@/components/BackButton";
 import { Button } from "@/components/ui/button";
 import { Calendar, MapPin, Users, Monitor, Video, Building2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { getLoginUrl } from "@/const";
 
 const DEEP_BLUE = "oklch(19% 0.08 252)";
 const GOLD = "oklch(68% 0.1 78)";
@@ -38,7 +39,7 @@ export default function Sessions() {
     onError: (e) => toast.error(e.message),
   });
 
-  const onRegister = (id: number) => { if (!isAuthenticated) { setLocation("/login"); return; } register.mutate({ sessionId: id }); };
+  const onRegister = (id: number) => { if (!isAuthenticated) { setLocation(getLoginUrl()); return; } register.mutate({ sessionId: id }); };
 
   const filtered = (sessions as any[]).filter((s) => filter === "all" || s.format === filter);
   const groups: Record<string, any[]> = {};

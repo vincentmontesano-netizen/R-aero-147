@@ -75,16 +75,16 @@ export default function Register() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("register.labelName")}</label>
-              <Input required value={form.name} onChange={set("name")} placeholder={t("register.placeholderName")} />
+              <label htmlFor="reg-field-1" className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("register.labelName")}</label>
+              <Input id="reg-field-1" required value={form.name} onChange={set("name")} placeholder={t("register.placeholderName")} />
             </div>
             <div>
-              <label className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("register.labelEmail")}</label>
-              <Input type="email" required value={form.email} onChange={set("email")} placeholder={t("register.placeholderEmail")} autoComplete="email" />
+              <label htmlFor="reg-field-2" className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("register.labelEmail")}</label>
+              <Input id="reg-field-2" type="email" required value={form.email} onChange={set("email")} placeholder={t("register.placeholderEmail")} autoComplete="email" />
             </div>
             <div>
-              <label className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("register.labelPassword")} <span className="font-normal">{t("register.labelPasswordHint")}</span></label>
-              <Input type="password" required minLength={8} value={form.password} onChange={set("password")} placeholder="••••••••" autoComplete="new-password" />
+              <label htmlFor="reg-field-3" className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("register.labelPassword")} <span className="font-normal">{t("register.labelPasswordHint")}</span></label>
+              <Input id="reg-field-3" type="password" required minLength={8} value={form.password} onChange={set("password")} placeholder="••••••••" autoComplete="new-password" />
             </div>
             {/* Optionally create an organisation and become its manager. */}
             <div className="rounded-lg p-3" style={{ border: "1px solid oklch(88% 0.015 88)", background: "oklch(97% 0.01 88)" }}>
@@ -96,13 +96,13 @@ export default function Register() {
                 <div className="space-y-2 mt-3">
                   <p className="text-[11px]" style={{ color: "oklch(45% 0.02 240)" }}>{t("register.createOrgHint")}</p>
                   <div>
-                    <label className="text-xs font-semibold mb-1 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("register.orgNameLabel")}</label>
-                    <Input value={form.orgName} onChange={set("orgName")} placeholder="Aero MRO SA" />
+                    <label htmlFor="reg-field-4" className="text-xs font-semibold mb-1 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("register.orgNameLabel")}</label>
+                    <Input id="reg-field-4" value={form.orgName} onChange={set("orgName")} placeholder="Aero MRO SA" />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-xs font-semibold mb-1 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("register.orgTypeLabel")}</label>
-                      <select value={form.orgType} onChange={(e) => setForm((f) => ({ ...f, orgType: e.target.value }))} className="w-full h-9 rounded-md border px-2 text-sm" style={{ borderColor: "oklch(88% 0.015 88)" }}>
+                      <label htmlFor="reg-field-5" className="text-xs font-semibold mb-1 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("register.orgTypeLabel")}</label>
+                      <select id="reg-field-5" value={form.orgType} onChange={(e) => setForm((f) => ({ ...f, orgType: e.target.value }))} className="w-full h-9 rounded-md border px-2 text-sm" style={{ borderColor: "oklch(88% 0.015 88)" }}>
                         <option value="MRO">MRO</option>
                         <option value="AIRLINE">{t("register.orgTypeAirline")}</option>
                         <option value="CAMO">CAMO</option>
@@ -110,8 +110,8 @@ export default function Register() {
                       </select>
                     </div>
                     <div>
-                      <label className="text-xs font-semibold mb-1 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("register.orgAgreementLabel")}</label>
-                      <Input value={form.orgAgreement} onChange={set("orgAgreement")} placeholder="FR.145.XXXX" className="font-mono" />
+                      <label htmlFor="reg-field-6" className="text-xs font-semibold mb-1 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("register.orgAgreementLabel")}</label>
+                      <Input id="reg-field-6" value={form.orgAgreement} onChange={set("orgAgreement")} placeholder="FR.145.XXXX" className="font-mono" />
                     </div>
                   </div>
                 </div>

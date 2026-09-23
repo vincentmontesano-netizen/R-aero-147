@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 import { recordChargeRefund } from "./refunds";
 import { fulfillPaidCheckout } from "./paymentVerification";
 import Stripe from "stripe";
@@ -24,7 +25,7 @@ export async function createCheckoutSession(params: {
   origin: string;
 }): Promise<{ url: string; orderId: number } | null> {
   const stripe = getStripe();
-  if (!stripe) throw new Error("Paiement indisponible : Stripe doit être configuré.");
+  if (!stripe) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Paiement indisponible : Stripe doit être configuré." });
 
   const { prepareCartCheckout, resumeOrderCheckout } = await import("./checkoutAttempts");
   const attempt = await prepareCartCheckout(params);
@@ -46,7 +47,7 @@ export async function createQuoteCheckout(params: {
   origin: string;
 }): Promise<{ url: string; orderId: number } | null> {
   const stripe = getStripe();
-  if (!stripe) throw new Error("Paiement indisponible : Stripe doit être configuré.");
+  if (!stripe) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Paiement indisponible : Stripe doit être configuré." });
   const { prepareQuoteCheckout, resumeOrderCheckout } = await import("./checkoutAttempts");
   const attempt = await prepareQuoteCheckout(params);
   return resumeOrderCheckout(stripe, { id: params.userId, role: params.userRole ?? "user" }, attempt.orderId);

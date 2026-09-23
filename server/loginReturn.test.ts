@@ -16,6 +16,8 @@ describe('post-login destination boundary', () => {
     }
     expect(loginDestination('?returnTo=/support&returnTo=/admin', 'user')).toBe('/dashboard');
     expect(loginDestination('', 'admin')).toBe('/admin');
+    expect(loginDestination('', 'company_manager')).toBe('/entreprise');
+    expect(loginDestination('?returnTo=/catalogue', 'company_manager')).toBe('/catalogue');
     expect(getLoginUrl()).toBe('/login');
   });
 });

@@ -26,6 +26,7 @@ import {
   Eye, ArrowLeft, Loader2, BookOpen, XCircle, Languages, Check, GraduationCap, FileQuestion,
 } from "lucide-react";
 import { toast } from "sonner";
+import { getLoginUrl } from "@/const";
 
 const DEEP_BLUE = "oklch(19% 0.08 252)";
 const GOLD = "oklch(68% 0.1 78)";
@@ -124,7 +125,7 @@ export default function CourseMaker() {
           <XCircle className="w-12 h-12 mx-auto mb-4" style={{ color: "oklch(55% 0.22 27)" }} />
           <h2 className="font-serif text-2xl font-bold mb-2" style={{ color: DEEP_BLUE }}>403</h2>
           <p className="text-sm" style={{ color: MUTED }}>{t("courseMaker.forbidden")}</p>
-          <Link href="/login"><Button className="mt-4" style={{ background: DEEP_BLUE, color: IVORY }}>{t("nav.login")}</Button></Link>
+          <Link href={getLoginUrl()}><Button className="mt-4" style={{ background: DEEP_BLUE, color: IVORY }}>{t("nav.login")}</Button></Link>
         </div>
       </div>
     );
@@ -164,9 +165,9 @@ export default function CourseMaker() {
               {workspaces.data?.map(w => <option key={w.orgId ?? "operator"} value={w.orgId == null ? "operator" : String(w.orgId)}>{w.name ?? t("maker.operatorWorkspace")}</option>)}
             </select>
           </label>
-          <div className="flex gap-2 mb-2">
-            <Button size="sm" className="flex-1" variant="outline" disabled={!selectedWorkspace} onClick={() => setNewOpen(true)}><Plus className="w-4 h-4 mr-1" /> {t("maker.newCourse")}</Button>
-            <Button size="sm" className="flex-1" disabled={!aiReady || !selectedWorkspace} onClick={() => setAiOpen(true)} style={{ background: GOLD, color: DEEP_BLUE }}><Wand2 className="w-4 h-4 mr-1" /> {t("maker.aiOutline")}</Button>
+          <div className="flex flex-wrap gap-2 mb-2">
+            <Button size="sm" className="grow" variant="outline" disabled={!selectedWorkspace} onClick={() => setNewOpen(true)}><Plus className="w-4 h-4 mr-1" /> {t("maker.newCourse")}</Button>
+            <Button size="sm" className="grow" disabled={!aiReady || !selectedWorkspace} onClick={() => setAiOpen(true)} style={{ background: GOLD, color: DEEP_BLUE }}><Wand2 className="w-4 h-4 mr-1" /> {t("maker.aiOutline")}</Button>
           </div>
           <Button className="w-full mb-2" size="sm" variant="outline" disabled={!course || !selectedWorkspace || coursesQuery.isError} onClick={() => setCopyOpen(true)}>{lang === "fr" ? "Dupliquer la formation sélectionnée" : lang === "ar" ? "نسخ الدورة المحددة" : "Duplicate selected course"}</Button>
           {!aiReady &&<p className="text-xs mb-3 p-2 rounded" style={{ background: "oklch(68% 0.1 78 / 0.12)", color: "oklch(45% 0.06 78)" }}>{t("maker.providerMissing")}</p>}

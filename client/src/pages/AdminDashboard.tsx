@@ -40,6 +40,8 @@ import BackButton from "@/components/BackButton";
 import AdminContentManager from "@/components/AdminContentManager";
 import AdminSessions from "@/components/AdminSessions";
 import AdminArticles from "@/components/AdminArticles";
+import { useUrlTab } from "@/hooks/useUrlTab";
+import { catalogueKey, formatHours } from "@/lib/utils";
 
 const QUOTE_STATUS: Record<string, { labelKey: string; color: string }> = {
   received: { labelKey: "adminDashboard.quoteStatusReceived", color: "oklch(42% 0.1 218)" },
@@ -170,6 +172,8 @@ function TrainingFormDialog({ training, open, onOpenChange, onSuccess }: { train
 
 export default function AdminDashboard() {
   const { t, lang } = useI18n();
+  /** Catalogue codes ("elearning", "b1b2") → the labels learners see in the catalogue. */
+  const codeLabel = (prefix: string, code: string) => { const key = catalogueKey(prefix, code); const label = t(key); return label === key ? code : label; };
   const certificateLabels=certificateReportLabels[lang];
   const { user } = useAuth();
   const [manageQuote, setManageQuote] = useState<any | null>(null);
@@ -229,20 +233,23 @@ export default function AdminDashboard() {
   });
   const updateTraining = trpc.admin.trainings.update.useMutation({
     onSuccess: () => { toast.success(t("adminDashboard.toastTrainingUpdated")); refetchTrainings(); },
+    onError: e => toast.error(e.message),
   });
   const deleteTrainingM = trpc.admin.trainings.delete.useMutation({
     onSuccess: () => { toast.success(t("contentArchive.done")); refetchTrainings(); },
     onError: (e) => toast.error(e.message),
   });
   const [trainingDialog, setTrainingDialog] = useState<{ training: any | null } | null>(null);
-  const [tab, setTab] = useState("trainings");
+  const [tab, setTab] = useUrlTab("trainings");
   const [formSubTab, setFormSubTab] = useState<"catalogue" | "content" | "sessions">("catalogue");
   const utils = trpc.useUtils();
   const setUserStatus = trpc.admin.setUserStatus.useMutation({
     onSuccess: () => { toast.success(t("adminDashboard.toastAccountStatusUpdated")); utils.admin.users.invalidate(); },
+    onError: error => toast.error(error.message),
   });
   const setUserRole = trpc.admin.setUserRole.useMutation({
     onSuccess: () => { toast.success(t("adminDashboard.toastRoleUpdated")); utils.admin.users.invalidate(); },
+    onError: error => { toast.error(error.message); void utils.admin.users.invalidate(); },
   });
   const eraseUser = trpc.admin.erasePerson.useMutation({
     onSuccess: () => { toast.success(t("adminDashboard.toastAccountErased")); utils.admin.users.invalidate(); },
@@ -428,11 +435,11 @@ export default function AdminDashboard() {
                     <tr key={tr.id} style={{ background: i % 2 === 0 ? "oklch(100% 0 0)" : "oklch(97% 0.01 88)", borderTop: "1px solid oklch(93% 0.015 88)" }}>
                       <td className="px-4 py-3 font-medium max-w-xs" style={{ color: "oklch(19% 0.08 252)" }}>
                         <div className="truncate">{tr.title}</div>
-                        {tr.part147Reference && <div className="text-xs mt-0.5" style={{ color: "oklch(42% 0.1 218)" }}>{tr.part147Reference}</div>}
+                        <div className="text-xs mt-0.5" style={{ color: "oklch(42% 0.1 218)" }}>{[tr.part147Reference, tr.language?.toUpperCase()].filter(Boolean).join(" · ")}</div>
                       </td>
-                      <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{tr.type}</td>
-                      <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{tr.domain ?? "—"}</td>
-                      <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{tr.durationHours ? `${tr.durationHours}h` : "—"}</td>
+                      <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{codeLabel("catalogue.type", tr.type)}</td>
+                      <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{tr.domain ? codeLabel("catalogue.domain", tr.domain) : "—"}</td>
+                      <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{tr.durationHours ? formatHours(tr.durationHours, lang) : "—"}</td>
                       <td className="px-4 py-3 font-medium" style={{ color: "oklch(19% 0.08 252)" }}>{tr.priceTtc ? `${Number(tr.priceTtc).toFixed(0)} €` : t("adminDashboard.priceOnQuote")}</td>
                       <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{tr.passingScore ?? 75}%</td>
                       <td className="px-4 py-3">
@@ -483,6 +490,8 @@ export default function AdminDashboard() {
                 <tbody>
                   {users.map((u, i) => {
                     const suspended = (u as any).status === "suspended";
+                    const isSelf = u.id === user?.id;
+                    const roleOptions = [["user", t("adminDashboard.roleLearner")], ["company_manager", t("adminDashboard.roleManager")], ["instructor", t("adminDashboard.roleInstructor")], ["admin", t("adminDashboard.roleAdmin")]];
                     return (
                     <tr key={u.id} style={{ background: i % 2 === 0 ? "oklch(100% 0 0)" : "oklch(97% 0.01 88)", borderTop: "1px solid oklch(93% 0.015 88)" }}>
                       <td className="px-4 py-3 font-medium" style={{ color: "oklch(19% 0.08 252)" }}>{u.name ?? "—"}</td>
@@ -495,11 +504,17 @@ export default function AdminDashboard() {
                       <td className="px-4 py-3">
                         <select
                           value={u.role}
-                          onChange={(e) => setUserRole.mutate({ id: u.id, role: e.target.value as any })}
+                          disabled={isSelf || setUserRole.isPending}
+                          aria-label={t("adminDashboard.thRole")}
+                          onChange={(e) => {
+                            const role = e.target.value;
+                            const roleLabel = roleOptions.find(([v]) => v === role)?.[1] ?? role;
+                            if (window.confirm(t("adminDashboard.confirmRoleChange", { user: u.name ?? u.email ?? "", role: roleLabel }))) setUserRole.mutate({ id: u.id, role: role as any });
+                          }}
                           className="h-7 rounded-md border px-1.5 text-xs"
                           style={{ borderColor: "oklch(88% 0.015 88)" }}
                         >
-                          {[["user", t("adminDashboard.roleLearner")], ["company_manager", t("adminDashboard.roleManager")], ["instructor", t("adminDashboard.roleInstructor")], ["admin", t("adminDashboard.roleAdmin")]].map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                          {roleOptions.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                         </select>
                       </td>
                       <td className="px-4 py-3 font-mono text-xs" style={{ color: "oklch(45% 0.02 240)" }}>{(u as any).licenseNumber ?? "—"}</td>
@@ -508,14 +523,15 @@ export default function AdminDashboard() {
                           {suspended ? t("adminDashboard.statusSuspended") : t("adminDashboard.statusActive")}
                         </span>
                       </td>
-                      <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{new Date(u.createdAt).toLocaleDateString("fr-FR")}</td>
+                      <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{new Date(u.createdAt).toLocaleDateString(lang)}</td>
                       <td className="px-4 py-3">
+                        {/* Icon buttons (labelled) keep every action visible without horizontal scrolling. */}
                         <div className="flex items-center gap-1.5">
-                          <Button variant="outline" size="sm" onClick={() => setUserDialog({ mode: "edit", user: u })}><Pencil className="w-3.5 h-3.5 mr-1" /> {t("adminDashboard.btnEdit")}</Button>
-                          <Button variant="outline" size="sm" onClick={() => setUserStatus.mutate({ id: u.id, status: suspended ? "active" : "suspended" })}>
-                            {suspended ? <><CheckCircle className="w-3.5 h-3.5 mr-1" /> {t("adminDashboard.btnActivate")}</> : <><Ban className="w-3.5 h-3.5 mr-1" /> {t("adminDashboard.btnSuspend")}</>}
-                          </Button>
-                          <button title={t("adminDashboard.btnDeleteGdpr")} onClick={() => { if (window.confirm(t("adminDashboard.confirmEraseUser", { user: u.name ?? u.email ?? "" }))) eraseUser.mutate({ userId: u.id }); }} className="p-1.5 rounded hover:bg-black/5 text-red-500"><Trash2 className="w-4 h-4" /></button>
+                          <Button variant="outline" size="icon" className="h-8 w-8" title={t("adminDashboard.btnEdit")} aria-label={t("adminDashboard.btnEdit")} onClick={() => setUserDialog({ mode: "edit", user: u })}><Pencil className="w-3.5 h-3.5" /></Button>
+                          {!isSelf && <Button variant="outline" size="icon" className="h-8 w-8" disabled={setUserStatus.isPending} title={t(suspended ? "adminDashboard.btnActivate" : "adminDashboard.btnSuspend")} aria-label={t(suspended ? "adminDashboard.btnActivate" : "adminDashboard.btnSuspend")} onClick={() => setUserStatus.mutate({ id: u.id, status: suspended ? "active" : "suspended" })}>
+                            {suspended ? <CheckCircle className="w-3.5 h-3.5" /> : <Ban className="w-3.5 h-3.5" />}
+                          </Button>}
+                          {!isSelf && <button title={t("adminDashboard.btnDeleteGdpr")} aria-label={t("adminDashboard.btnDeleteGdpr")} onClick={() => { if (window.confirm(t("adminDashboard.confirmEraseUser", { user: u.name ?? u.email ?? "" }))) eraseUser.mutate({ userId: u.id }); }} className="p-1.5 rounded hover:bg-black/5 text-red-500"><Trash2 className="w-4 h-4" /></button>}
                         </div>
                       </td>
                     </tr>
@@ -550,7 +566,7 @@ export default function AdminDashboard() {
                           </span>
                         </td>
                         <td className="px-4 py-3 font-mono text-xs" style={{ color: "oklch(62% 0.02 240)" }}>{o.stripePaymentIntentId ? o.stripePaymentIntentId.slice(0, 16) + "..." : "—"}<PaymentReconciliation orderId={o.id} sessionId={o.stripeSessionId} /></td>
-                        <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{new Date(o.createdAt).toLocaleDateString("fr-FR")}</td>
+                        <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{new Date(o.createdAt).toLocaleDateString(lang)}</td>
                       </tr>
                     );
                   })}
@@ -581,7 +597,7 @@ export default function AdminDashboard() {
                         {q.employeeCount && <div className="text-xs" style={{ color: "oklch(62% 0.02 240)" }}>{t("adminDashboard.employeesConcerned", { count: q.employeeCount })}</div>}
                         {q.trainingTypes && <div className="text-xs mt-1" style={{ color: "oklch(62% 0.02 240)" }}>{t("adminDashboard.quoteTrainings", { types: q.trainingTypes })}</div>}
                         {q.message && <div className="text-xs mt-2 p-2 rounded" style={{ background: "oklch(93% 0.015 88)", color: "oklch(45% 0.02 240)" }}>{q.message}</div>}
-                        <div className="text-xs mt-2" style={{ color: "oklch(62% 0.02 240)" }}>{t("adminDashboard.receivedOn", { date: new Date(q.createdAt).toLocaleDateString("fr-FR") })}</div>
+                        <div className="text-xs mt-2" style={{ color: "oklch(62% 0.02 240)" }}>{t("adminDashboard.receivedOn", { date: new Date(q.createdAt).toLocaleDateString(lang) })}</div>
                       </div>
                       <div className="flex flex-col gap-2 items-end shrink-0">
                         <select disabled={updateQuoteStatus.isPending || quotesQuery.isFetching} value={q.status} onChange={(e) => updateQuoteStatus.mutate({ id: q.id, expectedRevision:q.revision, status: e.target.value as any })} className="h-8 rounded-md border px-2 text-xs min-w-32" style={{ borderColor: "oklch(88% 0.015 88)" }}>
@@ -644,8 +660,8 @@ export default function AdminDashboard() {
                           </span>
                         </td>
                         <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{r.progressPercent}%</td>
-                        <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{r.completedAt ? new Date(r.completedAt).toLocaleDateString("fr-FR") : "—"}</td>
-                        <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{r.expiresAt ? new Date(r.expiresAt).toLocaleDateString("fr-FR") : "—"}</td>
+                        <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{r.completedAt ? new Date(r.completedAt).toLocaleDateString(lang) : "—"}</td>
+                        <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{r.expiresAt ? new Date(r.expiresAt).toLocaleDateString(lang) : "—"}</td>
                         <td className="px-4 py-3 font-mono text-xs" style={{ color: r.certificateStatus==='valid' ? "oklch(55% 0.18 145)" : "oklch(45% 0.02 240)" }}>
                           <div>{r.certificateNumber ?? "—"}</div>
                           <div className="font-sans text-sm">{certificateLabels[r.certificateStatus]}</div>

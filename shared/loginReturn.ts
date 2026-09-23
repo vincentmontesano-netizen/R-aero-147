@@ -12,7 +12,10 @@ export function safeLoginReturn(value: unknown): string | undefined {
   } catch { return; }
 }
 
+/** Each role lands on the space it works in: training managers on their company space. */
+const HOME_BY_ROLE: Record<string, string> = { admin: '/admin', company_manager: '/entreprise' };
+
 export function loginDestination(search: string, role: string): string {
   const values = new URLSearchParams(search).getAll('returnTo');
-  return (values.length === 1 ? safeLoginReturn(values[0]) : undefined) ?? (role === 'admin' ? '/admin' : '/dashboard');
+  return (values.length === 1 ? safeLoginReturn(values[0]) : undefined) ?? HOME_BY_ROLE[role] ?? '/dashboard';
 }

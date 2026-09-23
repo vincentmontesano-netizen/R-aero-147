@@ -20,7 +20,7 @@ export default function AdminArticles() {
   const refetch = () => { utils.admin.articles.list.invalidate(); utils.public.articles.invalidate(); };
   const create = trpc.admin.articles.create.useMutation({ onSuccess: () => { toast.success(t("adminArticles.toastCreated")); refetch(); setEdit(null); }, onError: (e) => toast.error(e.message) });
   const update = trpc.admin.articles.update.useMutation({ onSuccess: () => { toast.success(t("adminArticles.toastUpdated")); refetch(); setEdit(null); }, onError: (e) => toast.error(e.message) });
-  const del = trpc.admin.articles.delete.useMutation({ onSuccess: () => { toast.success(t("adminArticles.toastDeleted")); refetch(); } });
+  const del = trpc.admin.articles.delete.useMutation({ onSuccess: () => { toast.success(t("adminArticles.toastDeleted")); refetch(); }, onError: e => toast.error(e.message) });
 
   return (
     <div>

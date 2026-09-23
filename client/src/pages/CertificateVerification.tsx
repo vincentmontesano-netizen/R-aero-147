@@ -6,6 +6,7 @@ import BackButton from "@/components/BackButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CheckCircle, XCircle, Award, Search, Shield } from "lucide-react";
+import PublicNav from "@/components/PublicNav";
 
 export default function CertificateVerification() {
   const { t,lang } = useI18n();
@@ -27,6 +28,7 @@ export default function CertificateVerification() {
 
   return (
     <div className="min-h-screen" style={{ background: "oklch(97% 0.01 88)" }}>
+      <PublicNav />
       {/* Header */}
       <div style={{ background: "oklch(19% 0.08 252)", paddingTop: "5rem" }}>
         <div className="container py-12 text-center">

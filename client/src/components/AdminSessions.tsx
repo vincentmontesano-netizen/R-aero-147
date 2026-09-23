@@ -25,7 +25,7 @@ export default function AdminSessions() {
   const { data: trainings = [] } = trpc.admin.trainings.list.useQuery();
   const [open, setOpen] = useState(false);
   const create = trpc.admin.sessions.create.useMutation({ onSuccess: () => { toast.success(t("adminSessions.toastCreated")); utils.admin.sessions.list.invalidate(); utils.public.sessions.invalidate(); setOpen(false); }, onError: (e) => toast.error(e.message) });
-  const del = trpc.admin.sessions.delete.useMutation({ onSuccess: () => { toast.success(t("adminSessions.toastDeleted")); utils.admin.sessions.list.invalidate(); utils.public.sessions.invalidate(); } });
+  const del = trpc.admin.sessions.delete.useMutation({ onSuccess: () => { toast.success(t("adminSessions.toastDeleted")); utils.admin.sessions.list.invalidate(); utils.public.sessions.invalidate(); }, onError: e => toast.error(e.message) });
 
   const [form, setForm] = useState<any>({ title: "", trainingId: "", format: "in_person", location: "", instructorName: "", startDate: "", endDate: "", durationDays: "1", seats: 12, priceHt: "", language: "fr", cpfEligible: false });
   const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));

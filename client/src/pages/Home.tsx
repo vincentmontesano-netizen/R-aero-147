@@ -31,6 +31,13 @@ export default function Home() {
       media?.pause();
     };
   }, []);
+  // Section links from other pages (e.g. the "Entreprises" nav entry → /#entreprises) arrive
+  // before the section is laid out, so the browser's native anchor scroll misses it.
+  useEffect(() => {
+    const id = decodeURIComponent(window.location.hash.slice(1));
+    // "instant" overrides the global smooth scroll-behavior, which would otherwise animate from the top.
+    if (id) setTimeout(() => document.getElementById(id)?.scrollIntoView({ block: "start", behavior: "instant" }), 0);
+  }, []);
   const roleIcons = [BookOpen, Building2, Sparkles];
   const roleLinks = [isAuthenticated ? "/dashboard" : "/login", "/devis", isAuthenticated ? "/maker" : "/register"];
   const stepIcons = [Layers, Radio, FileCheck2];

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CheckCircle, Building2, Users, FileText, Mail } from "lucide-react";
 import { toast } from "sonner";
+import PublicNav from "@/components/PublicNav";
 
 const emptyQuoteForm = {
     companyName: "", siret: "", contactName: "", contactEmail: "",
@@ -61,6 +62,7 @@ export default function QuoteRequest() {
 
   return (
     <div className="min-h-screen" style={{ background: "oklch(97% 0.01 88)" }}>
+      <PublicNav />
       {/* Header */}
       <div style={{ background: "oklch(19% 0.08 252)", paddingTop: "5rem" }}>
         <div className="container py-12">

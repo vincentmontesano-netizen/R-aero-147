@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { User, Globe, Save, CheckCircle, Shield, KeyRound, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/i18n";
+import PublicNav from "@/components/PublicNav";
 
 export default function UserProfile() {
   const queryClient = useQueryClient();
@@ -86,6 +87,7 @@ export default function UserProfile() {
 
   return (
     <div className="min-h-screen" style={{ background: "oklch(97% 0.01 88)" }}>
+      <PublicNav />
       <div style={{ background: "oklch(19% 0.08 252)", paddingTop: "5rem" }}>
         <div className="container py-10">
           <BackButton dark />
@@ -104,16 +106,16 @@ export default function UserProfile() {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
-                <label className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("userProfile.fullNameLabel")}</label>
-                <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder={t("userProfile.fullNamePlaceholder")} />
+                <label htmlFor="profile-field-1" className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("userProfile.fullNameLabel")}</label>
+                <Input id="profile-field-1" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder={t("userProfile.fullNamePlaceholder")} />
               </div>
               <div>
-                <label className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("userProfile.jobTitleLabel")}</label>
-                <Input value={form.jobTitle} onChange={(e) => setForm((f) => ({ ...f, jobTitle: e.target.value }))} placeholder={t("userProfile.jobTitlePlaceholder")} />
+                <label htmlFor="profile-field-2" className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("userProfile.jobTitleLabel")}</label>
+                <Input id="profile-field-2" value={form.jobTitle} onChange={(e) => setForm((f) => ({ ...f, jobTitle: e.target.value }))} placeholder={t("userProfile.jobTitlePlaceholder")} />
               </div>
               <div>
-                <label className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("userProfile.preferredLanguageLabel")}</label>
-                <select
+                <label htmlFor="profile-field-3" className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("userProfile.preferredLanguageLabel")}</label>
+                <select id="profile-field-3"
                   value={form.preferredLanguage}
                   onChange={(e) => { const v = e.target.value; setForm((f) => ({ ...f, preferredLanguage: v })); if (v === "fr" || v === "en") setLang(v); }}
                   className="w-full h-9 rounded-md border px-3 text-sm"

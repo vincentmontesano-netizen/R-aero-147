@@ -27,6 +27,7 @@ import {
   Calendar, Building2, IdCard
 } from "lucide-react";
 import { toast } from "sonner";
+import { useUrlTab } from "@/hooks/useUrlTab";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 const STATUS_CONFIG: Record<string, { labelKey: string; color: string; icon: typeof CheckCircle }> = {
@@ -221,6 +222,8 @@ export default function Dashboard() {
         toast.info(t("dashboard.toastPaymentPending"));
       }
     },
+    // The Stripe webhook still activates access; say so instead of staying silent after payment.
+    onError: () => { toast.info(t("dashboard.toastPaymentPending")); void utils.dashboard.orders.invalidate(); },
   });
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -234,7 +237,7 @@ export default function Dashboard() {
   }, []);
 
   // ── Filters state — Formations ──
-  const [tab, setTab] = useState("formations");
+  const [tab, setTab] = useUrlTab("formations");
   const [formSearch, setFormSearch] = useState("");
   const [formDateFrom, setFormDateFrom] = useState("");
   const [formDateTo, setFormDateTo] = useState("");

@@ -8,6 +8,8 @@ import {
   FileText, Globe, BarChart2, ChevronLeft, ArrowRight
 } from "lucide-react";
 import { toast } from "sonner";
+import PublicNav from "@/components/PublicNav";
+import { formatHours } from "@/lib/utils";
 
 export default function TrainingDetail() {
   const { t,lang } = useI18n();
@@ -57,6 +59,7 @@ export default function TrainingDetail() {
 
   return (
     <div className="min-h-screen" style={{ background: "oklch(97% 0.01 88)" }}>
+      <PublicNav />
       {/* Header */}
       <div style={{ background: "oklch(19% 0.08 252)", paddingTop: "5rem" }}>
         <div className="container py-10">
@@ -185,7 +188,7 @@ export default function TrainingDetail() {
               <h3 className="font-semibold mb-4" style={{ color: "oklch(19% 0.08 252)" }}>{t("trainingDetail.infoTitle")}</h3>
               <div className="space-y-3">
                 {[
-                  { icon: Clock, label: t("trainingDetail.durationLabel"), value: training.durationHours ? `${training.durationHours}h` : "—" },
+                  { icon: Clock, label: t("trainingDetail.durationLabel"), value: training.durationHours ? formatHours(training.durationHours, lang) : "—" },
                   { icon: Globe, label: t("trainingDetail.languageLabel"), value: training.language === "fr" ? t("trainingDetail.languageFr") : training.language === "en" ? t("trainingDetail.languageEn") : training.language === "ar" ? t("catalogue.langAr") : training.language || t("trainingDetail.unspecified") },
                   { icon: BarChart2, label: t("trainingDetail.levelLabel"), value: training.level ? LEVEL_LABELS[training.level] ?? training.level : t("trainingDetail.unspecified") },
                   { icon: Users, label: t("trainingDetail.domainLabel"), value: training.domain ? DOMAIN_LABELS[training.domain] ?? training.domain : t("trainingDetail.unspecified") },

@@ -3,3 +3,4 @@
 @media(max-width:600px){.academy-hero h1{font-size:clamp(2.5rem,11vw,3.5rem)}.academy-hero-media{inset-inline-start:0;opacity:.5}.academy-hero:after{background:linear-gradient(90deg,#0b1d30e8,#0b1d30a0)}.academy-hero-bottom{margin-top:50px}.academy-steps{grid-template-columns:1fr}.academy-step>div{margin-bottom:18px}.academy-button{width:100%}.academy-hero-content{padding-top:60px}.academy-footer{gap:25px}.academy-company-list h3{font-size:1.0625rem}}
 [dir=rtl] .academy-hero:after{background:linear-gradient(270deg,#0b1d30 8%,#0b1d30e8 37%,#0b1d3030 100%)}[dir=rtl] .academy-home h1,[dir=rtl] .academy-home h2,[dir=rtl] .academy-home h3{letter-spacing:0;line-height:1.4}
 @media(prefers-reduced-motion:reduce){.academy-home *{scroll-behavior:auto!important;transition:none!important}}
+.academy-home section[id]{scroll-margin-top:64px}

@@ -6,14 +6,17 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, CreditCard, Lock, CheckCircle, ArrowRight, FileText } from "lucide-react";
 import { toast } from "sonner";
+import PublicNav from "@/components/PublicNav";
+import { catalogueKey, formatEuro, formatHours } from "@/lib/utils";
 
 export default function Checkout() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { user, isAuthenticated } = useAuth();
   const [companyId, setCompanyId] = useState("");
   const organizations = trpc.me.organizations.useQuery(undefined, { enabled: isAuthenticated });
   const [isRedirecting, setIsRedirecting] = useState(false);
   const { data: cartItems = [], isLoading } = trpc.cart.list.useQuery(undefined, { enabled: isAuthenticated, retry: false });
+  const paymentsAvailable = trpc.public.paymentsAvailable.useQuery();
 
   const createSession = trpc.checkout.createSession.useMutation({
     onSuccess: (data) => {
@@ -44,6 +47,7 @@ export default function Checkout() {
 
   return (
     <div className="min-h-screen" style={{ background: "oklch(97% 0.01 88)" }}>
+      <PublicNav />
       <div style={{ background: "oklch(19% 0.08 252)", paddingTop: "5rem" }}>
         <div className="container py-10">
           <h1 className="font-serif text-3xl font-bold text-white mb-1">{t("checkout.pageTitle")}</h1>
@@ -71,14 +75,14 @@ export default function Checkout() {
                   <div className="flex-1">
                     <h3 className="font-semibold text-sm mb-1" style={{ color: "oklch(19% 0.08 252)" }}>{(item.training as any)?.title ?? t("checkout.trainingFallback")}</h3>
                     <div className="text-xs" style={{ color: "oklch(62% 0.02 240)" }}>
-                      {(item.training as any)?.type} · {(item.training as any)?.durationHours}h · {t("checkout.quantityLabel")} {item.quantity ?? 1}
+                      {t(catalogueKey("catalogue.type", (item.training as any)?.type))} · {formatHours((item.training as any)?.durationHours, lang)} · {t("checkout.quantityLabel")} {item.quantity ?? 1}
                     </div>
                     {(item.training as any)?.part147Reference && (
                       <div className="text-xs mt-1" style={{ color: "oklch(42% 0.1 218)" }}>{(item.training as any).part147Reference}</div>
                     )}
                   </div>
                   <div className="text-right">
-                    <div className="font-bold" style={{ color: "oklch(19% 0.08 252)" }}>{Number((item.training as any)?.priceTtc ?? 0).toFixed(2)} €</div>
+                    <div className="font-bold" style={{ color: "oklch(19% 0.08 252)" }}>{formatEuro((item.training as any)?.priceTtc, lang)}</div>
                     <div className="text-xs" style={{ color: "oklch(62% 0.02 240)" }}>{t("checkout.inclVat")}</div>
                   </div>
                 </div>
@@ -93,33 +97,41 @@ export default function Checkout() {
                 <div className="space-y-2 mb-4">
                   <div className="flex justify-between text-sm" style={{ color: "oklch(45% 0.02 240)" }}>
                     <span>{t("checkout.subtotalExclVat")}</span>
-                    <span>{totalHt.toFixed(2)} €</span>
+                    <span>{formatEuro(totalHt, lang)}</span>
                   </div>
                   <div className="flex justify-between text-sm" style={{ color: "oklch(45% 0.02 240)" }}>
                     <span>{t("checkout.vatRate")}</span>
-                    <span>{vatAmount.toFixed(2)} €</span>
+                    <span>{formatEuro(vatAmount, lang)}</span>
                   </div>
                   <div className="border-t pt-2 flex justify-between font-bold text-base" style={{ borderColor: "oklch(88% 0.015 88)", color: "oklch(19% 0.08 252)" }}>
                     <span>{t("checkout.totalInclVat")}</span>
-                    <span>{totalTtc.toFixed(2)} €</span>
+                    <span>{formatEuro(totalTtc, lang)}</span>
                   </div>
                 </div>
 
-                <Button
-                  size="lg"
-                  className="w-full btn-press font-semibold mb-3"
-                  onClick={handleCheckout}
-                  disabled={isRedirecting || createSession.isPending}
-                  style={{ background: "oklch(68% 0.1 78)", color: "oklch(19% 0.08 252)" }}
-                >
-                  <CreditCard className="w-4 h-4 mr-2" />
-                  {isRedirecting ? t("checkout.redirecting") : t("checkout.payAmount", { amount: totalTtc.toFixed(2) })}
-                </Button>
+                {paymentsAvailable.data === false ? (
+                  <div role="status" className="rounded-lg p-4 mb-3 text-sm" style={{ background: "oklch(68% 0.1 78 / 0.12)", color: "oklch(19% 0.08 252)" }}>
+                    <p className="font-semibold mb-1">{t("checkout.paymentsUnavailableTitle")}</p>
+                    <p className="mb-3" style={{ color: "oklch(45% 0.02 240)" }}>{t("checkout.paymentsUnavailableText")}</p>
+                    <Link href="/devis"><Button className="w-full font-semibold" style={{ background: "oklch(19% 0.08 252)", color: "white" }}><FileText className="w-4 h-4 mr-2" />{t("checkout.requestQuote")}</Button></Link>
+                  </div>
+                ) : (
+                  <Button
+                    size="lg"
+                    className="w-full btn-press font-semibold mb-3"
+                    onClick={handleCheckout}
+                    disabled={isRedirecting || createSession.isPending}
+                    style={{ background: "oklch(68% 0.1 78)", color: "oklch(19% 0.08 252)" }}
+                  >
+                    <CreditCard className="w-4 h-4 mr-2" />
+                    {isRedirecting ? t("checkout.redirecting") : t("checkout.payAmount", { amount: new Intl.NumberFormat(lang, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(totalTtc) })}
+                  </Button>
+                )}
 
-                <div className="flex items-center justify-center gap-2 text-xs" style={{ color: "oklch(62% 0.02 240)" }}>
+                {paymentsAvailable.data !== false && <div className="flex items-center justify-center gap-2 text-xs" style={{ color: "oklch(62% 0.02 240)" }}>
                   <Lock className="w-3 h-3" />
                   {t("checkout.securePayment")}
-                </div>
+                </div>}
               </div>
 
               {/* What's included */}

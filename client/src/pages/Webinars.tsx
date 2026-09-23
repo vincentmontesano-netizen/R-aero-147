@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar, Clock, Users, Video, PlayCircle, Radio } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/i18n";
+import { getLoginUrl } from "@/const";
 
 const DEEP_BLUE = "oklch(19% 0.08 252)";
 const GOLD = "oklch(68% 0.1 78)";
@@ -31,7 +32,7 @@ export default function Webinars() {
   });
 
   const onRegister = (id: number) => {
-    if (!isAuthenticated) { setLocation("/login"); return; }
+    if (!isAuthenticated) { setLocation(getLoginUrl()); return; }
     register.mutate({ webinarId: id });
   };
 

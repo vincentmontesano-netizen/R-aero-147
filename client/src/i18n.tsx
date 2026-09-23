@@ -1,4 +1,5 @@
 import {createContext,useContext,useEffect,useRef,useState,type ReactNode} from 'react';
+import {DirectionProvider} from '@radix-ui/react-direction';
 import {loadDictionary,preferredLanguage,translate,type Dictionary,type Lang} from './locales/load';
 export type {Lang} from './locales/load';
 const STORAGE_KEY='raero-lang';
@@ -25,9 +26,12 @@ export function I18nProvider({children}:{children:ReactNode}){
  const copy=loadingCopy[requested];
  const error=<div role="alert" className="bg-white border rounded-md p-4 text-sm"><p>{copy.error}</p><button type="button" className="underline mt-2" onClick={()=>chooseLanguage(requested)}>{copy.retry}</button></div>;
  if(!current)return <div className="min-h-screen grid place-items-center">{failed?error:<p role="status">{copy.loading}</p>}</div>;
+ // Radix primitives (tabs, menus, selects…) default to LTR unless told otherwise.
  return <I18nContext.Provider value={{lang:current.lang,setLang:chooseLanguage,t:(key,vars)=>translate(current.dictionary,key,vars)}}>
+  <DirectionProvider dir={current.lang==='ar'?'rtl':'ltr'}>
   {failed&&<div className="fixed top-20 inset-x-4 z-50 max-w-md mx-auto">{error}</div>}
   {children}
+  </DirectionProvider>
  </I18nContext.Provider>;
 }
 export function useI18n(){return useContext(I18nContext);}

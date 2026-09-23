@@ -376,7 +376,7 @@ export default function SlideDeck({
                 <div>
                   <div className="font-semibold">{isCorrect ? t("player.correct") : t("player.incorrect")}</div>
                   {slide.quizExplanation && <div className="mt-0.5" style={{ color: MUTED }}>{slide.quizExplanation}</div>}
-                  {!isCorrect && <button className="mt-1 underline" onClick={() => { setChecked(false); setSelected([]); }}>↺</button>}
+                  {!isCorrect && <button className="mt-1 underline" onClick={() => { setChecked(false); setSelected([]); }}>↺ {t("slideDeck.retry")}</button>}
                 </div>
               </div>
             )}
@@ -389,12 +389,13 @@ export default function SlideDeck({
         <Button variant="outline" disabled={index === 0} onClick={() => setIndex((i) => Math.max(0, i - 1))}>
           <ChevronLeft className="w-4 h-4 mr-1" /> {t("common.previous")}
         </Button>
+        {!canAdvance && <p id="slide-next-hint" className="text-xs text-center flex-1 px-3" style={{ color: "oklch(45% 0.02 240)" }}>{t("slideDeck.answerToContinue")}</p>}
         {index < total - 1 ? (
-          <Button disabled={!canAdvance} onClick={goNext} style={{ background: DEEP_BLUE, color: IVORY }}>
+          <Button disabled={!canAdvance} aria-describedby={!canAdvance ? "slide-next-hint" : undefined} onClick={goNext} style={{ background: DEEP_BLUE, color: IVORY }}>
             {t("common.next")} <ChevronRight className="w-4 h-4 ml-1" />
           </Button>
         ) : (
-          <Button disabled={!canAdvance} onClick={goNext} style={{ background: GREEN, color: "white" }}>
+          <Button disabled={!canAdvance} aria-describedby={!canAdvance ? "slide-next-hint" : undefined} onClick={goNext} style={{ background: GREEN, color: "white" }}>
             <Trophy className="w-4 h-4 mr-1" /> {finishLabel ?? t("player.finish")}
           </Button>
         )}

@@ -3,6 +3,8 @@ dist
 .git
 .github
 .claude
+CLAUDE.md
+AGENTS.md
 storage
 *.log
 .env

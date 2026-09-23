@@ -1,3 +1,4 @@
+import { TRPCError } from "@trpc/server";
 import { prepareSubscriptionCheckout, pendingSubscriptionCheckout, resumeSubscriptionCheckout } from "./subscriptionCheckout";
 import { hasSubscriptionCapacity } from "../shared/subscriptionCapacity";
 import { paymentOrigin } from "./paymentVerification";
@@ -45,7 +46,7 @@ export async function createSubscriptionCheckoutSession(params: {
   companyId: number; plan: SubscriptionPlan; origin: string; userEmail?: string; userId?: number; billingPage?: boolean;
 }): Promise<{ url: string }> {
   const stripe = getStripe();
-  if (!stripe) throw new Error("Abonnement indisponible : Stripe doit être configuré.");
+  if (!stripe) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Abonnement indisponible : Stripe doit être configuré." });
   const price = prices()[params.plan];
   if (!price) throw new Error("Prix Stripe non configuré pour cette formule.");
   const attempt = await prepareSubscriptionCheckout(params, price);

@@ -56,6 +56,7 @@ import { approvalRouter } from "./approval";
 import { verificationRouter } from "./verification";
 import { learnerCurriculum, requireEnrollment, requireTrainingAccess, learnerQuestion } from "./learningAccess";
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { complianceReportInput } from "@shared/complianceReportInput";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { sdk } from "./_core/sdk";
@@ -366,6 +367,8 @@ export const appRouter = router({
       .query(({ input }) => getPublicTrainings(input ?? {})),
 
     featuredTrainings: publicProcedure.query(() => getFeaturedTrainings()),
+    /** Online card payment needs a Stripe key; without it the checkout offers a quote instead. */
+    paymentsAvailable: publicProcedure.query(() => !!(process.env.STRIPE_SECRET_KEY ?? "").trim()),
 
     trainingBySlug: publicProcedure
       .input(z.object({ slug: z.string().min(1).max(255) }).strict())
@@ -1565,7 +1568,7 @@ export const appRouter = router({
         }),
     }),
 
-    complianceReport: adminProcedure.input(z.object({cursor:z.number().int().positive().max(2147483647).optional(),pageSize:z.number().int().min(1).max(250).optional()}).strict().optional()).query(async ({ ctx,input }) => {
+    complianceReport: adminProcedure.input(complianceReportInput).query(async ({ ctx,input }) => {
       // Each page rechecks current rights and commits its access audit before returning data.
       return getAdminComplianceReport(ctx.user.id,input?.cursor,input?.pageSize,ipFromReq(ctx.req));
     }),

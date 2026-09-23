@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Clock, Search, Filter, ShoppingCart, ChevronRight, BookOpen, Award } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/i18n";
+import PublicNav from "@/components/PublicNav";
+import { formatHours } from "@/lib/utils";
 
 export default function Catalogue() {
   const { t,lang } = useI18n();
@@ -57,6 +59,7 @@ export default function Catalogue() {
 
   return (
     <div className="min-h-screen" style={{ background: "oklch(97% 0.01 88)" }}>
+      <PublicNav />
       {/* Header */}
       <div style={{ background: "oklch(19% 0.08 252)", paddingTop: "5rem" }}>
         <div className="container py-12">
@@ -194,7 +197,7 @@ export default function Catalogue() {
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-1 text-xs" style={{ color: "oklch(45% 0.02 240)" }}>
                         <Clock className="w-3 h-3" />
-                        {training.durationHours}h
+                        {formatHours(training.durationHours, lang)}
                       </div>
                       <div className="text-xs px-2 py-0.5 rounded" style={{ background: "oklch(93% 0.015 88)", color: "oklch(45% 0.02 240)" }}>
                         {training.language?.toUpperCase()}

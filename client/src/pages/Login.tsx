@@ -110,8 +110,8 @@ export default function Login() {
             <form onSubmit={handleVerify} className="space-y-4">
               <p className="text-sm" style={{ color: "oklch(45% 0.02 240)" }}>{t("login.twoFactorIntro")}</p>
               <div>
-                <label className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("login.twoFactorCode")}</label>
-                <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="000000" inputMode="numeric" autoFocus className="text-center text-lg tracking-[0.4em] font-mono" />
+                <label htmlFor="login-field-1" className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("login.twoFactorCode")}</label>
+                <Input id="login-field-1" value={code} onChange={(e) => setCode(e.target.value)} placeholder="000000" inputMode="numeric" autoFocus className="text-center text-lg tracking-[0.4em] font-mono" />
               </div>
               <Button type="submit" disabled={verify2FA.isPending} className="w-full" style={{ background: DEEP_BLUE, color: IVORY }}>
                 {verify2FA.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
@@ -137,15 +137,15 @@ export default function Login() {
             <>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("login.emailLabel")}</label>
-                  <Input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t("login.emailPlaceholder")} autoComplete="email" />
+                  <label htmlFor="login-field-2" className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("login.emailLabel")}</label>
+                  <Input id="login-field-2" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t("login.emailPlaceholder")} autoComplete="email" />
                 </div>
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-semibold" style={{ color: "oklch(45% 0.02 240)" }}>{t("login.passwordLabel")}</label>
+                    <label htmlFor="login-password" className="text-xs font-semibold" style={{ color: "oklch(45% 0.02 240)" }}>{t("login.passwordLabel")}</label>
                     <button type="button" onClick={() => setForgot(true)} className="text-xs hover:underline" style={{ color: GOLD }}>{t("login.forgotPassword")}</button>
                   </div>
-                  <Input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" autoComplete="current-password" />
+                  <Input id="login-password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" autoComplete="current-password" />
                 </div>
                 <Button type="submit" disabled={login.isPending} className="w-full" style={{ background: DEEP_BLUE, color: IVORY }}>
                   {login.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <LogIn className="w-4 h-4 mr-2" />}

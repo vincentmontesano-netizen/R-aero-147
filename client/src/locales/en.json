@@ -461,7 +461,7 @@
   "cart.emptyDescription": "Browse our training catalogue.",
   "cart.viewCatalogue": "View catalogue",
   "cart.defaultTrainingTitle": "Training course",
-  "cart.priceTtcSuffix": "€ incl. VAT",
+  "cart.priceTtcSuffix": "incl. VAT",
   "cart.clearCart": "Clear cart",
   "cart.summary": "Summary",
   "cart.subtotalHt": "Subtotal excl. VAT",
@@ -1094,7 +1094,7 @@
   "adminDashboard.stripeKeysTitle": "API keys",
   "adminDashboard.stripeDescription": "Connect your Stripe account to take real payments.",
   "adminDashboard.stripeConfigured": "Configured ✓",
-  "adminDashboard.stripeNotConfigured": "Not configured (payments run in demo mode).",
+  "adminDashboard.stripeNotConfigured": "Not configured (online payment unavailable: customers are directed to a quote request).",
   "adminDashboard.stripePublishable": "Publishable key",
   "adminDashboard.stripeSecret": "Secret key",
   "adminDashboard.stripeWebhook": "Webhook signing secret",
@@ -1991,5 +1991,14 @@
   "supportQueue.confirm": "Send the notification for ticket #{id} to {email}? The email invites the recipient to view the ticket without copying its contents.",
   "notificationBell.unavailableLabel": "Notifications unavailable",
   "notificationBell.loadError": "Notifications or their count could not be refreshed. Please retry.",
-  "notificationBell.markError": "Marking as read is not confirmed. Refresh to check the notification state."
+  "notificationBell.markError": "Marking as read is not confirmed. Refresh to check the notification state.",
+  "sidebar.expand": "Expand menu",
+  "sidebar.collapse": "Collapse menu",
+  "common.back": "Back",
+  "common.backToSite": "Back to website",
+  "adminDashboard.confirmRoleChange": "Change {user}'s role to “{role}”?",
+  "checkout.paymentsUnavailableTitle": "Online payment unavailable",
+  "checkout.paymentsUnavailableText": "Card payment is not open yet. Request a quote: our team replies within 24–48 h and activates your access.",
+  "checkout.requestQuote": "Request a quote",
+  "slideDeck.answerToContinue": "Answer the question correctly to continue."
 }

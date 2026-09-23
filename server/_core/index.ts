@@ -13,6 +13,7 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { registerWebhooks } from "../webhooks";
 import { finalizeExpiredExams, loadSettingsIntoEnv } from "../db";
+import { securityHeaders } from "./securityHeaders";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -60,7 +61,9 @@ async function startServer() {
   void collectVideos();
   setInterval(collectVideos,30000).unref();
   const app = express();
+  app.disable("x-powered-by");
   app.set("trust proxy", proxies);
+  app.use(securityHeaders);
   const server = createServer(app);
   registerHealthRoutes(app);
   // Register Stripe webhooks BEFORE express.json() (raw body required)
