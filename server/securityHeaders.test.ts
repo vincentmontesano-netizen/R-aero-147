@@ -15,8 +15,10 @@ describe('security headers', () => {
     expect(headers['X-Content-Type-Options']).toBe('nosniff');
     expect(headers['X-Frame-Options']).toBe('SAMEORIGIN');
     expect(headers['Strict-Transport-Security']).toBeUndefined();
+    expect(headers['Cross-Origin-Opener-Policy']).toBeUndefined();
   });
   it('adds HSTS only over HTTPS', () => {
     expect(run(true).headers['Strict-Transport-Security']).toContain('max-age=');
+    expect(run(true).headers['Cross-Origin-Opener-Policy']).toBe('same-origin-allow-popups');
   });
 });
