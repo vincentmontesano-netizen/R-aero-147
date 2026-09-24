@@ -6,6 +6,8 @@ const config: ExpoConfig = {
   slug: "raero-mobile",
   version: "1.0.0",
   scheme: testing ? "raero-test" : "raero",
+  icon: "./assets/raero-emblem.png",
+  backgroundColor: "#081421",
   orientation: "default",
   userInterfaceStyle: "automatic",
   ios: {
@@ -13,17 +15,40 @@ const config: ExpoConfig = {
     supportsTablet: true,
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
-      ...(testing ? { NSAppTransportSecurity: { NSAllowsLocalNetworking: true, NSAllowsArbitraryLoads: true } } : {}),
+      ...(testing
+        ? {
+            NSAppTransportSecurity: {
+              NSAllowsLocalNetworking: true,
+              NSAllowsArbitraryLoads: true,
+            },
+          }
+        : {}),
     },
   },
   android: {
     package: testing ? "com.raero.academy.qa" : "com.raero.academy",
     versionCode: 1,
-    blockedPermissions: ["android.permission.RECORD_AUDIO", "android.permission.CAMERA", "android.permission.READ_MEDIA_IMAGES", "android.permission.READ_MEDIA_VIDEO"],
+    adaptiveIcon: {
+      foregroundImage: "./assets/raero-emblem.png",
+      backgroundColor: "#002554",
+    },
+    blockedPermissions: [
+      "android.permission.RECORD_AUDIO",
+      "android.permission.CAMERA",
+      "android.permission.READ_MEDIA_IMAGES",
+      "android.permission.READ_MEDIA_VIDEO",
+    ],
   },
   plugins: [
     "expo-router",
-    "expo-splash-screen",
+    [
+      "expo-splash-screen",
+      {
+        image: "./assets/raero-logo.png",
+        imageWidth: 220,
+        backgroundColor: "#f7f5ee",
+      },
+    ],
     "expo-sharing",
     "expo-secure-store",
     "expo-localization",

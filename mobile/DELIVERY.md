@@ -20,9 +20,13 @@ Base choisie : React Native / Expo SDK 57 stable, écrans natifs partagés, API 
 - Inventaire effectué : aucun projet mobile R-AERO préexistant ; API chapitres, diapositives, évaluations et certificats identifiée.
 - Implémenté : transport natif, connexion/2FA, bibliothèque, chapitres, diapositives et activités, examens sauvegardés, certificats et compte.
 - Vérifié localement : TypeScript web/serveur et mobile ; 40 tests ciblés passent avec PostgreSQL (sessions, révocation, examens, échéance et reprise exacte sans nouvelle tentative).
-- Android : compilation Release autonome réussie, installation et démarrage sur l’émulateur dédié. Recette des parcours en cours.
+- Android : compilation Release autonome réussie, installation et recette sur l’émulateur dédié `emulator-5580` (Android 14 / Pixel 6).
+- Parcours Android exercé : connexion, image privée, lecture/pause audio, quatre activités vidéo, quiz de diapositive, examen de chapitre, examen final avec les cinq types de questions, fermeture/réouverture pendant l’examen et reprise de la même tentative, réussite 5/5, certificat et feuille de partage PDF.
+- Compte Android exercé : mode clair conservé après relance, déconnexion, inscription, bibliothèque/certificats vides du nouveau compte, fermeture et refus de reconnexion au compte fermé.
+- Vérification HTTP : mêmes compte et progression pour navigateur/application, médias privés refusés anonymement et depuis un autre compte, lecture partielle audio/vidéo, réponses d’examen non divulguées, parcours terminé à 100 % et certificat PDF protégé.
+- CI au commit `caafad984646aa16cff10e0453d8913dde487672` : [514 tests serveur et contrôles Docker réussis](https://github.com/vincentmontesano-netizen/R-aero-147/actions/runs/36056340476). Deux tests supplémentaires couvrent la présentation des erreurs de formulaire.
 - iOS : compilation locale arrêtée par Xcode 26.3, inférieur au minimum 26.4 du SDK 57 ; workflow GitHub macOS 26 préparé pour fournir le binaire simulateur.
-- À faire : recette complète sur les deux plateformes, distribution signée, validation finale et déploiement de l’API mobile.
+- À faire : recette iOS, contrôles de coupure réseau et sauvegardes concurrentes sur le binaire final, validation des derniers changements, distribution signée et déploiement de l’API mobile.
 
 ## Recette isolée
 
@@ -31,6 +35,18 @@ Base choisie : React Native / Expo SDK 57 stable, écrans natifs partagés, API 
 La recette Android utilise `EXPO_PUBLIC_API_URL=http://10.0.2.2:3189`, celle du simulateur iOS `http://127.0.0.1:3189`, avec `RAERO_MOBILE_VARIANT=qa`. La version de production utilise HTTPS et l’identifiant distinct `com.raero.academy`.
 
 La compilation iOS GitHub produit un `.app` autonome pour simulateur ; elle ne constitue pas une distribution App Store. Les profils EAS sont préparés pour une distribution ultérieure selon le compte développeur et la signature du propriétaire.
+
+Preuves locales : `tmp/mobile/contract-android.json`, captures et rapports Maestro sous `tmp/mobile/maestro/`, capture de la feuille de partage `tmp/mobile/android-certificate-share.png`. Ces artefacts contiennent uniquement les données du jeu de recette local.
+
+## Compilation
+
+À la racine : `pnpm install --frozen-lockfile`. Dans `mobile` : `npm ci`, puis `npm run check` et `npx expo install --check`.
+
+- iOS : macOS/Xcode 26.4 minimum, CocoaPods ; `npx expo prebuild --platform ios`, puis `npx expo run:ios --configuration Release`. Le workflow `mobile-ios.yml` compile un simulateur autonome sur GitHub avec le backend de recette local.
+- Android : JDK 21 et SDK Android 36 ; `npx expo prebuild --platform android`, puis `npx expo run:android --variant release`. Les binaires QA générés localement servent aux tests ; la clé de débogage générée ne constitue pas une signature de distribution publique.
+- Production : omettre `RAERO_MOBILE_VARIANT=qa` et conserver l’API HTTPS par défaut. Les profils de `eas.json` préparent les builds de distribution, qui nécessitent le compte et les clés de signature du propriétaire.
+
+Les dossiers `ios/`, `android/`, `artifacts/` et les fichiers de signature sont générés ou privés et ne sont pas versionnés. Le logo et l’emblème existants sont repris sans modification ; Expo produit les tailles d’icône requises lors de la compilation.
 
 ## Règles conservées
 

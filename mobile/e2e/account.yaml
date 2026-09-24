@@ -1,0 +1,76 @@
+appId: com.raero.academy.qa
+---
+- launchApp
+- tapOn: "Mon compte"
+- scrollUntilVisible:
+    element: "Passer en mode clair"
+    direction: DOWN
+- tapOn: "Passer en mode clair"
+- assertVisible: "Passer en mode sombre"
+- takeScreenshot: account-light
+- stopApp
+- launchApp
+- tapOn: "Mon compte"
+- scrollUntilVisible:
+    element: "Passer en mode sombre"
+    direction: DOWN
+- assertVisible: "Passer en mode sombre"
+- tapOn: "Me déconnecter"
+- assertVisible: "Vos formations, à portée de main."
+- scrollUntilVisible:
+    element: "Créer un compte R-AERO"
+    direction: DOWN
+- tapOn: "Créer un compte R-AERO"
+- scrollUntilVisible:
+    element:
+      id: "field-Nom complet"
+    direction: UP
+- tapOn:
+    id: "field-Nom complet"
+- inputText: "Recette Nouveau"
+- tapOn:
+    id: "field-Adresse e-mail"
+- inputText: ${REGISTER_EMAIL}
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: "field-Mot de passe · 8 caractères minimum"
+    direction: DOWN
+- tapOn:
+    id: "field-Mot de passe · 8 caractères minimum"
+- inputText: ${PASSWORD}
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: "auth-submit"
+    direction: DOWN
+- tapOn:
+    id: "auth-submit"
+- extendedWaitUntil:
+    visible: "Votre bibliothèque vous attend"
+    timeout: 15000
+- takeScreenshot: registration-empty-library
+- tapOn: "Certificats"
+- assertVisible: "Votre prochain acquis commence par une formation."
+- tapOn: "Mon compte"
+- scrollUntilVisible:
+    element: "Fermer mon compte"
+    direction: DOWN
+- tapOn: "Fermer mon compte"
+- scrollUntilVisible:
+    element:
+      id: "field-Votre mot de passe"
+    direction: DOWN
+- tapOn:
+    id: "field-Votre mot de passe"
+- inputText: ${PASSWORD}
+- hideKeyboard
+- scrollUntilVisible:
+    element: "Confirmer la fermeture"
+    direction: DOWN
+- tapOn: "Confirmer la fermeture"
+- tapOn: "Fermer le compte"
+- extendedWaitUntil:
+    visible: "Vos formations, à portée de main."
+    timeout: 15000
+- takeScreenshot: account-closed

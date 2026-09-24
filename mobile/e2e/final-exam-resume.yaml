@@ -1,0 +1,93 @@
+appId: com.raero.academy.qa
+---
+- scrollUntilVisible:
+    element: "Commencer / reprendre l’examen final"
+    direction: DOWN
+- tapOn: "Commencer / reprendre l’examen final"
+- scrollUntilVisible:
+    element:
+      id: "exam-start"
+    direction: DOWN
+- tapOn:
+    id: "exam-start"
+- extendedWaitUntil:
+    visible: "La version à jour"
+    timeout: 15000
+- tapOn: "La version à jour"
+- extendedWaitUntil:
+    visible: "1 / 5 réponses renseignées · Enregistrées"
+    timeout: 10000
+- takeScreenshot: final-answer-saved
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible: "Bonjour Recette."
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: "course-${ENROLLMENT_ID}"
+    direction: DOWN
+- tapOn:
+    id: "course-${ENROLLMENT_ID}"
+- scrollUntilVisible:
+    element: "Commencer / reprendre l’examen final"
+    direction: DOWN
+- tapOn: "Commencer / reprendre l’examen final"
+- scrollUntilVisible:
+    element:
+      id: "exam-start"
+    direction: DOWN
+- tapOn:
+    id: "exam-start"
+- extendedWaitUntil:
+    visible: "1 / 5 réponses renseignées · Enregistrées"
+    timeout: 15000
+- assertVisible: "Tentative 1 · 80 % requis"
+- takeScreenshot: final-session-resumed
+- scrollUntilVisible:
+    element: "Suivante"
+    direction: DOWN
+- tapOn: "Suivante"
+- tapOn: "Vérifier"
+- tapOn: "Tracer"
+- tapOn: "Suivante"
+- tapOn: "Vrai"
+- tapOn: "Suivante"
+- scrollUntilVisible:
+    element:
+      id: "field-Votre réponse"
+    direction: UP
+- tapOn:
+    id: "field-Votre réponse"
+- inputText: "tracabilite"
+- hideKeyboard
+- scrollUntilVisible:
+    element: "Suivante"
+    direction: DOWN
+- tapOn: "Suivante"
+- tapOn: "Préparer → Choisir une correspondance"
+- tapOn: "Avant"
+- tapOn: "Tracer → Choisir une correspondance"
+- tapOn: "Après"
+- scrollUntilVisible:
+    element:
+      id: "exam-submit"
+    direction: DOWN
+- tapOn:
+    id: "exam-submit"
+- tapOn: "Envoyer"
+- extendedWaitUntil:
+    visible: "Évaluation validée"
+    timeout: 15000
+- assertVisible: "5 / 5"
+- takeScreenshot: final-passed
+- scrollUntilVisible:
+    element: "Mes certificats"
+    direction: DOWN
+- tapOn: "Mes certificats"
+- extendedWaitUntil:
+    visible: "Télécharger / partager le PDF"
+    timeout: 15000
+- takeScreenshot: certificate-available
+- tapOn: "Télécharger / partager le PDF"
+- takeScreenshot: certificate-share

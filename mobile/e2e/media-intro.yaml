@@ -1,0 +1,19 @@
+appId: com.raero.academy.qa
+---
+- scrollUntilVisible:
+    element: "Écouter la narration"
+    direction: DOWN
+- assertVisible: "Illustration de la formation"
+- assertNotVisible: "L’image n’a pas pu être chargée."
+- tapOn: "Écouter la narration"
+- assertVisible: "Mettre la narration en pause"
+- tapOn: "Mettre la narration en pause"
+- takeScreenshot: media-image-audio
+- scrollUntilVisible:
+    element: "Diapositive suivante"
+    direction: DOWN
+- tapOn: "Diapositive suivante"
+- scrollUntilVisible:
+    element: "Vidéo interactive"
+    direction: UP
+- takeScreenshot: video-ready
