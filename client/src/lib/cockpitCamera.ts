@@ -2,7 +2,9 @@
 export const cockpitViews = [
   { position: [6, 2.8, -6.5], target: [0, 0, 3.2], fov: 45 },
   { position: [0, 0.2, 0.8], target: [0, 0.07, 0.05], fov: 70 },
-  { position: [-0.1, 0.15, 0.7], target: [-0.16, -0.025, 0.43], fov: 62 },
+  // Stay in the aisle, in front of the headrests. Aim left at the instruments
+  // instead of moving the camera through the captain's seat.
+  { position: [-0.025, 0.2, 0.67], target: [-0.14, 0.07, 0.43], fov: 62 },
   { position: [0, 0.23, 0.77], target: [0, -0.045, 0.5], fov: 58 },
   { position: [0, 0.12, 0.85], target: [0, 0.36, 0.59], fov: 68 },
 ] as const;

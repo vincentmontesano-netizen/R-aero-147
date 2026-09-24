@@ -270,32 +270,6 @@ export default function CockpitExperience({
             ))}
           </ol>
         </div>
-        <div className="flight-credit">
-          <a
-            href="https://sketchfab.com/3d-models/a320-cockpit-2-5fb0c671a91042c1a9d8f2cf3e2df021"
-            target="_blank"
-            rel="noreferrer"
-          >
-            {c.model}
-          </a>{" "}
-          ·{" "}
-          <a
-            href="https://sketchfab.com/davidmarton1987"
-            target="_blank"
-            rel="noreferrer"
-          >
-            davidmarton1987
-          </a>{" "}
-          ·{" "}
-          <a
-            href="https://creativecommons.org/licenses/by/4.0/"
-            target="_blank"
-            rel="noreferrer"
-          >
-            CC BY 4.0
-          </a>{" "}
-          · {c.credit}
-        </div>
       </div>
     </section>
   );
