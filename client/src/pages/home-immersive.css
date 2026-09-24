@@ -302,10 +302,14 @@
   border-radius: 4px;
   backdrop-filter: blur(14px);
 }
-.flight-view-note > span {
-  font-size: 0.75rem;
-  letter-spacing: 0.14em;
-  color: var(--link);
+.flight-view-logo {
+  display: block;
+  width: 180px;
+  max-width: 100%;
+  height: auto;
+  padding: 0 6px;
+  background: #f8f5ed;
+  border-radius: 4px;
 }
 .academy-home .flight-view-note h2 {
   font-size: 1.4rem;
@@ -592,6 +596,9 @@
   }
   .flight-view-note p {
     display: none;
+  }
+  .flight-view-logo {
+    width: 144px;
   }
   .academy-home .flight-view-note h2 {
     font-size: 1.2rem;

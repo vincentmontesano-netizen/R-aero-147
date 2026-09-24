@@ -168,6 +168,7 @@ export default function CockpitExperience({
       ref={section}
       className={`flight-experience ${entered ? "is-entered" : ""} ${pinned ? "is-pinned" : ""}`}
       aria-label={c.explore}
+      data-view={active + 1}
     >
       <div className="flight-stage" ref={stage}>
         <div className="flight-grid" aria-hidden="true" />
@@ -247,7 +248,13 @@ export default function CockpitExperience({
         </div>
         {entered && (
           <div className="flight-view-note">
-            <span>0{active + 1} / R-AERO</span>
+            <img
+              className="flight-view-logo"
+              src="/images/raero-logo.png"
+              alt="R-AERO"
+              width={887}
+              height={368}
+            />
             <h2>{c.views[active]}</h2>
             <p>{c.notes[active]}</p>
             {complete ? (
