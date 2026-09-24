@@ -183,10 +183,13 @@ export default function CockpitExperience({
         )}
         <div className="flight-shade" aria-hidden="true" />
         <div className="academy-wrap flight-copy" inert={entered}>
-          <p className="academy-eyebrow">
-            <span className="flight-mark">R / A</span>
-            {c.eyebrow}
-          </p>
+          <img
+            className="flight-brand-logo"
+            src="/images/raero-logo.png"
+            alt="R-AERO"
+            width={887}
+            height={368}
+          />
           <h1>
             {c.title}
             <br />
