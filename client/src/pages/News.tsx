@@ -21,7 +21,7 @@ export default function News() {
         <div className="container py-10">
           <BackButton dark />
           <div className="text-xs font-semibold tracking-widest mb-2" style={{ color: "var(--link)" }}>{t("news.eyebrow")}</div>
-          <h1 className="font-sans text-3xl font-bold text-white mb-2">{t("news.title")}</h1>
+          <h1 className="font-sans text-3xl font-bold text-foreground mb-2">{t("news.title")}</h1>
           <p className="text-muted-foreground text-sm max-w-2xl">{t("news.subtitle")}</p>
         </div>
       </div>

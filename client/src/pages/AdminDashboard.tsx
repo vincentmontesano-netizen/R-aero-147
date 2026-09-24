@@ -348,7 +348,7 @@ export default function AdminDashboard() {
             <div className="flex items-center gap-3">
               <GraduationCap className="w-6 h-6" style={{ color: "var(--link)" }} />
               <div>
-                <h1 className="font-sans text-2xl font-bold text-white">{t("adminDashboard.headerTitle")}</h1>
+                <h1 className="font-sans text-2xl font-bold text-foreground">{t("adminDashboard.headerTitle")}</h1>
                 <p className="text-muted-foreground text-sm">{t("adminDashboard.headerSubtitle")}</p>
               </div>
             </div>

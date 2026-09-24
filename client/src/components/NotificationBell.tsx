@@ -33,7 +33,7 @@ export default function NotificationBell({ dark = false }: { dark?: boolean }) {
           aria-label={t(failed ? "notificationBell.unavailableLabel" : "notificationBell.ariaLabel")}
         >
           <Bell className="w-4 h-4" />
-          {failed&&<span aria-hidden="true" className="absolute -top-1 -right-1 rounded-full bg-warning/10 text-white text-xs px-1">!</span>}
+          {failed&&<span aria-hidden="true" className="absolute -top-1 -right-1 rounded-full bg-warning/10 text-foreground text-xs px-1">!</span>}
           {!failed && unread > 0 && (
             <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full text-xs font-bold flex items-center justify-center" style={{ background: "color-mix(in srgb, var(--destructive) 16%, transparent)", color: "var(--foreground)" }}>
               {unread > 9 ? "9+" : unread}

@@ -141,7 +141,7 @@ export default function SlideDeck({
     <div className="flex flex-col" style={{ background: "var(--background)", minHeight: "100%" }}>
       {/* Header / progress */}
       <div className="px-5 py-3 flex items-center gap-4" style={{ background: "var(--surface-strong)" }}>
-        <span className="text-white font-medium text-sm truncate flex-1">{title}</span>
+        <span className="text-foreground font-medium text-sm truncate flex-1">{title}</span>
         <span className="text-xs" style={{ color: "var(--link)" }}>
           {t("player.module")} {index + 1} / {total} · {progress}% {t("player.completed")}
         </span>
@@ -186,10 +186,10 @@ export default function SlideDeck({
                   <div className="absolute inset-0 rounded-xl flex items-center justify-center p-4" style={{ background: "color-mix(in srgb, var(--surface-strong) 92%, transparent)" }}>
                     <div className="w-full max-w-md">
                       <div className="text-xs font-semibold tracking-widest mb-2" style={{ color: "var(--link)" }}>{t("slideDeck.scenarioChoose")}</div>
-                      <div className="text-white font-semibold mb-3">{cue.question}</div>
+                      <div className="text-foreground font-semibold mb-3">{cue.question}</div>
                       <div className="space-y-2">
                         {(cue.branches ?? []).map((b, i) => (
-                          <button key={i} onClick={() => resumeCue(b.seekTo)} className="w-full text-left px-3 py-2 rounded-lg border text-sm text-white" style={{ background: "color-mix(in srgb, var(--foreground) 8%, transparent)", borderColor: "color-mix(in srgb, var(--foreground) 20%, transparent)" }}>
+                          <button key={i} onClick={() => resumeCue(b.seekTo)} className="w-full text-left px-3 py-2 rounded-lg border text-sm text-foreground" style={{ background: "color-mix(in srgb, var(--foreground) 8%, transparent)", borderColor: "color-mix(in srgb, var(--foreground) 20%, transparent)" }}>
                             {b.label} <span className="text-muted-foreground">→ {Math.floor(b.seekTo / 60)}:{String(Math.round(b.seekTo % 60)).padStart(2, "0")}</span>
                           </button>
                         ))}
@@ -227,7 +227,7 @@ export default function SlideDeck({
                 const allCorrect = zones.length > 0 && zones.every((z) => dropped(z.id) === z.correctItemId);
                 return (
                   <div className="absolute inset-0 rounded-xl" style={{ background: "color-mix(in srgb, var(--surface-strong) 55%, transparent)" }}>
-                    <div className="absolute top-2 inset-x-0 text-center text-xs font-semibold tracking-widest" style={{ color: "var(--link)" }}>{cue.question || t("slideDeck.dragEachItem")}<p className="normal-case tracking-normal font-normal mt-1 text-white">{instructions}</p></div>
+                    <div className="absolute top-2 inset-x-0 text-center text-xs font-semibold tracking-widest" style={{ color: "var(--link)" }}>{cue.question || t("slideDeck.dragEachItem")}<p className="normal-case tracking-normal font-normal mt-1 text-foreground">{instructions}</p></div>
                     {zones.map((z) => {
                       const placed = items.find((it) => it.id === dropped(z.id));
                       const ok = cueChecked && dropped(z.id) === z.correctItemId;
@@ -258,7 +258,7 @@ export default function SlideDeck({
                       ) : allCorrect ? (
                         <Button onClick={() => resumeCue(cue.onCorrectSeek)} style={{ background: "color-mix(in srgb, var(--success) 18%, transparent)", color: "var(--foreground)" }}>{t("common.next")} ▶</Button>
                       ) : (
-                        <><span className="text-sm" style={{ color: "var(--destructive)" }}>{t("player.incorrect")}</span><button className="text-sm underline text-white/80" onClick={() => { setCueChecked(false); setCueDrops({}); setDragSelection(null); }}>{t("slideDeck.retry")}</button></>
+                        <><span className="text-sm" style={{ color: "var(--destructive)" }}>{t("player.incorrect")}</span><button className="text-sm underline text-foreground/80" onClick={() => { setCueChecked(false); setCueDrops({}); setDragSelection(null); }}>{t("slideDeck.retry")}</button></>
                       )}
                     </div>
                   </div>
@@ -273,7 +273,7 @@ export default function SlideDeck({
                 <div className="absolute inset-0 rounded-xl flex items-center justify-center p-4" style={{ background: "color-mix(in srgb, var(--surface-strong) 92%, transparent)" }}>
                   <div className="w-full max-w-md">
                     <div className="text-xs font-semibold tracking-widest mb-2" style={{ color: "var(--link)" }}>{t("slideDeck.videoQuiz")}</div>
-                    <div className="text-white font-semibold mb-3">{cue.question}</div>
+                    <div className="text-foreground font-semibold mb-3">{cue.question}</div>
                     <div className="space-y-2">
                       {(cue.options ?? []).map((opt, i) => {
                         const sel = cueSelected.includes(i);
@@ -285,7 +285,7 @@ export default function SlideDeck({
                         return (
                           <button key={i} disabled={cueChecked}
                             onClick={() => { if (cueMulti) setCueSelected((s) => s.includes(i) ? s.filter((x) => x !== i) : [...s, i]); else setCueSelected([i]); }}
-                            className="w-full text-left px-3 py-2 rounded-lg border text-sm text-white transition-colors"
+                            className="w-full text-left px-3 py-2 rounded-lg border text-sm text-foreground transition-colors"
                             style={{ background: "color-mix(in srgb, var(--foreground) 8%, transparent)", borderColor: "var(--border)" }}>
                             {String.fromCharCode(65 + i)}. {opt}
                           </button>
@@ -306,7 +306,7 @@ export default function SlideDeck({
                     ) : (
                       <div className="mt-3 flex items-center gap-3">
                         <span className="text-sm" style={{ color: "var(--destructive)" }}>{t("player.incorrect")}</span>
-                        <button className="text-sm underline text-white/80" onClick={() => { setCueChecked(false); setCueSelected([]); }}>{t("slideDeck.retry")}</button>
+                        <button className="text-sm underline text-foreground/80" onClick={() => { setCueChecked(false); setCueSelected([]); }}>{t("slideDeck.retry")}</button>
                       </div>
                     )}
                   </div>

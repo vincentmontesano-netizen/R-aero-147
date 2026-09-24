@@ -64,7 +64,7 @@ export default function TrainingDetail() {
       <div style={{ background: "var(--surface-strong)", paddingTop: "5rem" }}>
         <div className="container py-10">
           <Link href="/catalogue">
-            <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-white mb-4 transition-colors">
+            <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors">
               <ChevronLeft className="w-4 h-4" /> {t("trainingDetail.backToCatalogue")}
             </button>
           </Link>
@@ -80,7 +80,7 @@ export default function TrainingDetail() {
                   </span>
                 )}
               </div>
-              <h1 className="font-sans text-3xl font-bold text-white mb-3">{training.title}</h1>
+              <h1 className="font-sans text-3xl font-bold text-foreground mb-3">{training.title}</h1>
               {training.part147Reference && (
                 <div className="flex items-center gap-1 text-sm" style={{ color: "var(--link)" }}>
                   <Award className="w-4 h-4" />
@@ -90,13 +90,13 @@ export default function TrainingDetail() {
             </div>
             {/* Price card */}
             <div className="rounded-xl p-6 min-w-64" style={{ background: "color-mix(in srgb, var(--foreground) 7%, transparent)", border: "1px solid color-mix(in srgb, var(--foreground) 15%, transparent)" }}>
-              <div className="font-sans text-3xl font-bold text-white mb-1">
+              <div className="font-sans text-3xl font-bold text-foreground mb-1">
                 {training.priceTtc ? Number(training.priceTtc).toLocaleString(lang,{style:"currency",currency:"EUR"}) : t("trainingDetail.onQuote")}
               </div>
               {training.priceHt && (
                 <div className="text-xs text-muted-foreground mb-4">{t("trainingDetail.priceHtVat", { amount: Number(training.priceHt).toLocaleString(lang,{minimumFractionDigits:2,maximumFractionDigits:2}) })}</div>
               )}
-              {addToCart.isError&&<p role="alert" className="text-sm text-white mb-3">{t(addToCart.error.data?.code==="UNAUTHORIZED"?"trainingDetail.toastLoginRequired":"catalogue.cartError")}</p>}
+              {addToCart.isError&&<p role="alert" className="text-sm text-foreground mb-3">{t(addToCart.error.data?.code==="UNAUTHORIZED"?"trainingDetail.toastLoginRequired":"catalogue.cartError")}</p>}
               {training.priceTtc ? (
                 <Button
                   size="lg"
@@ -220,7 +220,7 @@ export default function TrainingDetail() {
 
             {/* Enterprise quote */}
             <div className="rounded-xl p-5" style={{ background: "var(--surface-strong)" }}>
-              <h3 className="font-semibold text-white text-sm mb-2">{t("trainingDetail.teamNeedTitle")}</h3>
+              <h3 className="font-semibold text-foreground text-sm mb-2">{t("trainingDetail.teamNeedTitle")}</h3>
               <p className="text-xs text-muted-foreground mb-3">{t("trainingDetail.teamNeedDescription")}</p>
               <Link href="/devis">
                 <Button size="sm" className="w-full" style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>

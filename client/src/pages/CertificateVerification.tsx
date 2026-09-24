@@ -36,7 +36,7 @@ export default function CertificateVerification() {
           <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: "color-mix(in srgb, var(--link) 15%, transparent)", border: "2px solid color-mix(in srgb, var(--link) 40%, transparent)" }}>
             <Shield className="w-8 h-8" style={{ color: "var(--link)" }} />
           </div>
-          <h1 className="font-sans text-3xl font-bold text-white mb-2">{t("certificateVerification.title")}</h1>
+          <h1 className="font-sans text-3xl font-bold text-foreground mb-2">{t("certificateVerification.title")}</h1>
           <p className="text-muted-foreground max-w-md mx-auto text-sm">
             {t("certificateVerification.subtitle")}
           </p>
@@ -89,8 +89,8 @@ export default function CertificateVerification() {
           <div className="rounded-xl overflow-hidden" style={{ border: `2px solid ${statusColor}` }}>
             {/* Verification status */}
             <div className="px-6 py-4 flex items-center gap-3" style={{ background: statusColor }}>
-              {cert.status==='valid'?<CheckCircle className="w-6 h-6 text-primary-foreground" />:<XCircle className="w-6 h-6 text-primary-foreground" />}
-              <span className="font-bold text-primary-foreground text-lg">{cert.status==='valid'?t('certificateVerification.validBanner'):statusText}</span>
+              {cert.status==='valid'?<CheckCircle className="w-6 h-6 text-background" />:<XCircle className="w-6 h-6 text-background" />}
+              <span className="font-bold text-background text-lg">{cert.status==='valid'?t('certificateVerification.validBanner'):statusText}</span>
             </div>
 
             <div className="p-6" style={{ background: "var(--card)" }}>

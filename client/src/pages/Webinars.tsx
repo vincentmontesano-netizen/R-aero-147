@@ -42,7 +42,7 @@ export default function Webinars() {
       <div style={{ background: "var(--surface-strong)", paddingTop: "5rem" }}>
         <div className="container py-10">
           <div className="text-xs font-semibold tracking-widest mb-2" style={{ color: "var(--link)" }}>{t("webinars.eyebrow")}</div>
-          <h1 className="font-sans text-3xl font-bold text-white mb-2">{t("webinars.heroTitle")}</h1>
+          <h1 className="font-sans text-3xl font-bold text-foreground mb-2">{t("webinars.heroTitle")}</h1>
           <p className="text-muted-foreground text-sm max-w-2xl">{t("webinars.heroSubtitle")}</p>
         </div>
       </div>

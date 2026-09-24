@@ -1,3 +1,4 @@
+import ThemeToggle from "@/components/ThemeToggle";
 import { announceSessionChange } from '@/lib/sessionChange';
 import { useQueryClient } from '@tanstack/react-query';
 import { clearSessionCache } from '@/lib/sessionCache';
@@ -58,8 +59,9 @@ export default function Register() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 py-10" style={{ background: "var(--surface-strong)" }}>
       <div className="w-full max-w-md">
+        <div className="flex justify-end mb-3"><ThemeToggle /></div>
         <Link href="/">
-          <button className="flex items-center gap-2 text-muted-foreground hover:text-white text-sm mb-6 transition-colors">
+          <button className="flex items-center gap-2 text-muted-foreground hover:text-foreground text-sm mb-6 transition-colors">
             <ArrowLeft className="w-4 h-4" /> {t("register.backHome")}
           </button>
         </Link>

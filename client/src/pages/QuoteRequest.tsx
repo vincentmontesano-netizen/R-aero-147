@@ -68,7 +68,7 @@ export default function QuoteRequest() {
         <div className="container py-12">
           <BackButton dark />
           <div className="text-xs font-semibold tracking-widest mb-3" style={{ color: "var(--link)" }}>{t("quoteRequest.eyebrow")}</div>
-          <h1 className="font-sans text-4xl font-bold text-white mb-3">{t("quoteRequest.pageTitle")}</h1>
+          <h1 className="font-sans text-4xl font-bold text-foreground mb-3">{t("quoteRequest.pageTitle")}</h1>
           <p className="text-muted-foreground max-w-xl">
             {t("quoteRequest.pageSubtitle")}
           </p>
@@ -155,7 +155,7 @@ export default function QuoteRequest() {
           {/* Sidebar */}
           <div className="space-y-4">
             <div className="rounded-xl p-6" style={{ background: "var(--surface-strong)" }}>
-              <h3 className="font-semibold text-white mb-4">{t("quoteRequest.whyTitle")}</h3>
+              <h3 className="font-semibold text-foreground mb-4">{t("quoteRequest.whyTitle")}</h3>
               <ul className="space-y-3">
                 {[
                   t("quoteRequest.why1"),

@@ -372,7 +372,7 @@ export default function CompanyDashboard() {
             <div className="flex min-w-0 flex-1 basis-64 items-center gap-3">
               <Building2 className="w-6 h-6" style={{ color: "var(--link)" }} />
               <div>
-                <h1 className="font-sans text-2xl font-bold text-white">{company?.name ?? t("companyDashboard.companySpace")}</h1>
+                <h1 className="font-sans text-2xl font-bold text-foreground">{company?.name ?? t("companyDashboard.companySpace")}</h1>
                 <p className="text-muted-foreground text-sm">{t("companyDashboard.headerSubtitle")}</p>
               </div>
             </div>

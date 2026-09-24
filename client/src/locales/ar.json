@@ -2001,5 +2001,8 @@
   "checkout.paymentsUnavailableTitle": "الدفع عبر الإنترنت غير متاح",
   "checkout.paymentsUnavailableText": "الدفع بالبطاقة غير متاح بعد. اطلب عرض سعر: يرد فريقنا خلال 24 إلى 48 ساعة ويفعّل وصولك.",
   "checkout.requestQuote": "طلب عرض سعر",
-  "slideDeck.answerToContinue": "أجب عن السؤال إجابة صحيحة للمتابعة."
+  "slideDeck.answerToContinue": "أجب عن السؤال إجابة صحيحة للمتابعة.",
+  "theme.light": "الوضع الفاتح",
+  "theme.switchLight": "تفعيل الوضع الفاتح",
+  "theme.switchDark": "تفعيل الوضع الداكن"
 }
