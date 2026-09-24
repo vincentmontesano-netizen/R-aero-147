@@ -260,16 +260,6 @@ export default function CockpitExperience({
             )}
           </div>
         )}
-        <div className="flight-controls">
-          <ol className="flight-stops" aria-label={c.explore}>
-            {c.views.map((view, i) => (
-              <li key={i} aria-current={active === i ? "step" : undefined}>
-                <span>0{i + 1}</span>
-                {view}
-              </li>
-            ))}
-          </ol>
-        </div>
       </div>
     </section>
   );
