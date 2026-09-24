@@ -7,5 +7,6 @@ appId: com.raero.academy.qa
 - scrollUntilVisible:
     element: "Formation validée"
     direction: DOWN
+    centerElement: true
 - assertVisible: "Formation validée"
 - takeScreenshot: connection-recovered

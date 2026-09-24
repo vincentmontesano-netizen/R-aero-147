@@ -2,7 +2,10 @@ appId: com.raero.academy.qa
 ---
 - launchApp:
     clearState: true
-- assertVisible: "Vos formations, à portée de main."
+- extendedWaitUntil:
+    visible:
+      id: "field-Adresse e-mail"
+    timeout: 30000
 - tapOn:
     id: "field-Adresse e-mail"
 - inputText: ${EMAIL}
@@ -20,16 +23,7 @@ appId: com.raero.academy.qa
           text: "Plus tard"
           optional: true
 - extendedWaitUntil:
-    visible: "Bonjour Recette."
+    visible: "Vérifiez votre connexion."
     timeout: 15000
-- scrollUntilVisible:
-    element:
-      id: "course-${ENROLLMENT_ID}"
-    direction: DOWN
-    centerElement: true
-- tapOn:
-    id: "course-${ENROLLMENT_ID}"
-- extendedWaitUntil:
-    visible: "Mon parcours"
-    timeout: 15000
-- takeScreenshot: course-open
+- assertNotVisible: "Bonjour Recette."
+- takeScreenshot: second-factor-required

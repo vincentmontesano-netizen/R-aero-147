@@ -2,8 +2,10 @@ import { readableError } from "../src/errors";
 import { useState } from "react";
 import { useLocalSearchParams, router } from "expo-router";
 import { apiClient } from "../src/api";
+import { useAuth } from "../src/auth";
 import { Action, Copy, Field, Heading, Notice, Screen } from "../src/ui";
 export default function ResetPassword() {
+  const { signOut } = useAuth();
   const params = useLocalSearchParams<{ token?: string }>();
   const [token, setToken] = useState(
     typeof params.token === "string" ? params.token : ""
@@ -17,6 +19,7 @@ export default function ResetPassword() {
     setError("");
     try {
       await apiClient.auth.resetPassword.mutate({ token, password });
+      await signOut();
       setDone(true);
     } catch (e) {
       setError(readableError(e, "Modification impossible."));
@@ -57,7 +60,11 @@ export default function ResetPassword() {
           />
         </>
       )}
-      <Action secondary title="Retour" onPress={() => router.replace("/")} />
+      <Action
+        secondary
+        title={done ? "Me connecter" : "Retour à la connexion"}
+        onPress={() => router.replace("/sign-in")}
+      />
     </Screen>
   );
 }

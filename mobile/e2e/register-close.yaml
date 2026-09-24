@@ -4,11 +4,13 @@ appId: com.raero.academy.qa
 - scrollUntilVisible:
     element: "Créer un compte R-AERO"
     direction: DOWN
+    centerElement: true
 - tapOn: "Créer un compte R-AERO"
 - scrollUntilVisible:
     element:
       id: "field-Nom complet"
     direction: UP
+    centerElement: true
 - tapOn:
     id: "field-Nom complet"
 - inputText: "Recette Nouveau"
@@ -20,6 +22,7 @@ appId: com.raero.academy.qa
     element:
       id: "field-Mot de passe · 8 caractères minimum"
     direction: DOWN
+    centerElement: true
 - tapOn:
     id: "field-Mot de passe · 8 caractères minimum"
 - inputText: ${PASSWORD}
@@ -28,23 +31,33 @@ appId: com.raero.academy.qa
     element:
       id: "auth-submit"
     direction: DOWN
+    centerElement: true
 - tapOn:
     id: "auth-submit"
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          text: "Plus tard"
+          optional: true
 - extendedWaitUntil:
     visible: "Votre bibliothèque vous attend"
     timeout: 15000
 - takeScreenshot: registration-empty-library
-- tapOn: "Certificats"
+- tapOn: "Certificats(, tab, [1-3] of 3)?"
 - assertVisible: "Votre prochain acquis commence par une formation."
-- tapOn: "Mon compte"
+- tapOn: "Mon compte(, tab, [1-3] of 3)?"
 - scrollUntilVisible:
     element: "Fermer mon compte"
     direction: DOWN
+    centerElement: true
 - tapOn: "Fermer mon compte"
 - scrollUntilVisible:
     element:
       id: "field-Votre mot de passe"
     direction: DOWN
+    centerElement: true
 - tapOn:
     id: "field-Votre mot de passe"
 - inputText: ${PASSWORD}
@@ -52,6 +65,7 @@ appId: com.raero.academy.qa
 - scrollUntilVisible:
     element: "Confirmer la fermeture"
     direction: DOWN
+    centerElement: true
 - tapOn: "Confirmer la fermeture"
 - tapOn: "Fermer le compte"
 - extendedWaitUntil:

@@ -1,0 +1,17 @@
+// Opt-in for local distribution builds; credentials remain outside the repository.
+gradle.beforeProject { project ->
+    project.plugins.withId('com.android.application') {
+        project.extensions.getByName('androidComponents').finalizeDsl { android ->
+            if (android.defaultConfig.applicationId != 'com.raero.academy') {
+                throw new GradleException('R-AERO production application required')
+            }
+            def signing = android.signingConfigs.maybeCreate('raeroDistribution')
+            signing.storeFile = new File(System.getenv('RAERO_ANDROID_KEYSTORE'))
+            def password = new File(System.getenv('RAERO_ANDROID_PASSWORD_FILE')).text.trim()
+            signing.storePassword = password
+            signing.keyPassword = password
+            signing.keyAlias = 'raero-upload'
+            android.buildTypes.getByName('release').signingConfig = signing
+        }
+    }
+}

@@ -3,11 +3,13 @@ appId: com.raero.academy.qa
 - scrollUntilVisible:
     element: "Commencer / reprendre l’examen final"
     direction: DOWN
+    centerElement: true
 - tapOn: "Commencer / reprendre l’examen final"
 - scrollUntilVisible:
     element:
       id: "exam-start"
     direction: DOWN
+    centerElement: true
 - tapOn:
     id: "exam-start"
 - extendedWaitUntil:
@@ -27,16 +29,19 @@ appId: com.raero.academy.qa
     element:
       id: "course-${ENROLLMENT_ID}"
     direction: DOWN
+    centerElement: true
 - tapOn:
     id: "course-${ENROLLMENT_ID}"
 - scrollUntilVisible:
     element: "Commencer / reprendre l’examen final"
     direction: DOWN
+    centerElement: true
 - tapOn: "Commencer / reprendre l’examen final"
 - scrollUntilVisible:
     element:
       id: "exam-start"
     direction: DOWN
+    centerElement: true
 - tapOn:
     id: "exam-start"
 - extendedWaitUntil:
@@ -47,6 +52,7 @@ appId: com.raero.academy.qa
 - scrollUntilVisible:
     element: "Suivante"
     direction: DOWN
+    centerElement: true
 - tapOn: "Suivante"
 - tapOn: "Vérifier"
 - tapOn: "Tracer"
@@ -57,6 +63,7 @@ appId: com.raero.academy.qa
     element:
       id: "field-Votre réponse"
     direction: UP
+    centerElement: true
 - tapOn:
     id: "field-Votre réponse"
 - inputText: "tracabilite"
@@ -64,6 +71,7 @@ appId: com.raero.academy.qa
 - scrollUntilVisible:
     element: "Suivante"
     direction: DOWN
+    centerElement: true
 - tapOn: "Suivante"
 - tapOn: "Préparer → Choisir une correspondance"
 - tapOn: "Avant"
@@ -73,6 +81,7 @@ appId: com.raero.academy.qa
     element:
       id: "exam-submit"
     direction: DOWN
+    centerElement: true
 - tapOn:
     id: "exam-submit"
 - tapOn: "Envoyer"
@@ -84,6 +93,7 @@ appId: com.raero.academy.qa
 - scrollUntilVisible:
     element: "Mes certificats"
     direction: DOWN
+    centerElement: true
 - tapOn: "Mes certificats"
 - extendedWaitUntil:
     visible: "Télécharger / partager le PDF"

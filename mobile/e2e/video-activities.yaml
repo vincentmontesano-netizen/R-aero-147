@@ -3,14 +3,17 @@ appId: com.raero.academy.qa
 - scrollUntilVisible:
     element: "Vérifier la documentation"
     direction: DOWN
+    centerElement: true
 - tapOn: "Vérifier la documentation"
 - scrollUntilVisible:
     element: "Vérifier ma réponse"
     direction: DOWN
+    centerElement: true
 - tapOn: "Vérifier ma réponse"
 - scrollUntilVisible:
     element: "Poursuivre la vidéo"
     direction: DOWN
+    centerElement: true
 - tapOn: "Poursuivre la vidéo"
 - extendedWaitUntil:
     visible: "Poursuivre la démonstration"
@@ -27,6 +30,7 @@ appId: com.raero.academy.qa
 - scrollUntilVisible:
     element: "Avant intervention : Choisir"
     direction: DOWN
+    centerElement: true
 - tapOn: "Avant intervention : Choisir"
 - tapOn: "Vérifier ma réponse"
 - assertVisible: "Bonne réponse."
@@ -34,22 +38,27 @@ appId: com.raero.academy.qa
 - scrollUntilVisible:
     element: "Poursuivre la vidéo"
     direction: DOWN
+    centerElement: true
 - tapOn: "Poursuivre la vidéo"
 - scrollUntilVisible:
     element: "Diapositive suivante"
     direction: DOWN
+    centerElement: true
 - tapOn: "Diapositive suivante"
 - scrollUntilVisible:
     element: "Vrai"
     direction: UP
+    centerElement: true
 - tapOn: "Vrai"
 - tapOn: "Vérifier ma réponse"
 - scrollUntilVisible:
     element: "Terminer ces diapositives"
     direction: DOWN
+    centerElement: true
 - tapOn: "Terminer ces diapositives"
 - scrollUntilVisible:
     element: "Vous avez atteint la fin de ces diapositives.*"
     direction: DOWN
+    centerElement: true
 - assertVisible: "Vous avez atteint la fin de ces diapositives.*"
 - takeScreenshot: slides-completed
