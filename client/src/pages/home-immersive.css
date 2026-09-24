@@ -144,22 +144,6 @@
   pointer-events: auto;
   max-width: 590px;
 }
-.flight-copy .academy-eyebrow {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  max-width: 600px;
-  letter-spacing: 0.12em;
-  font-size: 0.75rem;
-}
-.flight-mark {
-  display: inline-flex;
-  border: 1px solid #70d8e850;
-  padding: 6px 8px;
-  white-space: nowrap;
-  color: var(--foreground);
-  font-weight: 700;
-}
 .academy-home .flight-copy h1 {
   font-size: clamp(3rem, 5.6vw, 6.25rem);
   line-height: 1.03;
@@ -302,7 +286,8 @@
   border-radius: 4px;
   backdrop-filter: blur(14px);
 }
-.flight-view-logo {
+.flight-view-logo,
+.flight-brand-logo {
   display: block;
   width: 180px;
   max-width: 100%;
@@ -310,6 +295,9 @@
   padding: 0 6px;
   background: #f8f5ed;
   border-radius: 4px;
+}
+.flight-brand-logo {
+  width: 220px;
 }
 .academy-home .flight-view-note h2 {
   font-size: 1.4rem;
@@ -510,11 +498,6 @@
   .flight-copy {
     padding-top: 36px;
   }
-  .flight-copy .academy-eyebrow {
-    font-size: 0.7rem;
-    max-width: 100%;
-    letter-spacing: 0.06em;
-  }
   .flight-copy > * {
     max-width: 100%;
   }
@@ -600,6 +583,9 @@
   .flight-view-logo {
     width: 144px;
   }
+  .flight-brand-logo {
+    width: 180px;
+  }
   .academy-home .flight-view-note h2 {
     font-size: 1.2rem;
   }
@@ -671,6 +657,9 @@
   }
 }
 @media (max-height: 740px) and (prefers-reduced-motion: no-preference) {
+  .flight-brand-logo {
+    width: 144px;
+  }
   .flight-stage {
     height: calc(100svh - 64px);
     min-height: 0;
@@ -692,9 +681,6 @@
   }
 }
 @media (max-width: 760px) and (max-height: 740px) {
-  .flight-copy .academy-eyebrow {
-    margin-bottom: 14px;
-  }
   .flight-intro {
     max-width: 360px;
     font-size: 0.875rem;
