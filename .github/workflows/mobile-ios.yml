@@ -7,7 +7,7 @@ on:
     paths:
       [
         "mobile/**",
-        "shared/examCountdown.ts",
+        "shared/**",
         ".github/workflows/mobile-ios.yml",
       ]
 
@@ -48,7 +48,8 @@ jobs:
           xcodebuild -workspace ios/RAEROTest.xcworkspace -scheme RAEROTest \
             -configuration Release -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' \
-            -derivedDataPath artifacts/ios-derived CODE_SIGNING_ALLOWED=NO build \
+            -derivedDataPath artifacts/ios-derived ARCHS=arm64 ONLY_ACTIVE_ARCH=YES \
+            CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- build \
             > ios-build.log 2>&1 &
           build_pid=$!
           while kill -0 "$build_pid" 2>/dev/null; do
