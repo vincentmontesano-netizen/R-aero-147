@@ -1,6 +1,9 @@
 name: Validate native learner code
 
 on:
+  push:
+    branches: [dev]
+    paths: ["mobile/**", "server/**", "shared/**", ".github/workflows/mobile-check.yml"]
   pull_request:
     paths:
       [
