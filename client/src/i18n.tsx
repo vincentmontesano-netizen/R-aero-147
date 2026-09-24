@@ -24,7 +24,7 @@ export function I18nProvider({children}:{children:ReactNode}){
   if(current)try{localStorage.setItem(STORAGE_KEY,lang);}catch{/* Preferences may be unavailable in restricted storage contexts. */}
  },[current,initial]);
  const copy=loadingCopy[requested];
- const error=<div role="alert" className="bg-white border rounded-md p-4 text-sm"><p>{copy.error}</p><button type="button" className="underline mt-2" onClick={()=>chooseLanguage(requested)}>{copy.retry}</button></div>;
+ const error=<div role="alert" className="bg-card border rounded-md p-4 text-sm"><p>{copy.error}</p><button type="button" className="underline mt-2" onClick={()=>chooseLanguage(requested)}>{copy.retry}</button></div>;
  if(!current)return <div className="min-h-screen grid place-items-center">{failed?error:<p role="status">{copy.loading}</p>}</div>;
  // Radix primitives (tabs, menus, selects…) default to LTR unless told otherwise.
  return <I18nContext.Provider value={{lang:current.lang,setLang:chooseLanguage,t:(key,vars)=>translate(current.dictionary,key,vars)}}>

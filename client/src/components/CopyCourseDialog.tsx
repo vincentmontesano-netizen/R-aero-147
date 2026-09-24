@@ -13,7 +13,7 @@ export default function CopyCourseDialog({course,orgId,workspaceName,onClose,onC
  <form className="space-y-4" onSubmit={e=>{e.preventDefault();mutation.mutate({trainingId:course.id,title,orgId});}}>
  <p className="text-sm">{text.destination}: <strong>{workspaceName}</strong></p><p className="text-sm text-muted-foreground">{text.notice}</p>
  <label htmlFor="copy-course-title">{text.title}</label><Input id="copy-course-title" value={title} onChange={e=>setTitle(e.target.value)} required maxLength={255} disabled={mutation.isPending}/>
- {mutation.error&&<p role="alert" className="text-sm text-red-600">{mutation.error.message}</p>}
+ {mutation.error&&<p role="alert" className="text-sm text-destructive">{mutation.error.message}</p>}
  <div className="flex gap-2"><Button type="submit" disabled={mutation.isPending||!title.trim()}>{text.copy}</Button><Button type="button" variant="outline" disabled={mutation.isPending} onClick={onClose}>{text.cancel}</Button></div>
  </form></DialogContent></Dialog>;
 }

@@ -6,12 +6,12 @@ import { Button } from "@/components/ui/button";
 import { useI18n } from "@/i18n";
 import { ChevronLeft, ChevronRight, Volume2, CheckCircle, XCircle, Check, Trophy } from "lucide-react";
 
-const DEEP_BLUE = "oklch(19% 0.08 252)";
-const GOLD = "oklch(68% 0.1 78)";
-const IVORY = "oklch(97% 0.01 88)";
-const MUTED = "oklch(45% 0.02 240)";
-const GREEN = "oklch(55% 0.18 145)";
-const RED = "oklch(55% 0.22 27)";
+const DEEP_BLUE = "var(--foreground)";
+const GOLD = "var(--link)";
+const IVORY = "var(--foreground)";
+const MUTED = "var(--muted-foreground)";
+const GREEN = "var(--success)";
+const RED = "var(--destructive)";
 
 export type DeckSlide = {
   id?: number;
@@ -122,7 +122,7 @@ export default function SlideDeck({
   }, [hasQuiz, slide, selected]);
 
   if (!slide) {
-    return <div className="p-10 text-center text-sm" style={{ color: MUTED }}>{t("maker.noSlides")}</div>;
+    return <div className="p-10 text-center text-sm" style={{ color: "var(--muted-foreground)" }}>{t("maker.noSlides")}</div>;
   }
 
   const toggle = (i: number) => {
@@ -138,20 +138,20 @@ export default function SlideDeck({
   };
 
   return (
-    <div className="flex flex-col" style={{ background: IVORY, minHeight: "100%" }}>
+    <div className="flex flex-col" style={{ background: "var(--background)", minHeight: "100%" }}>
       {/* Header / progress */}
-      <div className="px-5 py-3 flex items-center gap-4" style={{ background: DEEP_BLUE }}>
+      <div className="px-5 py-3 flex items-center gap-4" style={{ background: "var(--surface-strong)" }}>
         <span className="text-white font-medium text-sm truncate flex-1">{title}</span>
-        <span className="text-xs" style={{ color: GOLD }}>
+        <span className="text-xs" style={{ color: "var(--link)" }}>
           {t("player.module")} {index + 1} / {total} · {progress}% {t("player.completed")}
         </span>
       </div>
-      <div className="h-1 w-full" style={{ background: "oklch(88% 0.015 88)" }}>
-        <div className="h-1 transition-all" style={{ width: `${progress}%`, background: GOLD }} />
+      <div className="h-1 w-full" style={{ background: "var(--border)" }}>
+        <div className="h-1 transition-all" style={{ width: `${progress}%`, background: "var(--primary)" }} />
       </div>
 
       <div className="flex-1 p-6 max-w-3xl mx-auto w-full">
-        {slide.title && <h2 className="font-serif text-2xl font-bold mb-4" style={{ color: DEEP_BLUE }}>{slide.title}</h2>}
+        {slide.title && <h2 className="font-sans text-2xl font-bold mb-4" style={{ color: "var(--foreground)" }}>{slide.title}</h2>}
 
         {/* Media */}
         {slide.videoUrl ? (
@@ -183,14 +183,14 @@ export default function SlideDeck({
               // BRANCH — choose a path, jump to that point in the video.
               if (kind === "branch") {
                 return (
-                  <div className="absolute inset-0 rounded-xl flex items-center justify-center p-4" style={{ background: "oklch(19% 0.08 252 / 0.92)" }}>
+                  <div className="absolute inset-0 rounded-xl flex items-center justify-center p-4" style={{ background: "color-mix(in srgb, var(--surface-strong) 92%, transparent)" }}>
                     <div className="w-full max-w-md">
-                      <div className="text-xs font-semibold tracking-widest mb-2" style={{ color: GOLD }}>{t("slideDeck.scenarioChoose")}</div>
+                      <div className="text-xs font-semibold tracking-widest mb-2" style={{ color: "var(--link)" }}>{t("slideDeck.scenarioChoose")}</div>
                       <div className="text-white font-semibold mb-3">{cue.question}</div>
                       <div className="space-y-2">
                         {(cue.branches ?? []).map((b, i) => (
-                          <button key={i} onClick={() => resumeCue(b.seekTo)} className="w-full text-left px-3 py-2 rounded-lg border text-sm text-white" style={{ background: "oklch(100% 0 0 / 0.08)", borderColor: "oklch(100% 0 0 / 0.2)" }}>
-                            {b.label} <span className="text-white/50">→ {Math.floor(b.seekTo / 60)}:{String(Math.round(b.seekTo % 60)).padStart(2, "0")}</span>
+                          <button key={i} onClick={() => resumeCue(b.seekTo)} className="w-full text-left px-3 py-2 rounded-lg border text-sm text-white" style={{ background: "color-mix(in srgb, var(--foreground) 8%, transparent)", borderColor: "color-mix(in srgb, var(--foreground) 20%, transparent)" }}>
+                            {b.label} <span className="text-muted-foreground">→ {Math.floor(b.seekTo / 60)}:{String(Math.round(b.seekTo % 60)).padStart(2, "0")}</span>
                           </button>
                         ))}
                       </div>
@@ -202,14 +202,14 @@ export default function SlideDeck({
               // HOTSPOT — click the right zone on the paused frame.
               if (kind === "hotspot") {
                 return (
-                  <div className="absolute inset-0 rounded-xl" style={{ background: "oklch(19% 0.08 252 / 0.3)" }}>
-                    <div className="absolute top-2 inset-x-0 text-center text-xs font-semibold tracking-widest" style={{ color: GOLD }}>{cue.question || t("slideDeck.clickRightSpot")}</div>
-                    {cueChecked && <div className="absolute bottom-2 inset-x-0 text-center text-xs" style={{ color: RED }}>{t("player.incorrect")}</div>}
+                  <div className="absolute inset-0 rounded-xl" style={{ background: "color-mix(in srgb, var(--link) 30%, transparent)" }}>
+                    <div className="absolute top-2 inset-x-0 text-center text-xs font-semibold tracking-widest" style={{ color: "var(--link)" }}>{cue.question || t("slideDeck.clickRightSpot")}</div>
+                    {cueChecked && <div className="absolute bottom-2 inset-x-0 text-center text-xs" style={{ color: "var(--destructive)" }}>{t("player.incorrect")}</div>}
                     {(cue.hotspots ?? []).map((h, i) => (
                       <button key={i} title={h.label}
                         onClick={() => { if (h.correct === false) { setCueChecked(true); } else { resumeCue(h.seekTo); } }}
                         className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full"
-                        style={{ left: `${h.xPct}%`, top: `${h.yPct}%`, width: 44, height: 44, border: `2px solid ${GOLD}`, background: "oklch(68% 0.1 78 / 0.25)" }} />
+                        style={{ left: `${h.xPct}%`, top: `${h.yPct}%`, width: 44, height: 44, border: `2px solid ${"var(--link)"}`, background: "color-mix(in srgb, var(--link) 25%, transparent)" }} />
                     ))}
                   </div>
                 );
@@ -226,8 +226,8 @@ export default function SlideDeck({
                 const allFilled = zones.length > 0 && zones.every((z) => dropped(z.id));
                 const allCorrect = zones.length > 0 && zones.every((z) => dropped(z.id) === z.correctItemId);
                 return (
-                  <div className="absolute inset-0 rounded-xl" style={{ background: "oklch(19% 0.08 252 / 0.55)" }}>
-                    <div className="absolute top-2 inset-x-0 text-center text-xs font-semibold tracking-widest" style={{ color: GOLD }}>{cue.question || t("slideDeck.dragEachItem")}<p className="normal-case tracking-normal font-normal mt-1 text-white">{instructions}</p></div>
+                  <div className="absolute inset-0 rounded-xl" style={{ background: "color-mix(in srgb, var(--surface-strong) 55%, transparent)" }}>
+                    <div className="absolute top-2 inset-x-0 text-center text-xs font-semibold tracking-widest" style={{ color: "var(--link)" }}>{cue.question || t("slideDeck.dragEachItem")}<p className="normal-case tracking-normal font-normal mt-1 text-white">{instructions}</p></div>
                     {zones.map((z) => {
                       const placed = items.find((it) => it.id === dropped(z.id));
                       const ok = cueChecked && dropped(z.id) === z.correctItemId;
@@ -238,8 +238,8 @@ export default function SlideDeck({
                           onClick={() => { if(dragSelection)place(z.id,dragSelection); }}
                           onDragOver={(e) => e.preventDefault()}
                           onDrop={(e) => { e.preventDefault(); const id = e.dataTransfer.getData("text/plain"); place(z.id,id); }}
-                          className="absolute focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white rounded-lg flex items-center justify-center text-center text-[11px] px-1"
-                          style={{ left: `${z.xPct}%`, top: `${z.yPct}%`, width: `${z.wPct}%`, height: `${z.hPct}%`, border: `2px dashed ${ok ? GREEN : bad ? RED : GOLD}`, background: "oklch(100% 0 0 / 0.12)", color: "white" }}>
+                          className="absolute focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white rounded-lg flex items-center justify-center text-center text-sm px-1"
+                          style={{ left: `${z.xPct}%`, top: `${z.yPct}%`, width: `${z.wPct}%`, height: `${z.hPct}%`, border: `2px dashed ${ok ? "var(--success)" : bad ? "var(--destructive)" : "var(--link)"}`, background: "color-mix(in srgb, var(--foreground) 12%, transparent)", color: "var(--foreground)" }}>
                           {placed ? placed.label : (z.label ?? "")}
                         </button>
                       );
@@ -247,18 +247,18 @@ export default function SlideDeck({
                     <div className="absolute bottom-12 inset-x-2 flex flex-wrap gap-2 justify-center">
                       {items.filter((it) => !placedIds.has(it.id)).map((it) => (
                         <button type="button" key={it.id} disabled={cueChecked} aria-pressed={dragSelection===it.id} onClick={() => setDragSelection(d=>d===it.id?null:it.id)} draggable={!cueChecked} onDragStart={(e) => e.dataTransfer.setData("text/plain", it.id)}
-                          className="px-2 py-1 rounded-md text-xs cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white" style={{ background: GOLD, color: DEEP_BLUE, outline:dragSelection===it.id?"2px solid white":undefined }}>
+                          className="px-2 py-1 rounded-md text-sm cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white" style={{ background: "var(--primary)", color: "var(--primary-foreground)", outline:dragSelection===it.id?"2px solid white":undefined }}>
                           {it.label}
                         </button>
                       ))}
                     </div>
                     <div className="absolute bottom-2 inset-x-0 flex items-center justify-center gap-3">
                       {!cueChecked ? (
-                        <Button disabled={!allFilled} onClick={() => setCueChecked(true)} style={{ background: GOLD, color: DEEP_BLUE }}>{t("player.checkAnswer")}</Button>
+                        <Button disabled={!allFilled} onClick={() => setCueChecked(true)} style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>{t("player.checkAnswer")}</Button>
                       ) : allCorrect ? (
-                        <Button onClick={() => resumeCue(cue.onCorrectSeek)} style={{ background: GREEN, color: "white" }}>{t("common.next")} ▶</Button>
+                        <Button onClick={() => resumeCue(cue.onCorrectSeek)} style={{ background: "color-mix(in srgb, var(--success) 18%, transparent)", color: "var(--foreground)" }}>{t("common.next")} ▶</Button>
                       ) : (
-                        <><span className="text-sm" style={{ color: RED }}>{t("player.incorrect")}</span><button className="text-xs underline text-white/80" onClick={() => { setCueChecked(false); setCueDrops({}); setDragSelection(null); }}>{t("slideDeck.retry")}</button></>
+                        <><span className="text-sm" style={{ color: "var(--destructive)" }}>{t("player.incorrect")}</span><button className="text-sm underline text-white/80" onClick={() => { setCueChecked(false); setCueDrops({}); setDragSelection(null); }}>{t("slideDeck.retry")}</button></>
                       )}
                     </div>
                   </div>
@@ -270,43 +270,43 @@ export default function SlideDeck({
               const cueMulti = correctArr.length > 1;
               const cueCorrect = correctArr.length === cueSelected.length && correctArr.every((c) => cueSelected.includes(c));
               return (
-                <div className="absolute inset-0 rounded-xl flex items-center justify-center p-4" style={{ background: "oklch(19% 0.08 252 / 0.92)" }}>
+                <div className="absolute inset-0 rounded-xl flex items-center justify-center p-4" style={{ background: "color-mix(in srgb, var(--surface-strong) 92%, transparent)" }}>
                   <div className="w-full max-w-md">
-                    <div className="text-xs font-semibold tracking-widest mb-2" style={{ color: GOLD }}>{t("slideDeck.videoQuiz")}</div>
+                    <div className="text-xs font-semibold tracking-widest mb-2" style={{ color: "var(--link)" }}>{t("slideDeck.videoQuiz")}</div>
                     <div className="text-white font-semibold mb-3">{cue.question}</div>
                     <div className="space-y-2">
                       {(cue.options ?? []).map((opt, i) => {
                         const sel = cueSelected.includes(i);
                         const correct = correctArr.includes(i);
-                        let bg = "oklch(100% 0 0 / 0.08)", border = "oklch(100% 0 0 / 0.2)";
-                        if (cueChecked && correct) { bg = "oklch(55% 0.18 145 / 0.25)"; border = GREEN; }
-                        else if (cueChecked && sel && !correct) { bg = "oklch(55% 0.22 27 / 0.25)"; border = RED; }
+                        let bg = "color-mix(in srgb, var(--foreground) 8%, transparent)", border = "color-mix(in srgb, var(--foreground) 20%, transparent)";
+                        if (cueChecked && correct) { bg = "color-mix(in srgb, var(--success) 25%, transparent)"; border = GREEN; }
+                        else if (cueChecked && sel && !correct) { bg = "color-mix(in srgb, var(--destructive) 25%, transparent)"; border = RED; }
                         else if (sel) { border = GOLD; }
                         return (
                           <button key={i} disabled={cueChecked}
                             onClick={() => { if (cueMulti) setCueSelected((s) => s.includes(i) ? s.filter((x) => x !== i) : [...s, i]); else setCueSelected([i]); }}
                             className="w-full text-left px-3 py-2 rounded-lg border text-sm text-white transition-colors"
-                            style={{ background: bg, borderColor: border }}>
+                            style={{ background: "color-mix(in srgb, var(--foreground) 8%, transparent)", borderColor: "var(--border)" }}>
                             {String.fromCharCode(65 + i)}. {opt}
                           </button>
                         );
                       })}
                     </div>
                     {!cueChecked ? (
-                      <Button className="mt-3" disabled={cueSelected.length === 0} onClick={() => setCueChecked(true)} style={{ background: GOLD, color: DEEP_BLUE }}>
+                      <Button className="mt-3" disabled={cueSelected.length === 0} onClick={() => setCueChecked(true)} style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>
                         {t("player.checkAnswer")}
                       </Button>
                     ) : cueCorrect ? (
                       <div className="mt-3">
-                        {cue.explanation && <p className="text-xs text-white/70 mb-2">{cue.explanation}</p>}
-                        <Button onClick={() => resumeCue(cue.onCorrectSeek)} style={{ background: GREEN, color: "white" }}>
+                        {cue.explanation && <p className="text-xs text-muted-foreground mb-2">{cue.explanation}</p>}
+                        <Button onClick={() => resumeCue(cue.onCorrectSeek)} style={{ background: "color-mix(in srgb, var(--success) 18%, transparent)", color: "var(--foreground)" }}>
                           {t("common.next")} ▶
                         </Button>
                       </div>
                     ) : (
                       <div className="mt-3 flex items-center gap-3">
-                        <span className="text-sm" style={{ color: RED }}>{t("player.incorrect")}</span>
-                        <button className="text-xs underline text-white/80" onClick={() => { setCueChecked(false); setCueSelected([]); }}>{t("slideDeck.retry")}</button>
+                        <span className="text-sm" style={{ color: "var(--destructive)" }}>{t("player.incorrect")}</span>
+                        <button className="text-sm underline text-white/80" onClick={() => { setCueChecked(false); setCueSelected([]); }}>{t("slideDeck.retry")}</button>
                       </div>
                     )}
                   </div>
@@ -320,7 +320,7 @@ export default function SlideDeck({
 
         {/* Narration audio (when no video) */}
         {slide.audioUrl && !slide.videoUrl && (
-          <div className="mb-4 flex flex-wrap items-center gap-3 p-3 rounded-lg" style={{ background: "white", border: "1px solid oklch(88% 0.015 88)" }}>
+          <div className="mb-4 flex flex-wrap items-center gap-3 p-3 rounded-lg" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
             <Button size="sm" variant="outline" onClick={() => { if (audioRef.current) { audioRef.current.currentTime = 0; audioRef.current.play().catch(() => {}); } }}>
               <Volume2 className="w-4 h-4 mr-1" /> {t("player.playNarration")}
             </Button>
@@ -333,49 +333,49 @@ export default function SlideDeck({
           <button
             onClick={() => speak([slide.title, slide.body].filter(Boolean).join(". "))}
             className="mb-4 inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md transition-colors"
-            style={{ border: `1px solid ${speaking ? DEEP_BLUE : "oklch(88% 0.015 88)"}`, background: speaking ? DEEP_BLUE : "transparent", color: speaking ? "white" : DEEP_BLUE }}
+            style={{ border: `1px solid ${speaking ? "var(--border)" : "var(--border)"}`, background: speaking ? "var(--primary)" : "transparent", color: speaking ? "var(--primary-foreground)" : "var(--foreground)" }}
           >
             <Volume2 className="w-4 h-4" /> {speaking ? t("slideDeck.stopReading") : t("slideDeck.listenToText")}
           </button>
         )}
-        {slide.body && <p className="text-base leading-relaxed whitespace-pre-line mb-6" style={{ color: "oklch(28% 0.03 252)" }}>{slide.body}</p>}
+        {slide.body && <p className="text-base leading-relaxed whitespace-pre-line mb-6" style={{ color: "var(--muted-foreground)" }}>{slide.body}</p>}
 
         {/* Mini-quiz */}
         {hasQuiz && (
-          <div className="rounded-xl p-5 mb-4" style={{ background: "white", border: "1px solid oklch(88% 0.015 88)" }}>
-            <div className="font-semibold mb-3" style={{ color: DEEP_BLUE }}>{slide.quizQuestion}</div>
+          <div className="rounded-xl p-5 mb-4" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+            <div className="font-semibold mb-3" style={{ color: "var(--foreground)" }}>{slide.quizQuestion}</div>
             <div className="space-y-2">
               {(slide.quizOptions ?? []).map((opt, i) => {
                 const sel = selected.includes(i);
                 const correct = (slide.quizCorrect ?? []).includes(i);
-                let border = "oklch(88% 0.015 88)", bg = "white";
-                if (checked && correct) { border = GREEN; bg = "oklch(55% 0.18 145 / 0.08)"; }
-                else if (checked && sel && !correct) { border = RED; bg = "oklch(55% 0.22 27 / 0.08)"; }
+                let border = "var(--border)", bg = "white";
+                if (checked && correct) { border = GREEN; bg = "color-mix(in srgb, var(--success) 8%, transparent)"; }
+                else if (checked && sel && !correct) { border = RED; bg = "color-mix(in srgb, var(--destructive) 8%, transparent)"; }
                 else if (sel) { border = DEEP_BLUE; }
                 return (
                   <button key={i} onClick={() => toggle(i)} disabled={checked}
                     className="w-full text-left px-4 py-2.5 rounded-lg border flex items-center gap-3 transition-colors"
-                    style={{ borderColor: border, background: bg }}>
+                    style={{ borderColor: "var(--border)", background: "color-mix(in srgb, var(--foreground) 8%, transparent)" }}>
                     <span className="w-6 h-6 rounded-full border flex items-center justify-center text-xs shrink-0"
-                      style={{ borderColor: sel ? DEEP_BLUE : "oklch(80% 0.02 240)", background: sel ? DEEP_BLUE : "transparent", color: sel ? "white" : MUTED }}>
+                      style={{ borderColor: sel ? "var(--border)" : "var(--border)", background: sel ? "var(--surface-strong)" : "transparent", color: sel ? "var(--foreground)" : "var(--muted-foreground)" }}>
                       {String.fromCharCode(65 + i)}
                     </span>
-                    <span className="text-sm" style={{ color: "oklch(28% 0.03 252)" }}>{opt}</span>
-                    {checked && correct && <Check className="w-4 h-4 ml-auto" style={{ color: GREEN }} />}
+                    <span className="text-sm" style={{ color: "var(--muted-foreground)" }}>{opt}</span>
+                    {checked && correct && <Check className="w-4 h-4 ml-auto" style={{ color: "var(--success)" }} />}
                   </button>
                 );
               })}
             </div>
             {!checked ? (
-              <Button className="mt-4" disabled={selected.length === 0} onClick={() => setChecked(true)} style={{ background: DEEP_BLUE, color: IVORY }}>
+              <Button className="mt-4" disabled={selected.length === 0} onClick={() => setChecked(true)} style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>
                 {t("player.checkAnswer")}
               </Button>
             ) : (
-              <div className="mt-4 flex items-start gap-2 text-sm p-3 rounded-lg" style={{ background: isCorrect ? "oklch(55% 0.18 145 / 0.08)" : "oklch(55% 0.22 27 / 0.08)", color: isCorrect ? GREEN : RED }}>
+              <div className="mt-4 flex items-start gap-2 text-sm p-3 rounded-lg" style={{ background: isCorrect ? "color-mix(in srgb, var(--success) 8%, transparent)" : "color-mix(in srgb, var(--destructive) 8%, transparent)", color: isCorrect ? "var(--success)" : "var(--destructive)" }}>
                 {isCorrect ? <CheckCircle className="w-4 h-4 mt-0.5 shrink-0" /> : <XCircle className="w-4 h-4 mt-0.5 shrink-0" />}
                 <div>
                   <div className="font-semibold">{isCorrect ? t("player.correct") : t("player.incorrect")}</div>
-                  {slide.quizExplanation && <div className="mt-0.5" style={{ color: MUTED }}>{slide.quizExplanation}</div>}
+                  {slide.quizExplanation && <div className="mt-0.5" style={{ color: "var(--muted-foreground)" }}>{slide.quizExplanation}</div>}
                   {!isCorrect && <button className="mt-1 underline" onClick={() => { setChecked(false); setSelected([]); }}>↺ {t("slideDeck.retry")}</button>}
                 </div>
               </div>
@@ -385,17 +385,17 @@ export default function SlideDeck({
       </div>
 
       {/* Controls */}
-      <div className="px-6 py-4 flex items-center justify-between border-t" style={{ borderColor: "oklch(88% 0.015 88)", background: "white" }}>
+      <div className="px-6 py-4 flex items-center justify-between border-t" style={{ borderColor: "var(--border)", background: "var(--card)" }}>
         <Button variant="outline" disabled={index === 0} onClick={() => setIndex((i) => Math.max(0, i - 1))}>
           <ChevronLeft className="w-4 h-4 mr-1" /> {t("common.previous")}
         </Button>
-        {!canAdvance && <p id="slide-next-hint" className="text-xs text-center flex-1 px-3" style={{ color: "oklch(45% 0.02 240)" }}>{t("slideDeck.answerToContinue")}</p>}
+        {!canAdvance && <p id="slide-next-hint" className="text-xs text-center flex-1 px-3" style={{ color: "var(--muted-foreground)" }}>{t("slideDeck.answerToContinue")}</p>}
         {index < total - 1 ? (
-          <Button disabled={!canAdvance} aria-describedby={!canAdvance ? "slide-next-hint" : undefined} onClick={goNext} style={{ background: DEEP_BLUE, color: IVORY }}>
+          <Button disabled={!canAdvance} aria-describedby={!canAdvance ? "slide-next-hint" : undefined} onClick={goNext} style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>
             {t("common.next")} <ChevronRight className="w-4 h-4 ml-1" />
           </Button>
         ) : (
-          <Button disabled={!canAdvance} aria-describedby={!canAdvance ? "slide-next-hint" : undefined} onClick={goNext} style={{ background: GREEN, color: "white" }}>
+          <Button disabled={!canAdvance} aria-describedby={!canAdvance ? "slide-next-hint" : undefined} onClick={goNext} style={{ background: "color-mix(in srgb, var(--success) 18%, transparent)", color: "var(--foreground)" }}>
             <Trophy className="w-4 h-4 mr-1" /> {finishLabel ?? t("player.finish")}
           </Button>
         )}

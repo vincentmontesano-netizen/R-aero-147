@@ -448,6 +448,7 @@
   "certificateVerification.previewSubtitle": "رقم {number} · {holder}",
   "certificateVerification.previewButton": "معاينة الشهادة",
   "certificateVerification.downloadButton": "تنزيل PDF",
+  "cart.removeItem": "إزالة هذا العنصر",
   "cart.toastItemRemoved": "تمت إزالة العنصر من السلة",
   "cart.toastCartCleared": "تم إفراغ السلة",
   "cart.loginRequired": "يلزم تسجيل الدخول",

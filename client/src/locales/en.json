@@ -448,6 +448,7 @@
   "certificateVerification.previewSubtitle": "No. {number} · {holder}",
   "certificateVerification.previewButton": "Preview certificate",
   "certificateVerification.downloadButton": "Download PDF",
+  "cart.removeItem": "Remove this item",
   "cart.toastItemRemoved": "Item removed from cart",
   "cart.toastCartCleared": "Cart cleared",
   "cart.loginRequired": "Login required",

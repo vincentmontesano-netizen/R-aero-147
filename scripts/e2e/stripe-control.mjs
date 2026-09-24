@@ -1,0 +1,12 @@
+import Stripe from "stripe";
+import { randomUUID } from "node:crypto";
+import { readState, saveState } from "./stripe-simulator.mjs";
+const [action, id] = process.argv.slice(2), state = readState(), session = state.sessions[id];
+if (action !== "pay" || !session) throw new Error("Expected pay and an existing test session ID");
+session.status = "complete"; session.payment_status = "paid"; session.payment_intent = `pi_test_${randomUUID()}`; session.url = null;
+saveState(state);
+const payload = JSON.stringify({ id: `evt_test_${randomUUID()}`, object: "event", created: Math.floor(Date.now()/1000), type: "checkout.session.completed", data: { object: session } });
+const signature = Stripe.webhooks.generateTestHeaderString({ payload, secret: process.env.STRIPE_WEBHOOK_SECRET });
+const response = await fetch("http://127.0.0.1:3000/api/stripe/webhook", { method: "POST", headers: { "content-type": "application/json", "stripe-signature": signature }, body: payload });
+if (!response.ok) throw new Error(`Signed test webhook rejected: ${response.status} ${await response.text()}`);
+console.log(JSON.stringify({ sessionId: id, successUrl: session.success_url, orderId: session.metadata.order_id, signedWebhook: "accepted" }));

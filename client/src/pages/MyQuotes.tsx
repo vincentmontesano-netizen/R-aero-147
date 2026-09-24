@@ -8,9 +8,9 @@ import QuoteThread from "@/components/QuoteThread";
 import { ChevronDown, ChevronUp, LogIn } from "lucide-react";
 import { useI18n } from "@/i18n";
 
-const BLUE = "oklch(19% 0.08 252)";
-const MUTED = "oklch(45% 0.02 240)";
-const BORDER = "oklch(88% 0.015 88)";
+const BLUE = "var(--foreground)";
+const MUTED = "var(--muted-foreground)";
+const BORDER = "var(--border)";
 
 /** Client view of their own quotes + per-quote message thread (INV-agnostic B2B). */
 export default function MyQuotes() {
@@ -27,8 +27,8 @@ export default function MyQuotes() {
   if (!isAuthenticated) {
     return (
       <div className="container py-20 text-center">
-        <p className="mb-4" style={{ color: MUTED }}>{t("myQuotes.loginPrompt")}</p>
-        <a href={getLoginUrl()}><Button style={{ background: "oklch(68% 0.1 78)", color: BLUE }}><LogIn className="w-4 h-4 mr-1" /> {t("myQuotes.login")}</Button></a>
+        <p className="mb-4" style={{ color: "var(--muted-foreground)" }}>{t("myQuotes.loginPrompt")}</p>
+        <a href={getLoginUrl()}><Button style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}><LogIn className="w-4 h-4 mr-1" /> {t("myQuotes.login")}</Button></a>
       </div>
     );
   }
@@ -36,26 +36,26 @@ export default function MyQuotes() {
   return (
     <div className="container py-8 max-w-3xl">
       <BackButton />
-      <h1 className="text-2xl font-bold mb-1 mt-2" style={{ color: BLUE }}>{t("myQuotes.title")}</h1>
-      <p className="text-sm mb-6" style={{ color: MUTED }}>{t("myQuotes.subtitle")}</p>
+      <h1 className="text-2xl font-bold mb-1 mt-2" style={{ color: "var(--foreground)" }}>{t("myQuotes.title")}</h1>
+      <p className="text-sm mb-6" style={{ color: "var(--muted-foreground)" }}>{t("myQuotes.subtitle")}</p>
       <p className="text-xs mb-2">{t("myQuotes.orderHint")}</p>
       <Button className="mb-4" variant="outline" disabled={query.isFetching} onClick={()=>{if(beforeId){setBeforeId(undefined);setOpen(null);}else void query.refetch();}}>{t("myQuotes.firstPage")}</Button>
       {query.isError ? (
         <div><p role="alert">{t("myQuotes.unavailable")}</p><Button variant="outline" disabled={query.isFetching} onClick={()=>void query.refetch()}>{t("quoteThread.retry")}</Button></div>
       ) : query.isPending ? (
-        <div role="status" aria-label={t("common.loading")} className="h-24 animate-pulse rounded-xl" style={{ background: "oklch(88% 0.015 88)" }} />
+        <div role="status" aria-label={t("common.loading")} className="h-24 animate-pulse rounded-xl" style={{ background: "var(--border)" }} />
       ) : quotes.length === 0 ? (
-        <p className="text-sm" style={{ color: MUTED }}>{t(beforeId?"myQuotes.pageEmpty":"myQuotes.empty")} <a href="/devis" className="underline" style={{ color: BLUE }}>{t("myQuotes.requestQuote")}</a>.</p>
+        <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>{t(beforeId?"myQuotes.pageEmpty":"myQuotes.empty")} <a href="/devis" className="underline" style={{ color: "var(--foreground)" }}>{t("myQuotes.requestQuote")}</a>.</p>
       ) : (
         <div className="space-y-3">
           {quotes.map((q: any) => (
-            <div key={q.id} className="rounded-xl overflow-hidden" style={{ border: `1px solid ${BORDER}`, background: "white" }}>
+            <div key={q.id} className="rounded-xl overflow-hidden" style={{ border: `1px solid ${"var(--border)"}`, background: "var(--card)" }}>
               <button aria-expanded={open===q.id} onClick={() => setOpen(open === q.id ? null : q.id)} className="w-full flex items-center justify-between p-4 text-start">
                 <div>
-                  <div className="font-semibold" style={{ color: BLUE }}>{q.companyName}</div>
-                  <div className="text-xs" style={{ color: MUTED }}>{STATUS[q.status] ?? q.status} · {new Date(q.createdAt).toLocaleDateString(lang)}{q.trainingTypes ? ` · ${q.trainingTypes}` : ""}</div>
+                  <div className="font-semibold" style={{ color: "var(--foreground)" }}>{q.companyName}</div>
+                  <div className="text-xs" style={{ color: "var(--muted-foreground)" }}>{STATUS[q.status] ?? q.status} · {new Date(q.createdAt).toLocaleDateString(lang)}{q.trainingTypes ? ` · ${q.trainingTypes}` : ""}</div>
                 </div>
-                {open === q.id ? <ChevronUp className="w-4 h-4" style={{ color: MUTED }} /> : <ChevronDown className="w-4 h-4" style={{ color: MUTED }} />}
+                {open === q.id ? <ChevronUp className="w-4 h-4" style={{ color: "var(--muted-foreground)" }} /> : <ChevronDown className="w-4 h-4" style={{ color: "var(--muted-foreground)" }} />}
               </button>
               {open === q.id && <div className="px-4 pb-4">{q.status === "accepted" && <a href="/dashboard" className="inline-block mb-3"><Button variant="outline" size="sm">{t("checkout.resume")}</Button></a>}<QuoteThread quoteId={q.id} meId={user?.id} /></div>}
             </div>

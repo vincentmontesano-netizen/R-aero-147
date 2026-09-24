@@ -9,10 +9,10 @@ import { Plus, Trash2, CreditCard } from "lucide-react";
 import { toast } from "sonner";
 import QuoteThread from "./QuoteThread";
 
-const BLUE = "oklch(19% 0.08 252)";
-const GOLD = "oklch(68% 0.1 78)";
-const MUTED = "oklch(45% 0.02 240)";
-const BORDER = "oklch(88% 0.015 88)";
+const BLUE = "var(--foreground)";
+const GOLD = "var(--link)";
+const MUTED = "var(--muted-foreground)";
+const BORDER = "var(--border)";
 
 type Line = { trainingId: number; title: string; quantity: number; unitPriceHt: number; unitPriceTtc: number };
 
@@ -78,19 +78,19 @@ export default function QuoteManageDialog({ quote, meId, onClose }: { quote: any
         <DialogHeader><DialogTitle>{t("quoteManageDialog.title", { company: quote?.companyName })}</DialogTitle></DialogHeader>
         {quote && (
           <div className="space-y-5 mt-1">
-            <div className="text-xs" style={{ color: MUTED }}>
+            <div className="text-xs" style={{ color: "var(--muted-foreground)" }}>
               {quote.contactName} — {quote.contactEmail}{quote.employeeCount ? ` · ${t("quoteManageDialog.employeeCount", { count: quote.employeeCount })}` : ""}
-              {quote.trainingTypes && <> · <span style={{ color: BLUE }}>{t("quoteManageDialog.requested", { types: quote.trainingTypes })}</span></>}
+              {quote.trainingTypes && <> · <span style={{ color: "var(--foreground)" }}>{t("quoteManageDialog.requested", { types: quote.trainingTypes })}</span></>}
             </div>
 
             <QuoteStatusHistory key={quote.id} quoteId={quote.id} />
             <div>
-              <h3 className="font-semibold text-sm mb-2" style={{ color: BLUE }}>{t("quoteManageDialog.messaging")}</h3>
+              <h3 className="font-semibold text-sm mb-2" style={{ color: "var(--foreground)" }}>{t("quoteManageDialog.messaging")}</h3>
               <QuoteThread quoteId={quote.id} meId={meId} />
             </div>
 
             <div>
-              <h3 className="font-semibold text-sm mb-2" style={{ color: BLUE }}>{t("quoteManageDialog.convertToOrder")}</h3>
+              <h3 className="font-semibold text-sm mb-2" style={{ color: "var(--foreground)" }}>{t("quoteManageDialog.convertToOrder")}</h3>
               {unavailable?<p role="alert">{t("quoteManageDialog.dataError")}</p>:loading?<p role="status">{t("common.loading")}</p>:!trainings.length?<p>{t("quoteManageDialog.noCourses")}</p>:null}
               {(unavailable || (!loading && !trainings.length))&&<Button variant="outline" disabled={trainingsQuery.isFetching||organizations.isFetching} onClick={()=>{void trainingsQuery.refetch();void organizations.refetch();}}>{t("quoteHistory.refresh")}</Button>}
               <p className="text-xs mb-3">{t("quoteManageDialog.quantityHelp")}</p>
@@ -100,32 +100,32 @@ export default function QuoteManageDialog({ quote, meId, onClose }: { quote: any
                 {items.map((it, idx) => (
                   <div key={idx} className="flex gap-2 items-center">
                     <select aria-label={t("quoteManageDialog.training")} value={it.trainingId} onChange={(e) => { const t = trainings.find((x: any) => x.id === Number(e.target.value)); if (t) upd(idx, lineFrom(t)); }}
-                      className="h-8 rounded-md border px-2 text-xs flex-1 min-w-0" style={{ borderColor: BORDER }}>
+                      className="h-8 rounded-md border px-2 text-xs flex-1 min-w-0" style={{ borderColor: "var(--border)" }}>
                       {trainings.filter(course=>course.id===it.trainingId || !items.some(item=>item.trainingId===course.id)).map((t: any) => <option key={t.id} value={t.id}>{t.title}</option>)}
                     </select>
                     <Input type="number" min={1} max={companyId?100:1} step={1} value={it.quantity} onChange={(e) => upd(idx, { quantity: Number(e.target.value) })} className="h-8 w-16" title={t("quoteManageDialog.quantity")} />
                     <Input type="number" min="0.01" max="999999.99" step="0.01" value={it.unitPriceTtc} onChange={(e) => upd(idx, { unitPriceTtc: Number(e.target.value), unitPriceHt: +(Number(e.target.value) / 1.2).toFixed(2) })} className="h-8 w-24" title={t("quoteManageDialog.unitPriceTtc")} />
-                    <button aria-label={t("quoteManageDialog.removeTraining")} onClick={() => setItems(items.filter((_, i) => i !== idx))} className="text-red-500 shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    <button aria-label={t("quoteManageDialog.removeTraining")} onClick={() => setItems(items.filter((_, i) => i !== idx))} className="text-destructive shrink-0"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 ))}
-                <button disabled={!available.length || items.length>=100} onClick={addItem} className="text-xs flex items-center gap-1" style={{ color: GOLD }}><Plus className="w-3 h-3" /> {t("quoteManageDialog.addTraining")}</button>
+                <button disabled={!available.length || items.length>=100} onClick={addItem} className="text-sm flex items-center gap-1" style={{ color: "var(--link)" }}><Plus className="w-3 h-3" /> {t("quoteManageDialog.addTraining")}</button>
               </div>
               </fieldset>
-              {invalid&&<p role="alert" className="text-sm text-red-700">{t("quoteManageDialog.invalid")}</p>}
-              {(convert.isError || (convert.isSuccess&&!payUrl))&&<p role="alert" className="text-sm text-red-700">{t("quoteManageDialog.unconfirmed")}</p>}
+              {invalid&&<p role="alert" className="text-sm text-destructive">{t("quoteManageDialog.invalid")}</p>}
+              {(convert.isError || (convert.isSuccess&&!payUrl))&&<p role="alert" className="text-sm text-destructive">{t("quoteManageDialog.unconfirmed")}</p>}
               {items.length > 0 && (
                 <div className="flex items-center justify-between mt-3">
-                  <span className="text-sm font-medium" style={{ color: BLUE }}>{t("quoteManageDialog.totalTtc", { amount: totalTtc.toFixed(2) })}</span>
-                  <Button size="sm" disabled={convert.isPending || !!payUrl || unavailable || loading || trainingsQuery.isFetching || organizations.isFetching} style={{ background: BLUE, color: "white" }}
+                  <span className="text-sm font-medium" style={{ color: "var(--foreground)" }}>{t("quoteManageDialog.totalTtc", { amount: totalTtc.toFixed(2) })}</span>
+                  <Button size="sm" disabled={convert.isPending || !!payUrl || unavailable || loading || trainingsQuery.isFetching || organizations.isFetching} style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
                     onClick={submit}>
                     <CreditCard className="w-4 h-4 mr-1" /> {t(convert.isPending?"common.loading":attempted&&!payUrl?"quoteManageDialog.retry":"quoteManageDialog.createOrderAndPaymentLink")}
                   </Button>
                 </div>
               )}
               {payUrl && (
-                <div className="text-xs mt-3 p-2 rounded" style={{ background: "oklch(97% 0.01 88)", color: MUTED }}>
+                <div className="text-xs mt-3 p-2 rounded" style={{ background: "var(--background)", color: "var(--muted-foreground)" }}>
                   {t("quoteManageDialog.paymentLinkLabel")}{" "}
-                  <a href={payUrl} className="underline" style={{ color: BLUE }}>{payUrl}</a>
+                  <a href={payUrl} className="underline" style={{ color: "var(--foreground)" }}>{payUrl}</a>
                 </div>
               )}
             </div>

@@ -24,8 +24,8 @@ export default function BackButton({ fallback = "/", dark = false, label }: { fa
   return (
     <button
       onClick={goBack}
-      className={`inline-flex items-center gap-1.5 text-sm font-medium mb-4 transition-colors ${dark ? "text-white/70 hover:text-white" : "hover:opacity-70"}`}
-      style={dark ? undefined : { color: "oklch(45% 0.02 240)" }}
+      className={`inline-flex items-center gap-1.5 text-sm font-medium mb-4 transition-colors ${dark ? "text-muted-foreground hover:text-white" : "hover:opacity-70"}`}
+      style={dark ? undefined : { color: "var(--muted-foreground)" }}
     >
       <ArrowLeft className="w-4 h-4 rtl:rotate-180" /> {label ?? t(onRoleHome ? "common.backToSite" : "common.back")}
     </button>

@@ -86,40 +86,40 @@ export default function UserProfile() {
   if (!isAuthenticated) return null;
 
   return (
-    <div className="min-h-screen" style={{ background: "oklch(97% 0.01 88)" }}>
+    <div className="min-h-screen" style={{ background: "var(--background)" }}>
       <PublicNav />
-      <div style={{ background: "oklch(19% 0.08 252)", paddingTop: "5rem" }}>
+      <div style={{ background: "var(--surface-strong)", paddingTop: "5rem" }}>
         <div className="container py-10">
           <BackButton dark />
-          <h1 className="font-serif text-2xl font-bold text-white mb-1">{t("userProfile.title")}</h1>
-          <p className="text-white/60 text-sm">{t("userProfile.subtitle")}</p>
+          <h1 className="font-sans text-2xl font-bold text-white mb-1">{t("userProfile.title")}</h1>
+          <p className="text-muted-foreground text-sm">{t("userProfile.subtitle")}</p>
         </div>
       </div>
 
       <div className="container py-8 max-w-2xl">
-        <form onSubmit={handleSubmit} className="rounded-xl p-8 space-y-6" style={{ background: "oklch(100% 0 0)", border: "1px solid oklch(88% 0.015 88)" }}>
+        <form onSubmit={handleSubmit} className="rounded-xl p-8 space-y-6" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
           {/* Personal info */}
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <User className="w-4 h-4" style={{ color: "oklch(68% 0.1 78)" }} />
-              <h2 className="font-semibold" style={{ color: "oklch(19% 0.08 252)" }}>{t("userProfile.personalInfoHeading")}</h2>
+              <User className="w-4 h-4" style={{ color: "var(--link)" }} />
+              <h2 className="font-semibold" style={{ color: "var(--foreground)" }}>{t("userProfile.personalInfoHeading")}</h2>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
-                <label htmlFor="profile-field-1" className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("userProfile.fullNameLabel")}</label>
+                <label htmlFor="profile-field-1" className="text-sm font-semibold mb-1.5 block" style={{ color: "var(--muted-foreground)" }}>{t("userProfile.fullNameLabel")}</label>
                 <Input id="profile-field-1" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder={t("userProfile.fullNamePlaceholder")} />
               </div>
               <div>
-                <label htmlFor="profile-field-2" className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("userProfile.jobTitleLabel")}</label>
+                <label htmlFor="profile-field-2" className="text-sm font-semibold mb-1.5 block" style={{ color: "var(--muted-foreground)" }}>{t("userProfile.jobTitleLabel")}</label>
                 <Input id="profile-field-2" value={form.jobTitle} onChange={(e) => setForm((f) => ({ ...f, jobTitle: e.target.value }))} placeholder={t("userProfile.jobTitlePlaceholder")} />
               </div>
               <div>
-                <label htmlFor="profile-field-3" className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("userProfile.preferredLanguageLabel")}</label>
+                <label htmlFor="profile-field-3" className="text-sm font-semibold mb-1.5 block" style={{ color: "var(--muted-foreground)" }}>{t("userProfile.preferredLanguageLabel")}</label>
                 <select id="profile-field-3"
                   value={form.preferredLanguage}
                   onChange={(e) => { const v = e.target.value; setForm((f) => ({ ...f, preferredLanguage: v })); if (v === "fr" || v === "en") setLang(v); }}
                   className="w-full h-9 rounded-md border px-3 text-sm"
-                  style={{ borderColor: "oklch(88% 0.015 88)" }}
+                  style={{ borderColor: "var(--border)" }}
                 >
                   <option value="fr">Français</option>
                   <option value="en">English</option>
@@ -129,16 +129,16 @@ export default function UserProfile() {
           </div>
 
           {/* Read-only info */}
-          <div className="p-4 rounded-lg" style={{ background: "oklch(97% 0.01 88)", border: "1px solid oklch(88% 0.015 88)" }}>
-            <div className="text-xs font-semibold mb-2" style={{ color: "oklch(45% 0.02 240)" }}>{t("userProfile.accountInfoHeading")}</div>
+          <div className="p-4 rounded-lg" style={{ background: "var(--background)", border: "1px solid var(--border)" }}>
+            <div className="text-xs font-semibold mb-2" style={{ color: "var(--muted-foreground)" }}>{t("userProfile.accountInfoHeading")}</div>
             <div className="space-y-1">
               <div className="flex justify-between text-sm">
-                <span style={{ color: "oklch(62% 0.02 240)" }}>{t("userProfile.emailLabel")}</span>
-                <span style={{ color: "oklch(19% 0.08 252)" }}>{user?.email ?? "—"}</span>
+                <span style={{ color: "var(--muted-foreground)" }}>{t("userProfile.emailLabel")}</span>
+                <span style={{ color: "var(--foreground)" }}>{user?.email ?? "—"}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span style={{ color: "oklch(62% 0.02 240)" }}>{t("userProfile.roleLabel")}</span>
-                <span style={{ color: "oklch(19% 0.08 252)" }}>{user?.role ?? "user"}</span>
+                <span style={{ color: "var(--muted-foreground)" }}>{t("userProfile.roleLabel")}</span>
+                <span style={{ color: "var(--foreground)" }}>{user?.role ?? "user"}</span>
               </div>
             </div>
           </div>
@@ -147,7 +147,7 @@ export default function UserProfile() {
             <Button
               type="submit"
               disabled={updateProfile.isPending}
-              style={{ background: saved ? "oklch(55% 0.18 145)" : "oklch(19% 0.08 252)", color: "oklch(97% 0.01 88)" }}
+              style={{ background: saved ? "color-mix(in srgb, var(--success) 18%, transparent)" : "var(--primary)", color: saved ? "var(--success)" : "var(--primary-foreground)" }}
             >
               {saved ? <><CheckCircle className="w-4 h-4 mr-2" /> {t("userProfile.savedButton")}</> : <><Save className="w-4 h-4 mr-2" /> {t("userProfile.saveButton")}</>}
             </Button>
@@ -155,16 +155,16 @@ export default function UserProfile() {
         </form>
 
         {/* Security — email two-factor authentication */}
-        <div className="rounded-xl p-8 mt-6" style={{ background: "oklch(100% 0 0)", border: "1px solid oklch(88% 0.015 88)" }}>
+        <div className="rounded-xl p-8 mt-6" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
           <div className="flex items-center gap-2 mb-3">
-            <Shield className="w-4 h-4" style={{ color: "oklch(68% 0.1 78)" }} />
-            <h2 className="font-semibold" style={{ color: "oklch(19% 0.08 252)" }}>{t("userProfile.securityHeading")}</h2>
+            <Shield className="w-4 h-4" style={{ color: "var(--link)" }} />
+            <h2 className="font-semibold" style={{ color: "var(--foreground)" }}>{t("userProfile.securityHeading")}</h2>
           </div>
           {/* Change password via an emailed link */}
-          <div className="flex items-center justify-between gap-3 pb-4 mb-4" style={{ borderBottom: "1px solid oklch(88% 0.015 88)" }}>
+          <div className="flex items-center justify-between gap-3 pb-4 mb-4" style={{ borderBottom: "1px solid var(--border)" }}>
             <div className="min-w-0">
-              <div className="text-sm font-medium" style={{ color: "oklch(19% 0.08 252)" }}>{t("userProfile.passwordTitle")}</div>
-              <p className="text-xs mt-0.5" style={{ color: "oklch(45% 0.02 240)" }}>{t("userProfile.passwordDesc")}</p>
+              <div className="text-sm font-medium" style={{ color: "var(--foreground)" }}>{t("userProfile.passwordTitle")}</div>
+              <p className="text-xs mt-0.5" style={{ color: "var(--muted-foreground)" }}>{t("userProfile.passwordDesc")}</p>
             </div>
             <Button type="button" variant="outline" disabled={requestReset.isPending || !user?.email}
               onClick={() => user?.email && requestReset.mutate({ email: user.email, origin: window.location.origin })}>
@@ -175,9 +175,9 @@ export default function UserProfile() {
           <TwoFactorSettings enabled={twoFactorEnabled} />
         </div>
 
-        <section className="rounded-xl border bg-white p-8 mt-6 space-y-3" aria-labelledby="session-security-title">
+        <section className="rounded-xl border bg-card p-8 mt-6 space-y-3" aria-labelledby="session-security-title">
           <h2 id="session-security-title" className="font-semibold">{lang === "fr" ? "Mes appareils connectés" : lang === "ar" ? "أجهزتي المتصلة" : "My signed-in devices"}</h2>
-          <p className="text-sm text-slate-600">{lang === "fr" ? "Déconnectez toutes les sessions de votre compte, y compris cet appareil. Vos formations, documents et résultats sont conservés. Vous devrez vous reconnecter." : lang === "ar" ? "سجّل الخروج من جميع جلسات حسابك، بما فيها هذا الجهاز. ستبقى تدريباتك ومستنداتك ونتائجك محفوظة. ستحتاج إلى تسجيل الدخول مجددًا." : "Sign out of every account session, including this device. Your training, documents and results are preserved. You will need to sign in again."}</p>
+          <p className="text-sm text-muted-foreground">{lang === "fr" ? "Déconnectez toutes les sessions de votre compte, y compris cet appareil. Vos formations, documents et résultats sont conservés. Vous devrez vous reconnecter." : lang === "ar" ? "سجّل الخروج من جميع جلسات حسابك، بما فيها هذا الجهاز. ستبقى تدريباتك ومستنداتك ونتائجك محفوظة. ستحتاج إلى تسجيل الدخول مجددًا." : "Sign out of every account session, including this device. Your training, documents and results are preserved. You will need to sign in again."}</p>
           <form className="space-y-3" onSubmit={event => { event.preventDefault(); if (sessionPassword && !revokeSessions.isPending) revokeSessions.mutate({password: sessionPassword}); }}>
             <label className="block text-sm font-medium" htmlFor="session-password">{lang === "fr" ? "Mot de passe actuel" : lang === "ar" ? "كلمة المرور الحالية" : "Current password"}</label>
             <Input id="session-password" type="password" autoComplete="current-password" maxLength={1024} required value={sessionPassword} onChange={event => setSessionPassword(event.target.value)} disabled={revokeSessions.isPending} />
@@ -188,28 +188,28 @@ export default function UserProfile() {
           </form>
         </section>
 
-        <section className="rounded-xl border bg-white p-8 mt-6 space-y-3">
+        <section className="rounded-xl border bg-card p-8 mt-6 space-y-3">
           <h2 className="font-semibold">{lang === "fr" ? "Mes données personnelles" : lang === "ar" ? "بياناتي الشخصية" : "My personal data"}</h2>
-          <p className="text-sm text-slate-600">{lang === "fr" ? "Téléchargez vos données de compte, documents du coffre, parcours, vérifications d’identité et assistance en JSON. Les fichiers sont référencés par leurs liens privés et ne sont pas inclus dans ce téléchargement." : lang === "ar" ? "نزّل بيانات الحساب والخزنة والتدريب والتحقق من الهوية والدعم بصيغة JSON. يتضمن التصدير روابط خاصة للملفات وليس الملفات نفسها." : "Download account, vault, learning, identity verification and support data as JSON. Files are referenced through private links; their contents are not included."}</p>
+          <p className="text-sm text-muted-foreground">{lang === "fr" ? "Téléchargez vos données de compte, documents du coffre, parcours, vérifications d’identité et assistance en JSON. Les fichiers sont référencés par leurs liens privés et ne sont pas inclus dans ce téléchargement." : lang === "ar" ? "نزّل بيانات الحساب والخزنة والتدريب والتحقق من الهوية والدعم بصيغة JSON. يتضمن التصدير روابط خاصة للملفات وليس الملفات نفسها." : "Download account, vault, learning, identity verification and support data as JSON. Files are referenced through private links; their contents are not included."}</p>
           <Button variant="outline" disabled={exporting} onClick={downloadExport}>{exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : lang === "fr" ? "Télécharger mes données" : lang === "ar" ? "تنزيل بياناتي" : "Download my data"}</Button>
         </section>
 
         {/* RGPD consents — not relevant for an admin account. */}
         {(user as any)?.role !== "admin" && (
-          <div className="rounded-xl p-8 mt-6 space-y-4" style={{ background: "oklch(100% 0 0)", border: "1px solid oklch(88% 0.015 88)" }}>
+          <div className="rounded-xl p-8 mt-6 space-y-4" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
             <div className="flex items-center gap-2">
-              <Shield className="w-4 h-4" style={{ color: "oklch(68% 0.1 78)" }} />
-              <h2 className="font-semibold" style={{ color: "oklch(19% 0.08 252)" }}>{t("userProfile.consentsHeading")}</h2>
+              <Shield className="w-4 h-4" style={{ color: "var(--link)" }} />
+              <h2 className="font-semibold" style={{ color: "var(--foreground)" }}>{t("userProfile.consentsHeading")}</h2>
             </div>
             <label className="flex items-start gap-3 text-sm cursor-pointer">
               <input type="checkbox" checked={dataConsent} onChange={(e) => setConsents.mutate({ dataProcessingConsent: e.target.checked })} className="mt-1" />
-              <span><span style={{ color: "oklch(19% 0.08 252)" }}>{t("userProfile.dataConsentTitle")}</span><br /><span className="text-xs" style={{ color: "oklch(45% 0.02 240)" }}>{t("userProfile.dataConsentDesc")} {dataConsent ? t("userProfile.consentGiven") : t("userProfile.consentNotGiven")}</span></span>
+              <span><span style={{ color: "var(--foreground)" }}>{t("userProfile.dataConsentTitle")}</span><br /><span className="text-xs" style={{ color: "var(--muted-foreground)" }}>{t("userProfile.dataConsentDesc")} {dataConsent ? t("userProfile.consentGiven") : t("userProfile.consentNotGiven")}</span></span>
             </label>
             <label className="flex items-start gap-3 text-sm cursor-pointer">
               <input type="checkbox" checked={marketingOptIn} onChange={(e) => setConsents.mutate({ marketingOptIn: e.target.checked })} className="mt-1" />
-              <span><span style={{ color: "oklch(19% 0.08 252)" }}>{t("userProfile.marketingConsentTitle")}</span><br /><span className="text-xs" style={{ color: "oklch(45% 0.02 240)" }}>{t("userProfile.marketingConsentDesc")}</span></span>
+              <span><span style={{ color: "var(--foreground)" }}>{t("userProfile.marketingConsentTitle")}</span><br /><span className="text-xs" style={{ color: "var(--muted-foreground)" }}>{t("userProfile.marketingConsentDesc")}</span></span>
             </label>
-            <p className="text-xs" style={{ color: "oklch(62% 0.02 240)" }}>{t("userProfile.exportHint")}</p>
+            <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>{t("userProfile.exportHint")}</p>
           </div>
         )}
       </div>

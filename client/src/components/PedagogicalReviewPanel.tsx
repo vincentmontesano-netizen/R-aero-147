@@ -20,7 +20,7 @@ export default function PedagogicalReviewPanel({ trainingId }: { trainingId: num
   const record = reviews.data?.find(r => r.id === selected);
   const curriculum = snapshot.data?.snapshot;
   const independent = snapshot.data && user?.id !== snapshot.data.requestedBy && user?.id !== curriculum?.training.ownerUserId;
-  return <section className="border rounded-xl bg-white p-4 mb-4">
+  return <section className="border rounded-xl bg-card p-4 mb-4">
     <h3 className="font-semibold">{t("review.title")}</h3><p className="text-sm my-2">{t("review.help")}</p>
     <Button size="sm" variant="outline" disabled={request.isPending} onClick={() => request.mutate({ trainingId })}>{t("review.request")}</Button>
     {reviews.isError && <p role="alert">{reviews.error.message}</p>}

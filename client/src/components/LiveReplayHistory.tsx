@@ -5,7 +5,7 @@ import {Button} from '@/components/ui/button';
 type Props={roomType:'session'|'webinar';roomId:number};
 export default function LiveReplayHistory(props:Props){
  const {t}=useI18n();const [open,setOpen]=useState(false);
- return <details className="bg-white p-4 text-sm" onToggle={event=>setOpen(event.currentTarget.open)}>
+ return <details className="bg-card p-4 text-sm" onToggle={event=>setOpen(event.currentTarget.open)}>
   <summary className="cursor-pointer underline">{t('liveRoom.replayHistory')}</summary>
   {open&&<History {...props}/>}
  </details>;

@@ -15,7 +15,7 @@ export default function WebinarMetadataDialog({webinar,onClose,onSaved}:{webinar
  <label htmlFor="webinar-edit-description">{text.description}</label><textarea id="webinar-edit-description" className="w-full rounded border p-2" rows={4} maxLength={10000} value={description} onChange={e=>setDescription(e.target.value)} disabled={mutation.isPending}/>
  <label htmlFor="webinar-edit-capacity">{text.capacity}</label><Input id="webinar-edit-capacity" type="number" min={Math.max(1,webinar.registeredCount)} max={10000} value={capacity} onChange={e=>setCapacity(e.target.value)} disabled={mutation.isPending}/>
  <label htmlFor="webinar-edit-reason">{text.reason}</label><Input id="webinar-edit-reason" required minLength={3} maxLength={1000} value={reason} onChange={e=>setReason(e.target.value)} disabled={mutation.isPending}/>
- {mutation.error&&<p role="alert" className="text-red-600 text-sm">{mutation.error.message}</p>}
+ {mutation.error&&<p role="alert" className="text-destructive text-sm">{mutation.error.message}</p>}
  <div className="flex gap-2"><Button type="submit" disabled={mutation.isPending||!title.trim()||reason.trim().length<3}>{text.save}</Button><Button type="button" variant="outline" disabled={mutation.isPending} onClick={onClose}>{text.cancel}</Button></div>
  </form></DialogContent></Dialog>;
 }

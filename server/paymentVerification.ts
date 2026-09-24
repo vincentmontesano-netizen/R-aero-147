@@ -1,7 +1,7 @@
 import type Stripe from "stripe";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, lte, sql } from "drizzle-orm";
 import { getDb } from "./db";
-import { orders, orderItems, enrollments, trainingLicenses, refundObservations } from "../drizzle/schema";
+import { orders, orderItems, enrollments, trainingLicenses, refundObservations, cartItems } from "../drizzle/schema";
 
 export function euroCents(value: string) {
   if (!/^\d+(\.\d{1,2})?$/.test(value)) throw new Error("Montant EUR invalide.");
@@ -38,6 +38,16 @@ export async function fulfillPaidCheckout(session: Stripe.Checkout.Session) {
     for (const item of items) {
       const quantity = item.quantity ?? 1;
       if (!Number.isInteger(quantity) || quantity < 1 || quantity > 100 || (!order.companyId && quantity !== 1)) throw new Error("Quantité de licences invalide.");
+      // Consume only the purchased quantity from a cart row that existed when
+      // this order was created. Preserve later additions and quote buyers' carts.
+      if (!order.quoteRequestId) {
+        const rows = await tx.select().from(cartItems).where(and(eq(cartItems.userId, order.userId), eq(cartItems.trainingId, item.trainingId), lte(cartItems.addedAt, order.createdAt))).for("update");
+        for (const row of rows) {
+          const remaining = (row.quantity ?? 1) - quantity;
+          if (remaining > 0) await tx.update(cartItems).set({ quantity: remaining }).where(eq(cartItems.id, row.id));
+          else await tx.delete(cartItems).where(eq(cartItems.id, row.id));
+        }
+      }
       for (let seatIndex = 1; seatIndex <= quantity; seatIndex++) {
         const [license] = await tx.insert(trainingLicenses).values({ orderId: order.id, orderItemId: item.id, seatIndex, trainingId: item.trainingId,
           trainingVersionId: item.trainingVersionId!, ownerUserId: order.userId, ownerOrgId: order.companyId,

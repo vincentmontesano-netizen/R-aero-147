@@ -23,12 +23,12 @@ export default function CompanyCourseAssignment({ trainingId, published }: { tra
     sending.current = true; setResult(null); setUnconfirmed(false);
     assign.mutate({ trainingId, userIds: [...selected] });
   };
-  return <section className="rounded-xl bg-white border p-4 mb-4">
+  return <section className="rounded-xl bg-card border p-4 mb-4">
     <h3 className="font-semibold mb-2">{t("assignment.title")}</h3>
     <p className="text-sm text-muted-foreground mb-3">{t("assignment.hint")}</p>
     <Button size="sm" variant="outline" className="mb-3" disabled={assign.isPending || candidates.isFetching} onClick={() => { void candidates.refetch(); }}>{t("assignment.refresh")}</Button>
     {candidates.isLoading && <p role="status">{t("common.loading")}</p>}
-    {candidates.isError && <p role="alert" className="text-sm text-red-700">{t("assignment.readError")}</p>}
+    {candidates.isError && <p role="alert" className="text-sm text-destructive">{t("assignment.readError")}</p>}
     {!listUnavailable && <fieldset disabled={assign.isPending || candidates.isFetching} className="max-h-48 overflow-auto grid gap-2">
       {candidates.data?.map(person => <label key={person.id} className="flex gap-2 items-center text-sm"><input type="checkbox" disabled={selected.length >= 100 && !selected.includes(person.id)} checked={selected.includes(person.id)} onChange={e => {
         if (sending.current) return;
@@ -40,11 +40,11 @@ export default function CompanyCourseAssignment({ trainingId, published }: { tra
     </fieldset>}
     <p className="text-sm mt-3">{t("assignment.selected", { count: selected.length })}</p>
     {!listUnavailable && unavailableCount > 0 && <div className="space-y-2 mt-3">
-      <p role="alert" className="text-sm text-amber-800">{t("assignment.unavailable", { count: unavailableCount })}</p>
+      <p role="alert" className="text-sm text-warning">{t("assignment.unavailable", { count: unavailableCount })}</p>
       <Button variant="outline" size="sm" disabled={assign.isPending || candidates.isFetching} onClick={() => { if (!sending.current) setSelected(current => current.filter(id => available.has(id))); }}>{t("assignment.removeUnavailable")}</Button>
     </div>}
     {!published && <p className="text-sm mt-3">{t("assignment.publishFirst")}</p>}
-    {unconfirmed && <p role="alert" className="text-sm text-amber-800 mt-3">{t("assignment.unconfirmed")}</p>}
+    {unconfirmed && <p role="alert" className="text-sm text-warning mt-3">{t("assignment.unconfirmed")}</p>}
     {result && <p role="status" className="text-sm mt-3">{t("assignment.result", result)}</p>}
     <Button className="mt-3" disabled={!published || listUnavailable || candidates.isFetching || unavailableCount > 0 || selected.length === 0 || selected.length > 100 || assign.isPending} onClick={send}>{assign.isPending ? t("assignment.sending") : t("assignment.action")}</Button>
   </section>;

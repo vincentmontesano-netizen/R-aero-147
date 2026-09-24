@@ -9,10 +9,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { LayoutDashboard, User, FileText, LifeBuoy, LogOut, Shield, Building2 } from "lucide-react";
 
-const GOLD = "oklch(68% 0.1 78)";
-const BLUE = "oklch(19% 0.08 252)";
-const MUTED = "oklch(45% 0.02 240)";
-const RED = "oklch(55% 0.22 27)";
+const GOLD = "var(--link)";
+const BLUE = "var(--foreground)";
+const MUTED = "var(--muted-foreground)";
+const RED = "var(--destructive)";
 
 function initials(name?: string | null, email?: string | null): string {
   const src = (name && name.trim()) || email || "";
@@ -38,20 +38,20 @@ export default function UserMenu() {
           aria-label={t("userMenu.accountMenuAria")}
           title={user.name ?? user.email ?? ""}
           className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold ring-2 ring-white/20 hover:ring-white/50 transition-shadow shrink-0"
-          style={{ background: GOLD, color: BLUE }}
+          style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
         >
           {initials(user.name, user.email)}
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel>
-          <div className="font-semibold truncate" style={{ color: BLUE }}>{user.name ?? t("userMenu.myAccount")}</div>
-          {user.email && <div className="text-xs font-normal truncate" style={{ color: MUTED }}>{user.email}</div>}
+          <div className="font-semibold truncate" style={{ color: "var(--foreground)" }}>{user.name ?? t("userMenu.myAccount")}</div>
+          {user.email && <div className="text-xs font-normal truncate" style={{ color: "var(--muted-foreground)" }}>{user.email}</div>}
           {(myOrgs as any[]).map((o) => (
-            <div key={o.orgId} className="flex items-center gap-1 text-xs font-normal mt-1 truncate" style={{ color: GOLD }}>
+            <div key={o.orgId} className="flex items-center gap-1 text-xs font-normal mt-1 truncate" style={{ color: "var(--link)" }}>
               <Building2 className="w-3 h-3 shrink-0" />
               <span className="truncate">{o.name}</span>
-              <span style={{ color: MUTED }}>· {o.role === "MANAGER" ? t("org.roleManager") : t("org.roleMember")}</span>
+              <span style={{ color: "var(--muted-foreground)" }}>· {o.role === "MANAGER" ? t("org.roleManager") : t("org.roleMember")}</span>
             </div>
           ))}
         </DropdownMenuLabel>
@@ -72,7 +72,7 @@ export default function UserMenu() {
         <DropdownMenuItem asChild><Link href="/mes-devis"><FileText className="w-4 h-4 mr-2" /> {t("userMenu.myQuotes")}</Link></DropdownMenuItem>
         <DropdownMenuItem asChild><Link href="/support"><LifeBuoy className="w-4 h-4 mr-2" /> {t("userMenu.support")}</Link></DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem disabled={loading} onClick={() => { void logout().catch(() => toast.error(t("userMenu.logoutUnconfirmed"))); }} style={{ color: RED }}>
+        <DropdownMenuItem disabled={loading} onClick={() => { void logout().catch(() => toast.error(t("userMenu.logoutUnconfirmed"))); }} style={{ color: "var(--destructive)" }}>
           <LogOut className="w-4 h-4 mr-2" /> {t("userMenu.logout")}
         </DropdownMenuItem>
       </DropdownMenuContent>

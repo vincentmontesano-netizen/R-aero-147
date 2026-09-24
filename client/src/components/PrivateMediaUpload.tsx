@@ -68,14 +68,14 @@ function MediaUploadInput({ trainingId, kind, onUploaded, disabled, onStart, onF
       if (mounted.current) setReading(false);
     }
   };
-  return <div className="mt-2 space-y-2 text-xs text-slate-600">
+  return <div className="mt-2 space-y-2 text-xs text-muted-foreground">
     <label className="block">{tr('Importer un fichier privé', 'Upload private file', 'استيراد ملف خاص')} · {{ image: 'PNG, JPEG', audio: 'MP3', video: 'MP4', pdf: 'PDF' }[kind]} · 25 {lang === 'fr' ? 'Mo' : 'MB'}
-      <input type="file" accept={formats[kind]} disabled={busy || disabled} className="block w-full mt-1 text-xs file:rounded file:border file:bg-white file:px-2 file:py-1 disabled:opacity-50" onChange={event => {
+      <input type="file" accept={formats[kind]} disabled={busy || disabled} className="block w-full mt-1 text-xs file:rounded file:border file:bg-card file:px-2 file:py-1 disabled:opacity-50" onChange={event => {
         const file = event.target.files?.[0]; event.target.value = '';
         if (file) void send(file);
       }} />
     </label>
     {busy && <p role="status">{tr('Import en cours…', 'Uploading…', 'جارٍ الاستيراد…')}</p>}
-    {problem && <p role="alert" className="text-red-700">{errors[problem]}</p>}
+    {problem && <p role="alert" className="text-destructive">{errors[problem]}</p>}
   </div>;
 }

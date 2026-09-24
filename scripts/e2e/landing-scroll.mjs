@@ -1,0 +1,11 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';import {chromium} from 'playwright-core';
+const browser=await chromium.launch({executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH||'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',headless:true});
+const result=[],origin=process.env.RAERO_E2E_ORIGIN||'http://127.0.0.1:3177',output=process.env.RAERO_E2E_OUTPUT||'tmp/e2e';
+try{for(const size of [{width:1440,height:1000},{width:390,height:844}]){
+ const p=await browser.newPage({viewport:size});p.setDefaultTimeout(30000);await p.goto(origin+'/');await p.waitForFunction(()=>{const button=document.querySelector('.flight-copy .academy-button')||document.querySelector('.flight-experience .academy-button');return button&&!button.disabled;});
+ await p.evaluate(()=>{window.__tour=[];window.__tourTimer=setInterval(()=>{const section=document.querySelector('.flight-experience'),stage=document.querySelector('.flight-stage');window.__tour.push({time:performance.now(),step:[...document.querySelectorAll('.flight-stops li')].findIndex(el=>el.getAttribute('aria-current')==='step'),pinned:section.classList.contains('is-pinned'),top:stage.getBoundingClientRect().top,y:scrollY});},40);});
+ await p.mouse.wheel(0,20000);await p.waitForFunction(()=>document.querySelectorAll('.flight-stops li')[4]?.getAttribute('aria-current')==='step');await p.locator('.flight-view-note a').waitFor();
+ const samples=await p.evaluate(()=>{clearInterval(window.__tourTimer);return window.__tour;});const moving=samples.filter(row=>row.y>100&&row.step<4);assert.ok(moving.length>10);assert.ok(moving.every(row=>row.pinned&&row.top>=0));assert.equal(new Set(samples.map(row=>row.step)).size,5);assert.ok(samples.find(row=>row.step===4).time-samples.find(row=>row.y>100).time>2500);
+ await p.mouse.wheel(0,1800);await p.waitForTimeout(300);assert.equal(await p.locator('.flight-experience').evaluate(el=>el.classList.contains('is-pinned')),false);
+ result.push({viewport:size,views:[...new Set(samples.map(row=>row.step+1))],protectedSamples:moving.length,releaseAfterOverhead:true});await p.screenshot({path:`${output}/scroll-release-${size.width}.png`});await p.close();
+}fs.writeFileSync(`${output}/landing-scroll-results.json`,JSON.stringify(result,null,2));console.log(JSON.stringify(result));}finally{await browser.close();}

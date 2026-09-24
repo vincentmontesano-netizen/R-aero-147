@@ -1,0 +1,39 @@
+{
+  "mode": "built-in image_gen",
+  "date": "2026-09-23",
+  "assets": [
+    {
+      "name": "aviation-engine-maintenance",
+      "prompt": "Use case: photorealistic-natural.\nAsset type: premium aviation training website editorial photograph, landscape 3:2 ratio.\nStyle: meticulously photorealistic, premium editorial photography, restrained and credible industrial aviation imagery. Cohesive steel grey and midnight blue palette with natural light and realistic metallic textures.\nConstraints: one single photograph, no collage, no interface, no graphic overlay; no text, letters, numbers, logos, brands, watermark, airline livery, registrations, or markings that identify an aircraft manufacturer or model. Do not identify or imitate a specific Airbus or A320 aircraft. No identifiable people, no faces, no dramatic safety hazards, no invented claims of a real facility. This is illustrative imagery.\nPrimary request: close-up of a clean turbofan engine with open cowling in a professional aircraft maintenance hangar. Precise metallic engine surfaces, convincing arrangement of real maintenance components. Tight landscape composition with the engine dominating the scene, a quiet softly receding hangar background. Soft natural daylight from hangar windows, restrained contrast, authentic materials, no people. Emphasize precision and technical craftsmanship.",
+      "output_hint": "Generated images are saved to /Users/sano/.codex/generated_images/01a0d01f-5a1b-7aa1-8873-36dfa9c544b2 as /Users/sano/.codex/generated_images/01a0d01f-5a1b-7aa1-8873-36dfa9c544b2/exec-4771c561-a408-4652-9c41-df99331311c5.png by default.\nIf you need to use a generated image at another path, copy it and leave the original in place unless the user explicitly asks you to delete it.\nThe generated image is already displayed to the user. There is no need to render it in the final response as a Markdown image or file link.",
+      "workspace_path": "/Users/sano/Desktop/SOFT/output/aviation-assets-20260923/aviation-engine-maintenance.png",
+      "inspection": "1536x1024 landscape; restrained photographic style; no readable branding, aircraft identifier, or identifiable faces; illustrative generated imagery.",
+      "project_files": [
+        "client/public/images/aviation/aviation-engine-maintenance-768.webp",
+        "client/public/images/aviation/aviation-engine-maintenance.webp"
+      ]
+    },
+    {
+      "name": "aviation-hangar-team",
+      "prompt": "Use case: photorealistic-natural.\nAsset type: premium aviation training website editorial photograph, landscape 3:2 ratio.\nStyle: meticulously photorealistic, premium editorial photography, restrained and credible industrial aviation imagery. Cohesive steel grey and midnight blue palette with natural light and realistic metallic textures.\nConstraints: one single photograph, no collage, no interface, no graphic overlay; no text, letters, numbers, logos, brands, watermark, airline livery, registrations, or markings that identify an aircraft manufacturer or model. Do not identify or imitate a specific Airbus or A320 aircraft. No identifiable people, no faces, no dramatic safety hazards, no invented claims of a real facility. This is illustrative imagery.\nPrimary request: wide rear three-quarter view of an unbranded white commercial jet in a spacious professional aircraft hangar, with two anonymous aircraft maintenance technicians viewed entirely from behind discussing beside the wing. Both are small in frame and wear neat work clothes appropriate to a safe professional maintenance setting. Their faces are not visible. Aircraft dominates the landscape composition, believable clean proportions and convincing hangar scale. Soft natural daylight from the open hangar door and high windows, subtle steel blue shadows. Calm, professional, candid editorial feeling.",
+      "output_hint": "Generated images are saved to /Users/sano/.codex/generated_images/01a0d01f-5a1b-7aa1-8873-36dfa9c544b2 as /Users/sano/.codex/generated_images/01a0d01f-5a1b-7aa1-8873-36dfa9c544b2/exec-db43a0af-7b4a-4daf-afcd-a64fc40f25c3.png by default.\nIf you need to use a generated image at another path, copy it and leave the original in place unless the user explicitly asks you to delete it.\nThe generated image is already displayed to the user. There is no need to render it in the final response as a Markdown image or file link.",
+      "workspace_path": "/Users/sano/Desktop/SOFT/output/aviation-assets-20260923/aviation-hangar-team.png",
+      "inspection": "1536x1024 landscape; restrained photographic style; no readable branding, aircraft identifier, or identifiable faces; illustrative generated imagery.",
+      "project_files": [
+        "client/public/images/aviation/aviation-hangar-team-768.webp",
+        "client/public/images/aviation/aviation-hangar-team.webp"
+      ]
+    },
+    {
+      "name": "aviation-wing-detail",
+      "prompt": "Use case: photorealistic-natural.\nAsset type: premium aviation training website editorial photograph, landscape 3:2 ratio.\nStyle: meticulously photorealistic, premium editorial photography, restrained and credible industrial aviation imagery. Cohesive steel grey and midnight blue palette with natural light and realistic metallic textures.\nConstraints: one single photograph, no collage, no interface, no graphic overlay; no text, letters, numbers, logos, brands, watermark, airline livery, registrations, or markings that identify an aircraft manufacturer or model. Do not identify or imitate a specific Airbus or A320 aircraft. No identifiable people, no faces, no dramatic safety hazards, no invented claims of a real facility. This is illustrative imagery.\nPrimary request: premium close-up macro-style editorial photograph of aircraft wing and flap structure at blue hour. Crisp rivets, skin panels and careful precision engineering, believable mechanical joints and surfaces. Subtle amber sky reflections on metallic surfaces against a cool blue background. Landscape 3:2 framing with strong quiet geometry and shallow but useful depth of field. Maintenance and engineering editorial feeling. No people.",
+      "output_hint": "Generated images are saved to /Users/sano/.codex/generated_images/01a0d01f-5a1b-7aa1-8873-36dfa9c544b2 as /Users/sano/.codex/generated_images/01a0d01f-5a1b-7aa1-8873-36dfa9c544b2/exec-79626434-af4c-4b2f-b24b-976d870b91d0.png by default.\nIf you need to use a generated image at another path, copy it and leave the original in place unless the user explicitly asks you to delete it.\nThe generated image is already displayed to the user. There is no need to render it in the final response as a Markdown image or file link.",
+      "workspace_path": "/Users/sano/Desktop/SOFT/output/aviation-assets-20260923/aviation-wing-detail.png",
+      "inspection": "1536x1024 landscape; restrained photographic style; no readable branding, aircraft identifier, or identifiable faces; illustrative generated imagery.",
+      "project_files": [
+        "client/public/images/aviation/aviation-wing-detail-768.webp",
+        "client/public/images/aviation/aviation-wing-detail.webp"
+      ]
+    }
+  ]
+}

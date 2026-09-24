@@ -9,7 +9,7 @@ import { getDb, updateTraining, deleteTraining } from "./db";
 import { fulfillPaidCheckout, euroCents, paymentOrigin } from "./paymentVerification";
 import { createCheckoutSession, createQuoteCheckout, handleStripeWebhook } from "./stripe";
 import { createSubscriptionCheckoutSession } from "./subscription";
-import { users, companies, trainings, orders, orderItems, enrollments, trainingLicenses, affiliations, refundObservations } from "../drizzle/schema";
+import { users, companies, trainings, orders, orderItems, enrollments, trainingLicenses, affiliations, refundObservations, cartItems, quoteRequests } from "../drizzle/schema";
 const url = process.env.RAERO_TEST_DATABASE_URL;
 describe.skipIf(!url)("verified checkout · PostgreSQL", () => {
   beforeAll(() => { process.env.DATABASE_URL = url!; vi.stubEnv("STRIPE_SECRET_KEY", "sk_test_fixture_only"); vi.stubEnv("STRIPE_WEBHOOK_SECRET", "whsec_fixture_only"); });
@@ -26,6 +26,34 @@ describe.skipIf(!url)("verified checkout · PostgreSQL", () => {
     const session = { id: sessionId, mode: "payment", payment_status: "paid", status: "complete", currency: "eur", amount_total: 12000, payment_intent: `pi_${randomUUID()}`, client_reference_id: String(user.id), metadata: { order_id: String(order.id), user_id: String(user.id) } } as unknown as Stripe.Checkout.Session;
     return { db, user, training, order, session, versionId: published.publishedVersionId };
   }
+  it("consumes paid cart rows once and preserves quantities added during checkout", async () => {
+    const { db, user, training, order, session } = await fixture();
+    const [cart] = await db.insert(cartItems).values({ userId: user.id, trainingId: training.id, quantity: 3, addedAt: new Date(order.createdAt.getTime()-1000) }).returning();
+    await fulfillPaidCheckout({ ...session, payment_status: "unpaid" });
+    expect((await db.select().from(cartItems).where(eq(cartItems.id, cart.id)))[0].quantity).toBe(3);
+    await Promise.all([fulfillPaidCheckout(session), fulfillPaidCheckout(session)]);
+    expect((await db.select().from(cartItems).where(eq(cartItems.id, cart.id)))[0].quantity).toBe(2);
+  });
+  it("removes the purchased item but preserves unrelated items and later replacement rows", async () => {
+    const { db, user, training, order, session } = await fixture();
+    const other = await fixture();
+    const [purchased, unrelated, replacement] = await db.insert(cartItems).values([
+      { userId: user.id, trainingId: training.id, quantity: 1, addedAt: new Date(order.createdAt.getTime()-1000) },
+      { userId: user.id, trainingId: other.training.id, quantity: 1 },
+      { userId: user.id, trainingId: training.id, quantity: 1, addedAt: new Date(order.createdAt.getTime()+1000) },
+    ]).returning();
+    await fulfillPaidCheckout(session);
+    expect((await db.select().from(cartItems).where(eq(cartItems.userId, user.id))).map(row=>row.id)).toEqual([unrelated.id,replacement.id]);
+    expect(await db.select().from(cartItems).where(eq(cartItems.id,purchased.id))).toHaveLength(0);
+  });
+  it("leaves the cart intact for an order originating from a quote", async () => {
+    const { db, user, training, order, session } = await fixture();
+    const [quote] = await db.insert(quoteRequests).values({ userId:user.id, companyName:'Fixture', contactName:'Fixture', contactEmail:'fixture@example.test' }).returning();
+    await db.update(orders).set({quoteRequestId:quote.id}).where(eq(orders.id,order.id));
+    const [cart] = await db.insert(cartItems).values({ userId:user.id, trainingId:training.id, addedAt:new Date(order.createdAt.getTime()-1000) }).returning();
+    await fulfillPaidCheckout(session);
+    expect(await db.select().from(cartItems).where(eq(cartItems.id,cart.id))).toHaveLength(1);
+  });
   it("requires a paid status and exact order, buyer, amount, session and currency", async () => {
     const { db, order, session } = await fixture();
     expect(await fulfillPaidCheckout({ ...session, payment_status: "unpaid", status: "complete" })).toEqual({ status: "pending" });

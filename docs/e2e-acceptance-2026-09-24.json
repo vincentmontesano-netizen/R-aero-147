@@ -1,0 +1,64 @@
+{
+  "date": "2026-09-24",
+  "timezone": "Europe/Paris",
+  "browserAcceptance": {
+    "container": "raero-e2e-20260923222841",
+    "image": "raero-e2e:20260923222841",
+    "origin": "http://127.0.0.1:3180",
+    "output": "tmp/e2e/run-20260923222841",
+    "startedAt": "2026-09-23T22:28:41.069Z",
+    "suites": [
+      "accounts",
+      "course-authoring",
+      "course-publication",
+      "purchase",
+      "learning",
+      "documents",
+      "services",
+      "company",
+      "passport",
+      "verification",
+      "admin-content",
+      "live",
+      "security",
+      "sessions",
+      "final-ui",
+      "landing-scroll"
+    ],
+    "status": "passed",
+    "finishedAt": "2026-09-23T22:31:30.115Z"
+  },
+  "automatedTests": {
+    "files": 127,
+    "passed": 505,
+    "failed": 0,
+    "pending": 0
+  },
+  "typecheck": "passed",
+  "build": "passed",
+  "preview": {
+    "origin": "http://100.123.204.41:3175",
+    "health": 200,
+    "matchingIndex": true,
+    "verifiedAssets": [
+      "/assets/index-C3_FSuQK.js",
+      "/assets/index-CcxndCP7.css"
+    ],
+    "verifiedImages": [
+      "/images/aviation/aviation-engine-maintenance-768.webp",
+      "/images/aviation/aviation-engine-maintenance.webp",
+      "/images/aviation/aviation-hangar-team-768.webp",
+      "/images/aviation/aviation-hangar-team.webp",
+      "/images/aviation/aviation-wing-detail-768.webp",
+      "/images/aviation/aviation-wing-detail.webp"
+    ],
+    "serverSha256": "ff822077e8cf8675f96fa5e845404c0f8389a634ddbc6993f2cc9c9e23ceb553",
+    "verifiedAt": "2026-09-23T22:31:13.750Z"
+  },
+  "limitations": [
+    "Stripe checkout simulated locally; no banking transaction or hosted Stripe UI tested.",
+    "SMTP messages captured locally; external delivery not tested.",
+    "External AI generation and conferencing not configured or exercised.",
+    "Chrome desktop with desktop/mobile viewports; no physical iOS/Android device coverage."
+  ]
+}

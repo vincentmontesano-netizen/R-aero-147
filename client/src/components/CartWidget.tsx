@@ -4,8 +4,8 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { useI18n } from "@/i18n";
 import { ShoppingCart } from "lucide-react";
 
-const BLUE = "oklch(19% 0.08 252)";
-const GOLD = "oklch(68% 0.1 78)";
+const BLUE = "var(--foreground)";
+const GOLD = "var(--link)";
 
 // Don't show on cart/checkout/auth pages, nor on the dashboards (which carry an
 // inline cart button in their header, aligned with the bell + avatar).
@@ -27,14 +27,14 @@ export default function CartWidget() {
     <Link href="/cart">
       <button
         className="fixed top-20 right-4 z-40 flex items-center gap-2 rounded-full pl-3 pr-4 py-2 shadow-lg hover:shadow-xl transition-shadow"
-        style={{ background: GOLD, color: BLUE }}
+        style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
         title={t("cartWidget.title")}
         aria-label={t("cartWidget.title")}
       >
         <span className="relative">
           <ShoppingCart className="w-5 h-5" />
-          <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center"
-            style={{ background: BLUE, color: "white" }}>{count}</span>
+          <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] px-1 rounded-full text-xs font-bold flex items-center justify-center"
+            style={{ background: "var(--surface-strong)", color: "var(--foreground)" }}>{count}</span>
         </span>
         <span className="text-sm font-semibold hidden sm:inline">{t("cartWidget.label")}</span>
       </button>

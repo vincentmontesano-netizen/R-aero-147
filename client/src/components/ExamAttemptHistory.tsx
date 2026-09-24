@@ -11,7 +11,7 @@ export default function ExamAttemptHistory({ attempts, title }: { attempts: Atte
   if (!attempts.length) return null;
   return <section className="my-6 space-y-3 text-start" aria-label={title ?? t('examHistory.title')}>
     <h3 className="font-semibold">{title ?? t('examHistory.title')}</h3>
-    {attempts.map(attempt => <details key={attempt.id} className="rounded-lg border bg-white p-4">
+    {attempts.map(attempt => <details key={attempt.id} className="rounded-lg border bg-card p-4">
       <summary className="cursor-pointer font-medium">
         {t('examHistory.attempt', {number: attempt.attemptNumber ?? '—', score: attempt.score ?? '—', max: attempt.maxScore ?? '—'})}
         {' · '}{t(attempt.isPassed ? 'examHistory.passed' : 'examHistory.failed')}
