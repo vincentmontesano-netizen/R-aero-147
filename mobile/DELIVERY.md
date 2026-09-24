@@ -24,9 +24,13 @@ Base choisie : React Native / Expo SDK 57 stable, écrans natifs partagés, API 
 - Parcours Android exercé : connexion, image privée, lecture/pause audio, quatre activités vidéo, quiz de diapositive, examen de chapitre, examen final avec les cinq types de questions, fermeture/réouverture pendant l’examen et reprise de la même tentative, réussite 5/5, certificat et feuille de partage PDF.
 - Compte Android exercé : mode clair conservé après relance, déconnexion, inscription, bibliothèque/certificats vides du nouveau compte, fermeture et refus de reconnexion au compte fermé.
 - Vérification HTTP : mêmes compte et progression pour navigateur/application, médias privés refusés anonymement et depuis un autre compte, lecture partielle audio/vidéo, réponses d’examen non divulguées, parcours terminé à 100 % et certificat PDF protégé.
-- CI au commit `caafad984646aa16cff10e0453d8913dde487672` : [514 tests serveur et contrôles Docker réussis](https://github.com/vincentmontesano-netizen/R-aero-147/actions/runs/36056340476). Deux tests supplémentaires couvrent la présentation des erreurs de formulaire.
-- iOS : compilation locale arrêtée par Xcode 26.3, inférieur au minimum 26.4 du SDK 57 ; workflow GitHub macOS 26 préparé pour fournir le binaire simulateur.
-- À faire : recette iOS, contrôles de coupure réseau et sauvegardes concurrentes sur le binaire final, validation des derniers changements, distribution signée et déploiement de l’API mobile.
+- CI au commit `4c32e70ab0bf74326aee5aebc2e5f9b19339b8fe` : [130 fichiers de tests et contrôles Docker réussis](https://github.com/vincentmontesano-netizen/R-aero-147/actions/runs/36059724476) ; [contrôle du code mobile réussi](https://github.com/vincentmontesano-netizen/R-aero-147/actions/runs/36059725016).
+- iOS : première compilation GitHub réussie, application installée sur le simulateur dédié. La connexion a révélé l’absence des droits du trousseau dans le binaire compilé avec `CODE_SIGNING_ALLOWED=NO` (erreur iOS -34018). Le workflow utilise maintenant la signature ad hoc de Xcode pour injecter correctement les droits du simulateur ; nouvelle compilation [36061140206](https://github.com/vincentmontesano-netizen/R-aero-147/actions/runs/36061140206) réussie, binaire en récupération pour la recette. La recette fonctionnelle iOS reste à terminer. Xcode local 26.3 ne peut pas compiler le SDK 57 (minimum 26.4).
+- Android : reprise après coupure réseau vérifiée ; une réponse modifiée pendant une sauvegarde retardée de huit secondes est bien enregistrée avant de quitter (révision serveur 2). Le tableau de bord web affiche la formation terminée sur Android et le même certificat.
+- Sécurité Android : code 2FA incorrect refusé, code valide accepté, session conservée après relance. Demande de récupération et modification du mot de passe exercées avec un récepteur SMTP local ; ancien mot de passe refusé, second facteur toujours requis. Retour vers la connexion corrigé et vérifié sur le binaire QA build 9 ; la session locale est effacée après le changement de mot de passe.
+- API mobile déployée sur Hostinger : fusion main `67e190464f4ea0b4677e0d0317b9fd4e89466209`, image `sha256:9efa8f665c30a2b7257ba4b68e87b1d991525bfaffaf9c3abdc5fdbcbb6ce1b9`. Image testée dans des volumes isolés (démarrage, redémarrage, sauvegarde/restauration) ; production saine, connexions navigateur et native vérifiées en HTTPS avec isolation des transports.
+- Android signé : APK et AAB 1.0.0 compilés avec les quatre architectures (`armeabi-v7a`, `arm64-v8a`, `x86`, `x86_64`). Signature APK v2, alignement 16 Ko et signature de toutes les entrées utiles de l’AAB vérifiés. APK installé : connexion au compte existant via HTTPS en production, identité, relance avec session conservée et déconnexion réussies. Livrables locaux dans `../R-AERO-Mobile-1.0.0/` (à côté du dossier de travail), clés privées dans le dossier protégé distinct `../R-AERO-Mobile-Signing/`, hors Git.
+- À faire : recette iOS et signature/distribution iOS. Aucun certificat Apple valide sur ce Mac ; disponibilité du compte Apple Developer demandée au propriétaire.
 
 ## Recette isolée
 
@@ -36,7 +40,7 @@ La recette Android utilise `EXPO_PUBLIC_API_URL=http://10.0.2.2:3189`, celle du 
 
 La compilation iOS GitHub produit un `.app` autonome pour simulateur ; elle ne constitue pas une distribution App Store. Les profils EAS sont préparés pour une distribution ultérieure selon le compte développeur et la signature du propriétaire.
 
-Preuves locales : `tmp/mobile/contract-android.json`, captures et rapports Maestro sous `tmp/mobile/maestro/`, capture de la feuille de partage `tmp/mobile/android-certificate-share.png`. Ces artefacts contiennent uniquement les données du jeu de recette local.
+Preuves locales : `tmp/mobile/contract-android.json`, `tmp/mobile/web-parity.json`, `tmp/mobile/delayed-save-proof.json`, `tmp/mobile/auth-security-proof.json`, `tmp/mobile/android-production-ui.json`, captures et rapports Maestro sous `tmp/mobile/maestro/`, capture de la feuille de partage `tmp/mobile/android-certificate-share.png`. Ces artefacts contiennent uniquement les données du jeu de recette local.
 
 ## Compilation
 
@@ -44,6 +48,7 @@ Preuves locales : `tmp/mobile/contract-android.json`, captures et rapports Maest
 
 - iOS : macOS/Xcode 26.4 minimum, CocoaPods ; `npx expo prebuild --platform ios`, puis `npx expo run:ios --configuration Release`. Le workflow `mobile-ios.yml` compile un simulateur autonome sur GitHub avec le backend de recette local.
 - Android : JDK 21 et SDK Android 36 ; `npx expo prebuild --platform android`, puis `npx expo run:android --variant release`. Les binaires QA générés localement servent aux tests ; la clé de débogage générée ne constitue pas une signature de distribution publique.
+- Android signé localement : `bash scripts/build-android-distribution.sh` depuis `mobile`, avec `ANDROID_HOME`, `JAVA_HOME`, `RAERO_ANDROID_KEYSTORE` et `RAERO_ANDROID_PASSWORD_FILE`. Le script compile APK et AAB avec l’API HTTPS publique et une clé externe (alias `raero-upload`), puis vérifie signature et alignement. Les clés et mots de passe ne sont jamais versionnés.
 - Production : omettre `RAERO_MOBILE_VARIANT=qa` et conserver l’API HTTPS par défaut. Les profils de `eas.json` préparent les builds de distribution, qui nécessitent le compte et les clés de signature du propriétaire.
 
 Les dossiers `ios/`, `android/`, `artifacts/` et les fichiers de signature sont générés ou privés et ne sont pas versionnés. Le logo et l’emblème existants sont repris sans modification ; Expo produit les tailles d’icône requises lors de la compilation.

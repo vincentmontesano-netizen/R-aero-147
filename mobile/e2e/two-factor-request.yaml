@@ -1,0 +1,22 @@
+appId: com.raero.academy.qa
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: "field-Adresse e-mail"
+    timeout: 30000
+- tapOn:
+    id: "field-Adresse e-mail"
+- inputText: ${EMAIL}
+- tapOn:
+    id: "field-Mot de passe"
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: "auth-submit"
+- extendedWaitUntil:
+    visible: "Vérifiez votre connexion."
+    timeout: 15000
+- assertNotVisible: "Bonjour Recette."
+- takeScreenshot: second-factor-required
