@@ -27,6 +27,25 @@ describe.skipIf(!url)('session revocation and single-use credentials · PostgreS
   const tokenFor = (user: typeof users.$inferSelect) => sdk.createSessionToken(user.openId, {name:user.name!,sessionVersion:user.sessionVersion});
   const contextFor = (token: string) => createContext({req:{headers:{cookie:`${COOKIE_NAME}=${token}`}} as never,res:{} as never,info:{} as never});
 
+  it('authenticates native login, preserves cookie isolation and revokes both transports', async () => {
+    const {user,password}=await fixture(false);
+    const cookie=vi.fn();
+    const caller=appRouter.createCaller({user:null,req:{headers:{'x-raero-client':'native'},ip:'127.0.0.1'} as never,res:{cookie} as never});
+    const response=await caller.auth.login({email:user.email!,password});
+    expect('nativeSession' in response && response.nativeSession?.token).toBeTruthy();
+    expect(cookie).not.toHaveBeenCalled();
+    const native='nativeSession' in response ? response.nativeSession!.token : '';
+    const nativeContext=()=>createContext({req:{headers:{authorization:`Bearer ${native}`}} as never,res:{} as never,info:{} as never});
+    expect((await nativeContext()).user?.id).toBe(user.id);
+    expect((await contextFor(native)).user).toBeNull();
+    const browser=await tokenFor(user);
+    const wrongTransport=await createContext({req:{headers:{authorization:`Bearer ${browser}`,cookie:`${COOKIE_NAME}=${browser}`}} as never,res:{} as never,info:{} as never});
+    expect(wrongTransport.user).toBeNull();
+    await revokeAllSessions(user.id,user.sessionVersion,password);
+    expect((await nativeContext()).user).toBeNull();
+    expect((await contextFor(browser)).user).toBeNull();
+  });
+
   it('atomically consumes a reset link, revokes old/legacy sessions and clears pending second factors', async () => {
     const {db,user} = await fixture();
     const token = await tokenFor(user);

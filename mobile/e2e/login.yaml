@@ -1,0 +1,27 @@
+appId: com.raero.academy.qa
+---
+- launchApp:
+    clearState: true
+- assertVisible: "Vos formations, à portée de main."
+- tapOn:
+    id: "field-Adresse e-mail"
+- inputText: ${EMAIL}
+- tapOn:
+    id: "field-Mot de passe"
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: "auth-submit"
+- extendedWaitUntil:
+    visible: "Bonjour Recette."
+    timeout: 15000
+- scrollUntilVisible:
+    element:
+      id: "course-${ENROLLMENT_ID}"
+    direction: DOWN
+- tapOn:
+    id: "course-${ENROLLMENT_ID}"
+- extendedWaitUntil:
+    visible: "Mon parcours"
+    timeout: 15000
+- takeScreenshot: course-open

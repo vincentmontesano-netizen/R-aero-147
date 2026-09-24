@@ -1,3 +1,4 @@
+import { establishSession } from "./_core/sessionTransport";
 import {notifySupport,listSupportNotifications,supportNotificationListInput,sendPendingSupportNotification,supportNotificationSendInput} from "./supportNotifications";
 import {supportMessageInput} from "../shared/supportMessageInput";
 import {supportListInput} from "../shared/supportListInput";
@@ -55,11 +56,10 @@ import { requireAuthorContent, courseOwnership, listAuthorCourses, requireAuthor
 import { approvalRouter } from "./approval";
 import { verificationRouter } from "./verification";
 import { learnerCurriculum, requireEnrollment, requireTrainingAccess, learnerQuestion } from "./learningAccess";
-import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { COOKIE_NAME } from "@shared/const";
 import { complianceReportInput } from "@shared/complianceReportInput";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { sdk } from "./_core/sdk";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
@@ -222,9 +222,8 @@ export const appRouter = router({
         }
         await notifyAdminEmail(`Nouvelle inscription : ${user.name ?? user.email}`,
           emailBody(`${user.name ?? ""} (${user.email})${input.organization ? "\nOrganisation : " + input.organization.name : ""}`, "/admin"));
-        const token = await sdk.createSessionToken(user.openId, { name: user.name ?? "", sessionVersion: user.sessionVersion, expiresInMs: ONE_YEAR_MS });
-        ctx.res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(ctx.req), maxAge: ONE_YEAR_MS });
-        return sanitizeUser(user);
+        const session = await establishSession(ctx.req, ctx.res, user);
+        return { ...sanitizeUser(user), ...session };
       }),
 
     login: publicProcedure
@@ -249,9 +248,8 @@ export const appRouter = router({
           await sendEmail({ to: user.email ?? "", subject, html }).catch(() => {});
           return { twoFactorRequired: true as const, email: user.email };
         }
-        const token = await sdk.createSessionToken(user.openId, { name: user.name ?? "", sessionVersion: user.sessionVersion, expiresInMs: ONE_YEAR_MS });
-        ctx.res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(ctx.req), maxAge: ONE_YEAR_MS });
-        return sanitizeUser(user);
+        const session = await establishSession(ctx.req, ctx.res, user);
+        return { ...sanitizeUser(user), ...session };
       }),
 
     // Second step of email 2FA: exchange the emailed code for a session.
@@ -265,9 +263,8 @@ export const appRouter = router({
         try { user = await verifyTwoFactorCode(input.email, input.code); }
         catch (err: any) { throw new TRPCError({ code: "UNAUTHORIZED", message: err.message }); }
         rateLimitReset(rlKey);
-        const token = await sdk.createSessionToken(user.openId, { name: user.name ?? "", sessionVersion: user.sessionVersion, expiresInMs: ONE_YEAR_MS });
-        ctx.res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(ctx.req), maxAge: ONE_YEAR_MS });
-        return sanitizeUser(user);
+        const session = await establishSession(ctx.req, ctx.res, user);
+        return { ...sanitizeUser(user), ...session };
       }),
 
     beginTwoFactorChange: protectedProcedure
@@ -289,9 +286,8 @@ export const appRouter = router({
         let user;
         try { user = await confirmTwoFactorChange(ctx.user.id,ctx.user.sessionVersion,input.enabled,input.code); }
         catch { throw new TRPCError({code:"BAD_REQUEST",message:"Code invalide ou expiré."}); }
-        const token = await sdk.createSessionToken(user.openId,{name:user.name ?? "",sessionVersion:user.sessionVersion,expiresInMs:ONE_YEAR_MS});
-        ctx.res.cookie(COOKIE_NAME,token,{...getSessionCookieOptions(ctx.req),maxAge:ONE_YEAR_MS});
-        return {ok:true};
+        const session = await establishSession(ctx.req, ctx.res, user);
+        return {ok:true, ...session};
       }),
 
     revokeAllSessions: protectedProcedure
@@ -570,10 +566,10 @@ export const appRouter = router({
       }),
 
     startExam: protectedProcedure
-      .input(z.object({ enrollmentId: z.number(), trainingId: z.number(), moduleId: z.number().int().positive().optional(), attemptNumber: z.number().optional() }))
+      .input(z.object({ enrollmentId: z.number(), trainingId: z.number(), moduleId: z.number().int().positive().optional(), attemptNumber: z.number().optional(), resumeSessionId: z.number().int().positive().optional() }))
       .mutation(async ({ ctx, input }) => {
         await requireEnrollment(ctx.user.id, input.enrollmentId, input.trainingId);
-        const session = await startExamSession({ enrollmentId: input.enrollmentId, userId: ctx.user.id, trainingId: input.trainingId, moduleId: input.moduleId, attemptNumber: input.attemptNumber ?? 1 });
+        const session = await startExamSession({ enrollmentId: input.enrollmentId, userId: ctx.user.id, trainingId: input.trainingId, moduleId: input.moduleId, attemptNumber: input.attemptNumber ?? 1, resumeSessionId: input.resumeSessionId });
         return session ? { ...session, serverNow: Date.now(), questions: session.questions.map(learnerQuestion) } : null;
       }),
 

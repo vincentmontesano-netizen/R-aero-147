@@ -61,6 +61,28 @@ describe.skipIf(!enabled)("exam integrity · PostgreSQL", () => {
     expect(await db.select().from(examSessions).where(eq(examSessions.enrollmentId, params.enrollmentId))).toHaveLength(2);
   });
 
+  it("reloads the exact completed session without consuming or switching attempts", async () => {
+    const { db, params, question } = await fixture();
+    const first = (await startExamSession(params))!;
+    await submitQuizAttempt({ ...params, sessionId: first.sessionId, answers: { [question.id]: [1] } });
+    const reloaded = await startExamSession({ ...params, resumeSessionId: first.sessionId });
+    expect(reloaded).toMatchObject({ sessionId: first.sessionId, attemptNumber: 1, completed: true });
+    expect(await db.select().from(examSessions).where(eq(examSessions.enrollmentId, params.enrollmentId))).toHaveLength(1);
+    const second = (await startExamSession(params))!;
+    expect(await startExamSession({ ...params, resumeSessionId: first.sessionId })).toMatchObject({ sessionId: first.sessionId, completed: true });
+    expect(await startExamSession({ ...params, resumeSessionId: second.sessionId })).toMatchObject({ sessionId: second.sessionId, completed: false });
+    const foreign = await fixture();
+    await expect(startExamSession({ ...foreign.params, resumeSessionId: first.sessionId })).rejects.toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("reloads an expired last attempt as completed instead of starting again", async () => {
+    const { db, params } = await fixture(1);
+    const session = (await startExamSession(params))!;
+    await db.update(examSessions).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(examSessions.id, session.sessionId));
+    expect(await startExamSession({ ...params, resumeSessionId: session.sessionId })).toMatchObject({ sessionId: session.sessionId, completed: true });
+    expect(await db.select().from(examSessions).where(eq(examSessions.enrollmentId, params.enrollmentId))).toHaveLength(1);
+  });
+
   it("returns the same result for concurrent submissions, persists one result and completes the enrollment", async () => {
     const { db, params, question } = await fixture();
     const session = (await startExamSession(params))!;

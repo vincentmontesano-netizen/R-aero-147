@@ -1,0 +1,55 @@
+appId: com.raero.academy.qa
+---
+- scrollUntilVisible:
+    element: "Vérifier la documentation"
+    direction: DOWN
+- tapOn: "Vérifier la documentation"
+- scrollUntilVisible:
+    element: "Vérifier ma réponse"
+    direction: DOWN
+- tapOn: "Vérifier ma réponse"
+- scrollUntilVisible:
+    element: "Poursuivre la vidéo"
+    direction: DOWN
+- tapOn: "Poursuivre la vidéo"
+- extendedWaitUntil:
+    visible: "Poursuivre la démonstration"
+    timeout: 15000
+- tapOn: "Poursuivre la démonstration"
+- extendedWaitUntil:
+    visible: "1 · Zone de contrôle"
+    timeout: 15000
+- tapOn: "1 · Zone de contrôle"
+- extendedWaitUntil:
+    visible: "Vérification"
+    timeout: 15000
+- tapOn: "Vérification"
+- scrollUntilVisible:
+    element: "Avant intervention : Choisir"
+    direction: DOWN
+- tapOn: "Avant intervention : Choisir"
+- tapOn: "Vérifier ma réponse"
+- assertVisible: "Bonne réponse."
+- takeScreenshot: video-activities-complete
+- scrollUntilVisible:
+    element: "Poursuivre la vidéo"
+    direction: DOWN
+- tapOn: "Poursuivre la vidéo"
+- scrollUntilVisible:
+    element: "Diapositive suivante"
+    direction: DOWN
+- tapOn: "Diapositive suivante"
+- scrollUntilVisible:
+    element: "Vrai"
+    direction: UP
+- tapOn: "Vrai"
+- tapOn: "Vérifier ma réponse"
+- scrollUntilVisible:
+    element: "Terminer ces diapositives"
+    direction: DOWN
+- tapOn: "Terminer ces diapositives"
+- scrollUntilVisible:
+    element: "Vous avez atteint la fin de ces diapositives.*"
+    direction: DOWN
+- assertVisible: "Vous avez atteint la fin de ces diapositives.*"
+- takeScreenshot: slides-completed

@@ -1,6 +1,5 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
-import { parse as parseCookieHeader } from "cookie";
-import { COOKIE_NAME } from "@shared/const";
+import { sessionCredential } from "./sessionTransport";
 import type { User, Affiliation } from "../../drizzle/schema";
 import { getUserByOpenId } from "../db";
 import { getActiveAffiliations } from "../access";
@@ -22,10 +21,10 @@ export async function createContext(
   let affiliations: Affiliation[] = [];
 
   try {
-    // Local email/password sessions: verify the signed JWT cookie, then load
+    // Local email/password sessions: verify the signed credential, then load
     // the user from the database. No external auth server is contacted.
-    const cookies = parseCookieHeader(opts.req.headers.cookie ?? "");
-    const session = await sdk.verifySession(cookies[COOKIE_NAME]);
+    const credential = sessionCredential(opts.req.headers);
+    const session = await sdk.verifySession(credential.token, credential.transport);
     if (session?.openId) {
       const found = await getUserByOpenId(session.openId);
       if (found && found.status === "active" && found.sessionVersion === session.sessionVersion) {

@@ -1,0 +1,9 @@
+appId: com.raero.academy.qa
+---
+- stopApp
+- launchApp
+- extendedWaitUntil:
+    visible: "Impossible de retrouver votre session.*"
+    timeout: 35000
+- assertVisible: "Réessayer"
+- takeScreenshot: offline-restore

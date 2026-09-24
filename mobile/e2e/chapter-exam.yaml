@@ -1,0 +1,36 @@
+appId: com.raero.academy.qa
+---
+- scrollUntilVisible:
+    element: "Commencer / reprendre l’évaluation"
+    direction: DOWN
+- tapOn: "Commencer / reprendre l’évaluation"
+- scrollUntilVisible:
+    element:
+      id: "exam-start"
+    direction: DOWN
+- tapOn:
+    id: "exam-start"
+- extendedWaitUntil:
+    visible: "Avant une intervention, que faut-il vérifier ."
+    timeout: 15000
+- tapOn: "La documentation"
+- extendedWaitUntil:
+    visible: "1 / 1 réponses renseignées · Enregistrées"
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: "exam-submit"
+    direction: DOWN
+- tapOn:
+    id: "exam-submit"
+- tapOn: "Envoyer"
+- extendedWaitUntil:
+    visible: "Évaluation validée"
+    timeout: 15000
+- assertVisible: "1 / 1"
+- takeScreenshot: chapter-passed
+- tapOn: "Retour à ma formation"
+- scrollUntilVisible:
+    element: "Chapitre validé."
+    direction: DOWN
+- assertVisible: "Chapitre validé."
