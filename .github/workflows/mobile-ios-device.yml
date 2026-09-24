@@ -1,0 +1,101 @@
+name: Prepare unsigned iOS device archive
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-ios-device-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: macos-26
+    timeout-minutes: 45
+    env:
+      CI: "1"
+      RAERO_MOBILE_VARIANT: production
+      EXPO_PUBLIC_API_URL: https://r-aero-academy.com
+      DEVELOPER_DIR: /Applications/Xcode_26.4.1.app/Contents/Developer
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: xcodebuild -version
+      - run: npm ci
+      - run: npx expo prebuild --platform ios --clean
+      - name: Archive for physical iOS devices without signing
+        run: |
+          set -euo pipefail
+          xcodebuild -workspace ios/RAERO.xcworkspace -scheme RAERO \
+            -configuration Release -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$PWD/artifacts/RAERO-unsigned.xcarchive" \
+            -derivedDataPath artifacts/ios-device-derived \
+            ARCHS=arm64 ONLY_ACTIVE_ARCH=YES \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= \
+            archive > ios-device-build.log 2>&1 &
+          build_pid=$!
+          while kill -0 "$build_pid" 2>/dev/null; do
+            sleep 30
+            tail -n 2 ios-device-build.log
+          done
+          wait "$build_pid" || { tail -n 100 ios-device-build.log; exit 1; }
+      - name: Verify the production archive
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, plistlib
+          from pathlib import Path
+          archive = Path("artifacts/RAERO-unsigned.xcarchive")
+          apps = list((archive / "Products/Applications").glob("*.app"))
+          assert len(apps) == 1, "Expected one archived app"
+          app = apps[0]
+          info = plistlib.loads((app / "Info.plist").read_bytes())
+          assert info["CFBundleIdentifier"] == "com.raero.academy"
+          assert info["CFBundleShortVersionString"] == "1.0.0"
+          assert info["CFBundleSupportedPlatforms"] == ["iPhoneOS"]
+          assert not info.get("NSAppTransportSecurity", {}).get("NSAllowsArbitraryLoads", False)
+          bundle = (app / "main.jsbundle").read_bytes()
+          assert b"https://r-aero-academy.com" in bundle
+          assert b"127.0.0.1:3189" not in bundle and b"10.0.2.2:3189" not in bundle
+          assert not (app / "embedded.mobileprovision").exists()
+          result = {
+              "sourceCommit": os.environ["GITHUB_SHA"],
+              "bundleIdentifier": info["CFBundleIdentifier"],
+              "version": info["CFBundleShortVersionString"],
+              "buildNumber": info["CFBundleVersion"],
+              "platform": info["CFBundleSupportedPlatforms"],
+              "api": "https://r-aero-academy.com",
+              "status": "unsigned archive; Apple signing and device validation still required",
+          }
+          Path("ios-device-archive.json").write_text(json.dumps(result, indent=2) + "\n")
+          print(json.dumps(result, indent=2))
+          PY
+          tar -czf R-AERO-iOS-UNSIGNED.xcarchive.tar.gz -C artifacts RAERO-unsigned.xcarchive
+          shasum -a 256 R-AERO-iOS-UNSIGNED.xcarchive.tar.gz > ios-device-archive.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: raero-ios-unsigned-device-${{ github.sha }}
+          path: |
+            mobile/R-AERO-iOS-UNSIGNED.xcarchive.tar.gz
+            mobile/ios-device-archive.json
+            mobile/ios-device-archive.sha256
+          retention-days: 14
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-device-build-log-${{ github.sha }}
+          path: mobile/ios-device-build.log
+          retention-days: 7
