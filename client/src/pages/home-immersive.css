@@ -320,18 +320,6 @@
   background: var(--accent);
   border-radius: 4px;
 }
-.flight-credit {
-  position: absolute;
-  bottom: 15px;
-  right: 32px;
-  left: 32px;
-  text-align: end;
-  font-size: 0.75rem;
-  color: var(--muted-foreground);
-  z-index: 5;
-  width: fit-content;
-  margin-inline-start: auto;
-}
 .is-entered .flight-copy {
   opacity: 0;
   transform: translateY(-30px);
@@ -559,9 +547,6 @@
   .flight-copy h1 {
     max-width: 570px;
   }
-  .flight-credit {
-    right: 20px;
-  }
   .flight-instrument-label {
     right: 20px;
   }
@@ -669,14 +654,6 @@
   .flight-zoom button {
     min-height: 36px;
     min-width: 45px;
-  }
-  .flight-credit {
-    font-size: 0.75rem;
-    bottom: 10px;
-    left: 15px;
-    right: 15px;
-    text-align: center;
-    width: auto;
   }
   .is-entered .flight-canvas {
     top: 0;

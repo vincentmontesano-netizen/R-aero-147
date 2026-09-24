@@ -27,8 +27,6 @@ export const cockpitCopy = {
     retry: "Relancer la visite",
     continueTour: "Continuez à faire défiler pour découvrir la suite.",
     skip: "Passer aux formations",
-    model: "Modèle 3D",
-    credit: "Optimisé pour le web",
   },
   en: {
     eyebrow: "R-AERO · A NEW PERSPECTIVE ON AVIATION TRAINING",
@@ -58,8 +56,6 @@ export const cockpitCopy = {
     retry: "Retry the visit",
     continueTour: "Keep scrolling to discover the next view.",
     skip: "Skip to training",
-    model: "3D model",
-    credit: "Optimised for the web",
   },
   ar: {
     eyebrow: "R-AERO · منظور جديد للتدريب على الطيران",
@@ -89,7 +85,5 @@ export const cockpitCopy = {
     retry: "أعد المحاولة",
     continueTour: "تابع التمرير لاكتشاف المنظر التالي.",
     skip: "انتقل إلى الدورات",
-    model: "نموذج ثلاثي الأبعاد",
-    credit: "محسّن للويب",
   },
 };

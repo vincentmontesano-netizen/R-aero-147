@@ -57,6 +57,17 @@ export default function Legal() {
         <Section title={t("legal.ipTitle")}>
           <p>{t("legal.ipLine1")}</p>
         </Section>
+
+        <Section title={t("legal.creditsTitle")}>
+          <p id="credits">
+            <a className="underline" href="https://sketchfab.com/3d-models/a320-cockpit-2-5fb0c671a91042c1a9d8f2cf3e2df021" target="_blank" rel="noreferrer">{t("legal.cockpitModel")}</a>
+            {" · "}
+            <a className="underline" href="https://sketchfab.com/davidmarton1987" target="_blank" rel="noreferrer">davidmarton1987</a>
+            {" · "}
+            <a className="underline" href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>
+          </p>
+          <p>{t("legal.modelChanges")}</p>
+        </Section>
       </div>
     </div>
   );
