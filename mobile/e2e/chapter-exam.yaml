@@ -3,11 +3,13 @@ appId: com.raero.academy.qa
 - scrollUntilVisible:
     element: "Commencer / reprendre l’évaluation"
     direction: DOWN
+    centerElement: true
 - tapOn: "Commencer / reprendre l’évaluation"
 - scrollUntilVisible:
     element:
       id: "exam-start"
     direction: DOWN
+    centerElement: true
 - tapOn:
     id: "exam-start"
 - extendedWaitUntil:
@@ -21,6 +23,7 @@ appId: com.raero.academy.qa
     element:
       id: "exam-submit"
     direction: DOWN
+    centerElement: true
 - tapOn:
     id: "exam-submit"
 - tapOn: "Envoyer"
@@ -33,4 +36,5 @@ appId: com.raero.academy.qa
 - scrollUntilVisible:
     element: "Chapitre validé."
     direction: DOWN
+    centerElement: true
 - assertVisible: "Chapitre validé."

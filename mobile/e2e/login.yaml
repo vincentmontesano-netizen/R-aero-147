@@ -12,6 +12,13 @@ appId: com.raero.academy.qa
 - hideKeyboard
 - tapOn:
     id: "auth-submit"
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          text: "Plus tard"
+          optional: true
 - extendedWaitUntil:
     visible: "Bonjour Recette."
     timeout: 15000
@@ -19,6 +26,7 @@ appId: com.raero.academy.qa
     element:
       id: "course-${ENROLLMENT_ID}"
     direction: DOWN
+    centerElement: true
 - tapOn:
     id: "course-${ENROLLMENT_ID}"
 - extendedWaitUntil:

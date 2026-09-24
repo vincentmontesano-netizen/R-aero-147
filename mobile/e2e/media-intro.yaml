@@ -3,6 +3,7 @@ appId: com.raero.academy.qa
 - scrollUntilVisible:
     element: "Écouter la narration"
     direction: DOWN
+    centerElement: true
 - assertVisible: "Illustration de la formation"
 - assertNotVisible: "L’image n’a pas pu être chargée."
 - tapOn: "Écouter la narration"
@@ -12,8 +13,10 @@ appId: com.raero.academy.qa
 - scrollUntilVisible:
     element: "Diapositive suivante"
     direction: DOWN
+    centerElement: true
 - tapOn: "Diapositive suivante"
 - scrollUntilVisible:
     element: "Vidéo interactive"
     direction: UP
+    centerElement: true
 - takeScreenshot: video-ready

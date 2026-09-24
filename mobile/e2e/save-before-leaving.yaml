@@ -9,16 +9,19 @@ appId: com.raero.academy.qa
     element:
       id: "course-${ENROLLMENT_ID}"
     direction: DOWN
+    centerElement: true
 - tapOn:
     id: "course-${ENROLLMENT_ID}"
 - scrollUntilVisible:
     element: "Commencer / reprendre l’évaluation"
     direction: DOWN
+    centerElement: true
 - tapOn: "Commencer / reprendre l’évaluation"
 - scrollUntilVisible:
     element:
       id: "exam-start"
     direction: DOWN
+    centerElement: true
 - tapOn:
     id: "exam-start"
 - extendedWaitUntil:

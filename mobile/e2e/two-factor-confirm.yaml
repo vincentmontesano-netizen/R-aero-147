@@ -3,7 +3,16 @@ appId: com.raero.academy.qa
 - tapOn:
     id: "field-Code de vérification"
 - inputText: ${WRONG_CODE}
-- hideKeyboard
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn: "Vérifiez votre connexion."
 - tapOn:
     id: "auth-submit"
 - assertVisible: "Code invalide.*"
@@ -12,9 +21,25 @@ appId: com.raero.academy.qa
     id: "field-Code de vérification"
 - eraseText
 - inputText: ${CODE}
-- hideKeyboard
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - hideKeyboard
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn: "Vérifiez votre connexion."
 - tapOn:
     id: "auth-submit"
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - tapOn:
+          text: "Plus tard"
+          optional: true
 - extendedWaitUntil:
     visible: "Bonjour Recette."
     timeout: 15000
