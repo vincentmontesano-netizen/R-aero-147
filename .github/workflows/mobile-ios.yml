@@ -1,0 +1,60 @@
+name: Build native iOS simulator
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [dev]
+    paths: ["mobile/**", "shared/examCountdown.ts", ".github/workflows/mobile-ios.yml"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  simulator:
+    runs-on: macos-26
+    timeout-minutes: 45
+    env:
+      CI: "1"
+      RAERO_MOBILE_VARIANT: qa
+      EXPO_PUBLIC_API_URL: http://127.0.0.1:3189
+      DEVELOPER_DIR: /Applications/Xcode_26.4.1.app/Contents/Developer
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: xcodebuild -version
+      - run: npm ci
+      - run: npx expo prebuild --platform ios --clean
+      - name: Compile a standalone simulator application
+        run: |
+          set -o pipefail
+          xcodebuild -workspace ios/RAEROTest.xcworkspace -scheme RAEROTest \
+            -configuration Release -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath artifacts/ios-derived CODE_SIGNING_ALLOWED=NO build \
+            > ios-build.log 2>&1 || { tail -n 100 ios-build.log; exit 1; }
+          tar -czf raero-ios-simulator.tar.gz -C artifacts/ios-derived/Build/Products/Release-iphonesimulator RAEROTest.app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: raero-ios-simulator-${{ github.sha }}
+          path: mobile/raero-ios-simulator.tar.gz
+          retention-days: 14
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ios-build-log-${{ github.sha }}
+          path: mobile/ios-build.log
+          retention-days: 7

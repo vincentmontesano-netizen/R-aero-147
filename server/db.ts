@@ -1246,7 +1246,7 @@ export async function getExamQuestions(trainingId: number, moduleId?: number) {
   return shuffled.slice(0, n);
 }
 
-export async function startExamSession(params: { enrollmentId: number; userId: number; trainingId: number; attemptNumber: number; moduleId?: number }) {
+export async function startExamSession(params: { enrollmentId: number; userId: number; trainingId: number; attemptNumber: number; moduleId?: number; resumeSessionId?: number }) {
   const db = await getDb();
   if (!db) return null;
   await finalizeExpiredExams(params.enrollmentId);
@@ -1268,6 +1268,15 @@ export async function startExamSession(params: { enrollmentId: number; userId: n
       if (modules.some(m => m.isRequired !== false && !passed.some(p => p.moduleId === m.id))) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Validez les QCM de tous les chapitres requis avant l’examen final." });
     }
     const previous = await tx.select().from(examSessions).where(and(eq(examSessions.enrollmentId, params.enrollmentId), params.moduleId == null ? isNull(examSessions.moduleId) : eq(examSessions.moduleId, params.moduleId))).orderBy(desc(examSessions.startedAt));
+    // Reloading a known session must never consume a new attempt after expiry or submission.
+    if (params.resumeSessionId != null) {
+      const resumed = previous.find(s => s.id === params.resumeSessionId && s.userId === params.userId && s.trainingId === params.trainingId);
+      if (!resumed) throw new TRPCError({ code: "NOT_FOUND", message: "Session introuvable dans cette inscription." });
+      if (resumed.status === "active" && resumed.expiresAt && resumed.expiresAt.getTime() <= Date.now()) throw new TRPCError({ code: "CONFLICT", message: "Le résultat de cette session expirée est en cours de traitement." });
+      const questions = (resumed.questionSnapshot ?? await getQuizQuestions(params.trainingId)).filter(q => resumed.questionIds?.includes(q.id));
+      return { sessionId: resumed.id, expiresAt: resumed.expiresAt, timeLimitMin: policy.timeLimitMin, passingScore: resumed.passingScoreSnapshot ?? training.passingScore ?? 75,
+        questions, savedAnswers: resumed.savedAnswers ?? {}, answerRevision: resumed.answerRevision, attemptNumber: resumed.attemptNumber ?? 1, completed: resumed.status !== "active" || !!resumed.submittedAt };
+    }
     const passedScope = await tx.select().from(quizAttempts).where(and(eq(quizAttempts.enrollmentId, params.enrollmentId), eq(quizAttempts.isPassed, true), params.moduleId == null ? isNull(quizAttempts.moduleId) : eq(quizAttempts.moduleId, params.moduleId))).limit(1);
     if (passedScope.length) {
       const finished = previous.find(s => s.submittedAt && s.questionSnapshot && s.attemptNumber === passedScope[0].attemptNumber);

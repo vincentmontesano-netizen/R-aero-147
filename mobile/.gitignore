@@ -1,0 +1,16 @@
+node_modules/
+.expo/
+dist/
+ios/
+android/
+.env
+.env.local
+*.jks
+*.keystore
+*.p12
+*.mobileprovision
+*.ipa
+*.apk
+*.aab
+*.tsbuildinfo
+artifacts/

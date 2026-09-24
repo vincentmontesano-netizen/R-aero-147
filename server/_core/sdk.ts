@@ -13,6 +13,7 @@ export type SessionPayload = {
   appId: string;
   name: string;
   sessionVersion: number;
+  transport?: "cookie" | "native";
 };
 
 class SessionService {
@@ -23,10 +24,10 @@ class SessionService {
   /** Create a signed session token for a user openId. */
   async createSessionToken(
     openId: string,
-    options: { expiresInMs?: number; name?: string; sessionVersion: number }
+    options: { expiresInMs?: number; name?: string; sessionVersion: number; transport?: "cookie" | "native" }
   ): Promise<string> {
     return this.signSession(
-      { openId, appId: ENV.appId, name: options.name || "", sessionVersion: options.sessionVersion },
+      { openId, appId: ENV.appId, name: options.name || "", sessionVersion: options.sessionVersion, transport: options.transport ?? "cookie" },
       options
     );
   }
@@ -44,6 +45,7 @@ class SessionService {
       appId: payload.appId,
       name: payload.name,
       sessionVersion: payload.sessionVersion,
+      transport: payload.transport ?? "cookie",
     })
       .setProtectedHeader({ alg: "HS256", typ: "JWT" })
       .setExpirationTime(expirationSeconds)
@@ -51,7 +53,8 @@ class SessionService {
   }
 
   async verifySession(
-    cookieValue: string | undefined | null
+    cookieValue: string | undefined | null,
+    expectedTransport: "cookie" | "native" = "cookie"
   ): Promise<SessionPayload | null> {
     if (!cookieValue) return null;
     try {
@@ -59,13 +62,17 @@ class SessionService {
         algorithms: ["HS256"],
       });
       const { openId, appId, name } = payload as Record<string, unknown>;
+      // Legacy browser sessions had no transport claim. Native credentials are
+      // deliberately not interchangeable with cookies (or vice versa).
+      const transport = payload.transport ?? "cookie";
+      if (transport !== expectedTransport) return null;
       if (!isNonEmptyString(openId) || !isNonEmptyString(appId) || !isNonEmptyString(name)) {
         return null;
       }
       // Existing signed cookies represent version zero until a security change.
       const sessionVersion = payload.sessionVersion === undefined ? 0 : payload.sessionVersion;
       if (appId !== ENV.appId || !Number.isSafeInteger(sessionVersion) || (sessionVersion as number) < 0) return null;
-      return { openId, appId, name, sessionVersion: sessionVersion as number };
+      return { openId, appId, name, sessionVersion: sessionVersion as number, transport: expectedTransport };
     } catch {
       return null;
     }
