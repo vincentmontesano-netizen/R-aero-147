@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useI18n } from "@/i18n";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,11 +28,16 @@ export function PDFPreviewModal({
   onGenerate,
   downloadFilename,
 }: PDFPreviewModalProps) {
+  const { lang } = useI18n();
+  const labels = lang === 'fr' ? { open: 'Ouvrir', download: 'Télécharger', close: 'Fermer', zoomIn: 'Agrandir', zoomOut: 'Réduire', reset: 'Réinitialiser le zoom', generating: 'Génération en cours…', wait: 'Le document est en cours de création.', error: 'Erreur de génération', failed: 'Impossible de générer le document. Réessayez.', retry: 'Réessayer', unavailable: 'Document non disponible', missing: "Ce document n’a pas encore été généré.", zoom: 'Ajustez l’affichage avec les contrôles de zoom.' }
+    : lang === 'ar' ? { open: 'فتح', download: 'تنزيل', close: 'إغلاق', zoomIn: 'تكبير', zoomOut: 'تصغير', reset: 'إعادة ضبط التكبير', generating: 'جارٍ الإنشاء…', wait: 'جارٍ إنشاء المستند.', error: 'تعذر إنشاء المستند', failed: 'تعذر إنشاء المستند. حاول مرة أخرى.', retry: 'إعادة المحاولة', unavailable: 'المستند غير متاح', missing: 'لم يتم إنشاء هذا المستند بعد.', zoom: 'اضبط العرض باستخدام أدوات التكبير.' }
+    : { open: 'Open', download: 'Download', close: 'Close', zoomIn: 'Zoom in', zoomOut: 'Zoom out', reset: 'Reset zoom', generating: 'Generating…', wait: 'Your document is being created.', error: 'Generation failed', failed: 'Unable to generate the document. Please try again.', retry: 'Retry', unavailable: 'Document unavailable', missing: 'This document has not been generated yet.', zoom: 'Adjust the view using the zoom controls.' };
   const [resolvedUrl, setResolvedUrl] = useState<string | null>(pdfUrl ?? null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [zoom, setZoom] = useState(100);
   const [iframeKey, setIframeKey] = useState(0);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
 
   // Sync resolved URL when prop changes
   useEffect(() => {
@@ -51,10 +57,10 @@ export function PDFPreviewModal({
         if (url) {
           setResolvedUrl(url);
         } else {
-          setError("Impossible de générer le document. Veuillez réessayer.");
+          setError(labels.failed);
         }
       })
-      .catch(() => setError("Erreur lors de la génération du document."))
+      .catch(() => setError(labels.failed))
       .finally(() => setIsGenerating(false));
   }, [open, resolvedUrl, onGenerate]);
 
@@ -73,70 +79,86 @@ export function PDFPreviewModal({
   };
 
   const handleOpenInTab = () => {
-    if (!resolvedUrl) return;
-    window.open(resolvedUrl, "_blank");
+    if (!viewerUrl) return;
+    window.open(viewerUrl, "_blank", "noopener");
   };
 
   const handleZoomIn = () => setZoom((z) => Math.min(z + 20, 200));
   const handleZoomOut = () => setZoom((z) => Math.max(z - 20, 50));
   const handleResetZoom = () => setZoom(100);
 
-  // Build viewer URL — use Google Docs viewer as fallback for non-inline PDFs
-  const viewerUrl = resolvedUrl
-    ? `${resolvedUrl}#toolbar=1&navpanes=0&scrollbar=1&view=FitH`
-    : null;
+  // Only generated private PDFs opt into inline display; direct links still download.
+  const viewerUrl = resolvedUrl ? (() => {
+    const url = new URL(resolvedUrl, window.location.origin);
+    if (url.origin === window.location.origin && /^\/storage\/(certificates|invoices)\/.*\.pdf$/i.test(url.pathname)) url.searchParams.set("preview", "1");
+    url.hash = "toolbar=1&navpanes=0&scrollbar=1&view=FitH";
+    return url.href;
+  })() : null;
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
       <DialogContent
-        className="max-w-5xl w-full p-0 overflow-hidden"
+        className="sm:max-w-5xl w-[calc(100%-2rem)] p-0 overflow-hidden"
+        showCloseButton={false}
+        onOpenAutoFocus={() => {
+          returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        }}
+        onCloseAutoFocus={(event) => {
+          if (returnFocusRef.current?.isConnected) {
+            event.preventDefault();
+            returnFocusRef.current.focus({ preventScroll: true });
+          }
+        }}
         style={{
           height: "90vh",
           maxHeight: "90vh",
           display: "flex",
           flexDirection: "column",
-          background: "oklch(97% 0.01 88)",
+          background: "var(--background)",
         }}
       >
         {/* Header */}
         <div
-          className="flex items-center justify-between px-5 py-3 flex-shrink-0"
-          style={{ background: "oklch(19% 0.08 252)", borderBottom: "1px solid oklch(68% 0.1 78 / 0.2)" }}
+          className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 flex-shrink-0"
+          style={{ background: "var(--surface-strong)", borderBottom: "1px solid color-mix(in srgb, var(--link) 20%, transparent)" }}
         >
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
             <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{ background: "oklch(68% 0.1 78 / 0.15)" }}
+              className="w-8 h-8 shrink-0 rounded-lg flex items-center justify-center"
+              style={{ background: "color-mix(in srgb, var(--link) 15%, transparent)" }}
             >
-              <FileText className="w-4 h-4" style={{ color: "oklch(68% 0.1 78)" }} />
+              <FileText className="w-4 h-4" style={{ color: "var(--link)" }} />
             </div>
             <div>
-              <div className="font-semibold text-sm text-white">{title}</div>
-              {subtitle && <div className="text-xs" style={{ color: "oklch(68% 0.1 78)" }}>{subtitle}</div>}
+              <DialogTitle className="font-semibold text-sm text-foreground break-words">{title}</DialogTitle>
+              {subtitle && <div className="text-xs" style={{ color: "var(--link)" }}>{subtitle}</div>}
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap w-full sm:w-auto items-center gap-2">
             {/* Zoom controls */}
             {resolvedUrl && (
               <div className="flex items-center gap-1 mr-2">
                 <button
+                  aria-label={labels.zoomOut}
                   onClick={handleZoomOut}
                   disabled={zoom <= 50}
-                  className="w-7 h-7 rounded flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-30"
+                  className="w-10 h-10 rounded flex items-center justify-center text-muted-foreground hover:text-white hover:bg-foreground/10 transition-colors disabled:opacity-30"
                 >
                   <ZoomOut className="w-3.5 h-3.5" />
                 </button>
                 <button
+                  aria-label={labels.reset}
                   onClick={handleResetZoom}
-                  className="text-xs text-white/60 hover:text-white transition-colors px-1 min-w-10 text-center"
+                  className="text-sm text-muted-foreground hover:text-white transition-colors px-1 min-w-10 text-center"
                 >
                   {zoom}%
                 </button>
                 <button
+                  aria-label={labels.zoomIn}
                   onClick={handleZoomIn}
                   disabled={zoom >= 200}
-                  className="w-7 h-7 rounded flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-30"
+                  className="w-10 h-10 rounded flex items-center justify-center text-muted-foreground hover:text-white hover:bg-foreground/10 transition-colors disabled:opacity-30"
                 >
                   <ZoomIn className="w-3.5 h-3.5" />
                 </button>
@@ -150,26 +172,27 @@ export function PDFPreviewModal({
                   size="sm"
                   variant="ghost"
                   onClick={handleOpenInTab}
-                  className="text-white/70 hover:text-white hover:bg-white/10 h-8 px-3"
+                  className="text-muted-foreground hover:text-white hover:bg-foreground/10 h-8 px-3"
                 >
                   <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
-                  <span className="text-xs">Ouvrir</span>
+                  <span className="text-xs">{labels.open}</span>
                 </Button>
                 <Button
                   size="sm"
                   onClick={handleDownload}
                   className="h-8 px-3 font-semibold btn-press"
-                  style={{ background: "oklch(68% 0.1 78)", color: "oklch(19% 0.08 252)" }}
+                  style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
                 >
                   <Download className="w-3.5 h-3.5 mr-1.5" />
-                  <span className="text-xs">Télécharger</span>
+                  <span className="text-xs">{labels.download}</span>
                 </Button>
               </>
             )}
 
             <button
-              onClick={handleClose}
-              className="w-8 h-8 rounded flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors ml-1"
+              aria-label={labels.close}
+                  onClick={handleClose}
+              className="w-10 h-10 rounded flex items-center justify-center text-muted-foreground hover:text-white hover:bg-foreground/10 transition-colors ml-1"
             >
               <X className="w-4 h-4" />
             </button>
@@ -177,20 +200,20 @@ export function PDFPreviewModal({
         </div>
 
         {/* Body */}
-        <div className="flex-1 relative overflow-hidden" style={{ background: "oklch(30% 0.02 240)" }}>
+        <div className="flex-1 min-h-0 relative overflow-hidden" style={{ background: "var(--muted)" }}>
           {/* Loading state */}
           {isGenerating && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 z-10">
               <div
                 className="w-16 h-16 rounded-full flex items-center justify-center"
-                style={{ background: "oklch(19% 0.08 252)" }}
+                style={{ background: "var(--surface-strong)" }}
               >
-                <Loader2 className="w-8 h-8 animate-spin" style={{ color: "oklch(68% 0.1 78)" }} />
+                <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--link)" }} />
               </div>
               <div className="text-center">
-                <div className="font-semibold text-white mb-1">Génération en cours…</div>
-                <div className="text-sm" style={{ color: "oklch(70% 0.01 240)" }}>
-                  Le document est en cours de création, veuillez patienter.
+                <div className="font-semibold text-white mb-1">{labels.generating}</div>
+                <div className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+                  {labels.wait}
                 </div>
               </div>
             </div>
@@ -201,13 +224,13 @@ export function PDFPreviewModal({
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 z-10">
               <div
                 className="w-16 h-16 rounded-full flex items-center justify-center"
-                style={{ background: "oklch(55% 0.22 27 / 0.15)" }}
+                style={{ background: "color-mix(in srgb, var(--destructive) 15%, transparent)" }}
               >
-                <AlertCircle className="w-8 h-8" style={{ color: "oklch(55% 0.22 27)" }} />
+                <AlertCircle className="w-8 h-8" style={{ color: "var(--destructive)" }} />
               </div>
               <div className="text-center">
-                <div className="font-semibold text-white mb-1">Erreur de génération</div>
-                <div className="text-sm mb-4" style={{ color: "oklch(70% 0.01 240)" }}>{error}</div>
+                <div className="font-semibold text-white mb-1">{labels.error}</div>
+                <div className="text-sm mb-4" style={{ color: "var(--muted-foreground)" }}>{error}</div>
                 {onGenerate && (
                   <Button
                     size="sm"
@@ -215,13 +238,13 @@ export function PDFPreviewModal({
                       setError(null);
                       setIsGenerating(true);
                       onGenerate()
-                        .then((url) => { if (url) setResolvedUrl(url); else setError("Échec de la génération."); })
-                        .catch(() => setError("Erreur lors de la génération."))
+                        .then((url) => { if (url) setResolvedUrl(url); else setError(labels.failed); })
+                        .catch(() => setError(labels.failed))
                         .finally(() => setIsGenerating(false));
                     }}
-                    style={{ background: "oklch(68% 0.1 78)", color: "oklch(19% 0.08 252)" }}
+                    style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
                   >
-                    <RotateCcw className="w-3.5 h-3.5 mr-1.5" /> Réessayer
+                    <RotateCcw className="w-3.5 h-3.5 mr-1.5" /> {labels.retry}
                   </Button>
                 )}
               </div>
@@ -232,16 +255,16 @@ export function PDFPreviewModal({
           {viewerUrl && !isGenerating && !error && (
             <div
               className="w-full h-full flex items-start justify-center overflow-auto py-4"
-              style={{ background: "oklch(25% 0.02 240)" }}
+              style={{ background: "var(--muted)" }}
             >
               <div
                 style={{
                   width: `${zoom}%`,
-                  minWidth: "600px",
-                  maxWidth: "1200px",
-                  height: "calc(90vh - 120px)",
+                  flexShrink: 0,
+                  minWidth: 0,
+                  height: "100%",
                   transition: "width 200ms cubic-bezier(0.23, 1, 0.32, 1)",
-                  boxShadow: "0 8px 40px oklch(0% 0 0 / 0.5)",
+                  boxShadow: "0 8px 40px color-mix(in srgb, #000 50%, transparent)",
                   borderRadius: "4px",
                   overflow: "hidden",
                 }}
@@ -266,14 +289,14 @@ export function PDFPreviewModal({
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
               <div
                 className="w-16 h-16 rounded-full flex items-center justify-center"
-                style={{ background: "oklch(19% 0.08 252)" }}
+                style={{ background: "var(--surface-strong)" }}
               >
-                <FileText className="w-8 h-8" style={{ color: "oklch(68% 0.1 78)" }} />
+                <FileText className="w-8 h-8" style={{ color: "var(--link)" }} />
               </div>
               <div className="text-center">
-                <div className="font-semibold text-white mb-1">Document non disponible</div>
-                <div className="text-sm" style={{ color: "oklch(70% 0.01 240)" }}>
-                  Ce document n'a pas encore été généré.
+                <div className="font-semibold text-white mb-1">{labels.unavailable}</div>
+                <div className="text-sm" style={{ color: "var(--muted-foreground)" }}>
+                  {labels.missing}
                 </div>
               </div>
             </div>
@@ -283,14 +306,14 @@ export function PDFPreviewModal({
         {/* Footer info bar */}
         {resolvedUrl && !isGenerating && !error && (
           <div
-            className="px-5 py-2 flex items-center justify-between flex-shrink-0"
-            style={{ background: "oklch(19% 0.08 252 / 0.95)", borderTop: "1px solid oklch(68% 0.1 78 / 0.15)" }}
+            className="px-4 py-2 flex flex-wrap gap-2 items-center justify-between flex-shrink-0"
+            style={{ background: "color-mix(in srgb, var(--surface-strong) 95%, transparent)", borderTop: "1px solid color-mix(in srgb, var(--link) 15%, transparent)" }}
           >
-            <div className="text-xs" style={{ color: "oklch(62% 0.02 240)" }}>
-              Document R-AERO Training Academy — Organisme agréé EASA Part-147
+            <div className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+              R-AERO Training Academy
             </div>
-            <div className="text-xs" style={{ color: "oklch(62% 0.02 240)" }}>
-              Utilisez les contrôles de zoom pour ajuster l'affichage
+            <div className="text-xs" style={{ color: "var(--muted-foreground)" }}>
+              {labels.zoom}
             </div>
           </div>
         )}

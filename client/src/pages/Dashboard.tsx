@@ -1,3 +1,4 @@
+import { LanguageSwitcher } from "@/components/PublicNav";
 import {certificateStatus} from '@shared/certificateStatus';
 import {certificateReportLabels} from '@shared/certificateReport';
 import InvoiceRequestDialog from "@/components/InvoiceRequestDialog";
@@ -31,11 +32,11 @@ import { useUrlTab } from "@/hooks/useUrlTab";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 const STATUS_CONFIG: Record<string, { labelKey: string; color: string; icon: typeof CheckCircle }> = {
-  not_started: { labelKey: "dashboard.statusNotStarted", color: "oklch(62% 0.02 240)", icon: Clock },
-  in_progress: { labelKey: "dashboard.statusInProgress", color: "oklch(42% 0.1 218)", icon: PlayCircle },
-  completed: { labelKey: "dashboard.statusCompleted", color: "oklch(55% 0.18 145)", icon: CheckCircle },
-  expired: { labelKey: "dashboard.statusExpired", color: "oklch(55% 0.22 27)", icon: AlertCircle },
-  failed: { labelKey: "dashboard.statusFailed", color: "oklch(55% 0.22 27)", icon: AlertCircle },
+  not_started: { labelKey: "dashboard.statusNotStarted", color: "var(--muted-foreground)", icon: Clock },
+  in_progress: { labelKey: "dashboard.statusInProgress", color: "var(--info)", icon: PlayCircle },
+  completed: { labelKey: "dashboard.statusCompleted", color: "var(--success)", icon: CheckCircle },
+  expired: { labelKey: "dashboard.statusExpired", color: "var(--destructive)", icon: AlertCircle },
+  failed: { labelKey: "dashboard.statusFailed", color: "var(--destructive)", icon: AlertCircle },
 };
 
 type SortDir = "asc" | "desc";
@@ -64,15 +65,15 @@ function FilterBar({
   const hasFilters = search || dateFrom || dateTo || statusFilter;
 
   return (
-    <div className="rounded-xl p-4 mb-4" style={{ background: "oklch(100% 0 0)", border: "1px solid oklch(88% 0.015 88)" }}>
+    <div className="rounded-xl p-4 mb-4" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
       <div className="flex flex-wrap gap-3 items-end">
         {/* Search */}
         <div className="flex-1 min-w-48">
-          <label className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>
+          <label className="text-sm font-semibold mb-1.5 block" style={{ color: "var(--muted-foreground)" }}>
             {t("dashboard.filterSearchLabel")}
           </label>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: "oklch(62% 0.02 240)" }} />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: "var(--muted-foreground)" }} />
             <Input
               placeholder={t("dashboard.filterSearchPlaceholder")}
               value={search}
@@ -81,7 +82,7 @@ function FilterBar({
             />
             {search && (
               <button onClick={() => onSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2">
-                <X className="w-3.5 h-3.5" style={{ color: "oklch(62% 0.02 240)" }} />
+                <X className="w-3.5 h-3.5" style={{ color: "var(--muted-foreground)" }} />
               </button>
             )}
           </div>
@@ -89,34 +90,34 @@ function FilterBar({
 
         {/* Date from */}
         <div className="min-w-36">
-          <label className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>
+          <label className="text-sm font-semibold mb-1.5 block" style={{ color: "var(--muted-foreground)" }}>
             {t("dashboard.filterDateFrom")}
           </label>
           <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: "oklch(62% 0.02 240)" }} />
+            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: "var(--muted-foreground)" }} />
             <input
               type="date"
               value={dateFrom}
               onChange={(e) => onDateFrom(e.target.value)}
               className="w-full h-9 rounded-md border pl-8 pr-3 text-sm"
-              style={{ borderColor: "oklch(88% 0.015 88)", color: "oklch(19% 0.08 252)", background: "oklch(100% 0 0)" }}
+              style={{ borderColor: "var(--border)", color: "var(--foreground)", background: "var(--card)" }}
             />
           </div>
         </div>
 
         {/* Date to */}
         <div className="min-w-36">
-          <label className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>
+          <label className="text-sm font-semibold mb-1.5 block" style={{ color: "var(--muted-foreground)" }}>
             {t("dashboard.filterDateTo")}
           </label>
           <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: "oklch(62% 0.02 240)" }} />
+            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: "var(--muted-foreground)" }} />
             <input
               type="date"
               value={dateTo}
               onChange={(e) => onDateTo(e.target.value)}
               className="w-full h-9 rounded-md border pl-8 pr-3 text-sm"
-              style={{ borderColor: "oklch(88% 0.015 88)", color: "oklch(19% 0.08 252)", background: "oklch(100% 0 0)" }}
+              style={{ borderColor: "var(--border)", color: "var(--foreground)", background: "var(--card)" }}
             />
           </div>
         </div>
@@ -124,14 +125,14 @@ function FilterBar({
         {/* Status filter */}
         {statusOptions && statusOptions.length > 0 && (
           <div className="min-w-36">
-            <label className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>
+            <label className="text-sm font-semibold mb-1.5 block" style={{ color: "var(--muted-foreground)" }}>
               {t("dashboard.filterStatusLabel")}
             </label>
             <select
               value={statusFilter}
               onChange={(e) => onStatusFilter(e.target.value)}
               className="w-full h-9 rounded-md border px-3 text-sm"
-              style={{ borderColor: "oklch(88% 0.015 88)", color: "oklch(19% 0.08 252)", background: "oklch(100% 0 0)" }}
+              style={{ borderColor: "var(--border)", color: "var(--foreground)", background: "var(--card)" }}
             >
               <option value="">{t("dashboard.filterStatusAll")}</option>
               {statusOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -141,13 +142,13 @@ function FilterBar({
 
         {/* Sort direction */}
         <div>
-          <label className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>
+          <label className="text-sm font-semibold mb-1.5 block" style={{ color: "var(--muted-foreground)" }}>
             {t("dashboard.filterSortLabel")}
           </label>
           <button
             onClick={() => onSortDir(sortDir === "desc" ? "asc" : "desc")}
             className="h-9 px-3 rounded-md border flex items-center gap-1.5 text-sm transition-colors"
-            style={{ borderColor: "oklch(88% 0.015 88)", color: "oklch(45% 0.02 240)", background: "oklch(100% 0 0)" }}
+            style={{ borderColor: "var(--border)", color: "var(--muted-foreground)", background: "var(--card)" }}
           >
             {sortDir === "desc" ? <SortDesc className="w-3.5 h-3.5" /> : <SortAsc className="w-3.5 h-3.5" />}
             {sortDir === "desc" ? t("dashboard.sortNewest") : t("dashboard.sortOldest")}
@@ -164,7 +165,7 @@ function FilterBar({
 
       {/* Results count */}
       <div className="mt-3 flex items-center gap-2">
-        <span className="text-xs" style={{ color: "oklch(62% 0.02 240)" }}>
+        <span className="text-xs" style={{ color: "var(--muted-foreground)" }}>
           {resultCount === totalCount
             ? (totalCount > 1
                 ? t("dashboard.resultCountPlural", { count: totalCount })
@@ -174,7 +175,7 @@ function FilterBar({
                 : t("dashboard.resultCountOfSingular", { count: resultCount, total: totalCount }))}
         </span>
         {hasFilters && (
-          <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "oklch(68% 0.1 78 / 0.1)", color: "oklch(52% 0.09 78)" }}>
+          <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "color-mix(in srgb, var(--link) 10%, transparent)", color: "var(--link)" }}>
             <Filter className="w-2.5 h-2.5 inline mr-1" />{t("dashboard.filtersActive")}
           </span>
         )}
@@ -185,7 +186,7 @@ function FilterBar({
 
 function DashboardLoadError({retry,busy}:{retry:()=>void;busy:boolean}) {
   const {t}=useI18n();
-  return <div className="rounded-xl border bg-white p-6 space-y-3">
+  return <div className="rounded-xl border bg-card p-6 space-y-3">
     <p role="alert">{t('dashboard.loadError')}</p>
     <Button variant="outline" disabled={busy} onClick={retry}>{t(busy?'common.loading':'learningPlayer.save.retry')}</Button>
   </div>;
@@ -218,6 +219,7 @@ export default function Dashboard() {
         utils.dashboard.enrollments.invalidate();
         utils.dashboard.orders.invalidate();
         utils.cart.count.invalidate();
+        utils.cart.list.invalidate();
       } else if (r?.status === "pending") {
         toast.info(t("dashboard.toastPaymentPending"));
       }
@@ -320,8 +322,8 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "oklch(97% 0.01 88)" }}>
-        <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "oklch(68% 0.1 78)", borderTopColor: "transparent" }} />
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--background)" }}>
+        <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "var(--link)", borderTopColor: "transparent" }} />
       </div>
     );
   }
@@ -331,15 +333,15 @@ export default function Dashboard() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "oklch(97% 0.01 88)" }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--background)" }}>
         <div className="text-center max-w-sm">
-          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: "oklch(68% 0.1 78 / 0.1)" }}>
-            <LogIn className="w-8 h-8" style={{ color: "oklch(68% 0.1 78)" }} />
+          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: "color-mix(in srgb, var(--link) 10%, transparent)" }}>
+            <LogIn className="w-8 h-8" style={{ color: "var(--link)" }} />
           </div>
-          <h2 className="font-serif text-2xl font-bold mb-2" style={{ color: "oklch(19% 0.08 252)" }}>{t("dashboard.loginRequiredTitle")}</h2>
-          <p className="text-sm mb-6" style={{ color: "oklch(45% 0.02 240)" }}>{t("dashboard.loginRequiredText")}</p>
+          <h2 className="font-sans text-2xl font-bold mb-2" style={{ color: "var(--foreground)" }}>{t("dashboard.loginRequiredTitle")}</h2>
+          <p className="text-sm mb-6" style={{ color: "var(--muted-foreground)" }}>{t("dashboard.loginRequiredText")}</p>
           <a href={getLoginUrl()}>
-            <Button size="lg" style={{ background: "oklch(19% 0.08 252)", color: "oklch(97% 0.01 88)" }}>{t("dashboard.loginButton")}</Button>
+            <Button size="lg" style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>{t("dashboard.loginButton")}</Button>
           </a>
         </div>
       </div>
@@ -350,7 +352,7 @@ export default function Dashboard() {
   const inProgressCount = enrollments.filter((e) => e.status === "in_progress").length;
 
   return (
-    <div className="min-h-screen" style={{ background: "oklch(97% 0.01 88)" }}>
+    <div className="min-h-screen" style={{ background: "var(--background)" }}>
       {/* PDF Preview Modal */}
       {invoiceOrderId!=null&&<InvoiceRequestDialog orderId={invoiceOrderId} initialName={user?.name??""} onClose={()=>setInvoiceOrderId(null)} onGenerated={url=>{setInvoiceOrderId(null);openPreview({pdfUrl:url,title:t("dashboard.invoiceModalTitle"),downloadFilename:"facture.pdf"});}}/>}
       <PDFPreviewModal
@@ -364,31 +366,32 @@ export default function Dashboard() {
       />
 
       {/* Header */}
-      <div style={{ background: "oklch(19% 0.08 252)" }}>
+      <div style={{ background: "var(--surface-strong)" }}>
         <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
           <BackButton dark />
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold" style={{ background: "oklch(68% 0.1 78)", color: "oklch(19% 0.08 252)" }}>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex min-w-0 flex-1 basis-64 items-center gap-4">
+              <div className="w-14 h-14 shrink-0 rounded-full flex items-center justify-center text-xl font-bold" style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>
                 {user?.name?.[0]?.toUpperCase() ?? "U"}
               </div>
-              <div>
+              <div className="min-w-0 break-words">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="font-serif text-2xl font-bold text-white">{t("dashboard.greeting", { name: user?.name ?? t("dashboard.defaultLearnerName") })}</h1>
+                  <h1 className="font-sans text-2xl font-bold text-white">{t("dashboard.greeting", { name: user?.name ?? t("dashboard.defaultLearnerName") })}</h1>
                   {myOrgs.map((o: any) => (
-                    <span key={o.orgId} className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full"
-                      style={{ background: "oklch(68% 0.1 78 / 0.18)", color: "oklch(80% 0.1 78)" }}
+                    <span key={o.orgId} className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full"
+                      style={{ background: "color-mix(in srgb, var(--link) 18%, transparent)", color: "var(--link)" }}
                       title={o.role === "MANAGER" ? t("org.roleManager") : t("org.roleMember")}>
                       <Building2 className="w-3 h-3" /> {o.name}
                     </span>
                   ))}
                 </div>
-                <p className="text-white/60 text-sm">{user?.email}</p>
+                <p className="text-muted-foreground text-sm">{user?.email}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <CartButton dark />
               <NotificationBell dark />
+              <LanguageSwitcher />
               <UserMenu />
             </div>
           </div>
@@ -401,12 +404,12 @@ export default function Dashboard() {
               { value: enrollmentQuery.isError || !enrollmentQuery.data ? '—' : inProgressCount, label: t("dashboard.statInProgress"), icon: PlayCircle },
               { value: certificateQuery.isError || !certificateQuery.data ? '—' : certificates.length, label: t("dashboard.statCertificatesEarned"), icon: Award },
             ].map((stat) => (
-              <div key={stat.label} className="rounded-xl p-4" style={{ background: "oklch(97% 0.01 88 / 0.07)", border: "1px solid oklch(97% 0.01 88 / 0.1)" }}>
+              <div key={stat.label} className="rounded-xl p-4" style={{ background: "color-mix(in srgb, var(--foreground) 7%, transparent)", border: "1px solid color-mix(in srgb, var(--foreground) 10%, transparent)" }}>
                 <div className="flex items-center gap-2 mb-1">
-                  <stat.icon className="w-4 h-4" style={{ color: "oklch(68% 0.1 78)" }} />
-                  <span className="font-serif text-2xl font-bold" style={{ color: "oklch(68% 0.1 78)" }}>{stat.value}</span>
+                  <stat.icon className="w-4 h-4" style={{ color: "var(--link)" }} />
+                  <span className="font-sans text-2xl font-bold" style={{ color: "var(--link)" }}>{stat.value}</span>
                 </div>
-                <div className="text-xs text-white/50">{stat.label}</div>
+                <div className="text-xs text-muted-foreground">{stat.label}</div>
               </div>
             ))}
           </div>
@@ -449,23 +452,23 @@ export default function Dashboard() {
             {enrollmentQuery.isError ? <DashboardLoadError busy={enrollmentQuery.isFetching} retry={() => { void enrollmentQuery.refetch(); }} /> : loadingEnrollments ? (
               <div className="space-y-4">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="h-24 rounded-xl animate-pulse" style={{ background: "oklch(88% 0.015 88)" }} />
+                  <div key={i} className="h-24 rounded-xl animate-pulse" style={{ background: "var(--border)" }} />
                 ))}
               </div>
             ) : enrollments.length === 0 ? (
               <div className="text-center py-16">
-                <GraduationCap className="w-12 h-12 mx-auto mb-4" style={{ color: "oklch(68% 0.1 78)" }} />
-                <div className="font-semibold text-lg mb-2" style={{ color: "oklch(19% 0.08 252)" }}>{t("dashboard.noCoursesTitle")}</div>
-                <p className="text-sm mb-6" style={{ color: "oklch(45% 0.02 240)" }}>{t("dashboard.noCoursesText")}</p>
+                <GraduationCap className="w-12 h-12 mx-auto mb-4" style={{ color: "var(--link)" }} />
+                <div className="font-semibold text-lg mb-2" style={{ color: "var(--foreground)" }}>{t("dashboard.noCoursesTitle")}</div>
+                <p className="text-sm mb-6" style={{ color: "var(--muted-foreground)" }}>{t("dashboard.noCoursesText")}</p>
                 <Link href="/catalogue">
-                  <Button style={{ background: "oklch(19% 0.08 252)", color: "oklch(97% 0.01 88)" }}>{t("dashboard.viewCatalog")}</Button>
+                  <Button style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>{t("dashboard.viewCatalog")}</Button>
                 </Link>
               </div>
             ) : filteredEnrollments.length === 0 ? (
-              <div className="text-center py-12 rounded-xl" style={{ background: "oklch(100% 0 0)", border: "1px solid oklch(88% 0.015 88)" }}>
-                <Search className="w-10 h-10 mx-auto mb-3" style={{ color: "oklch(68% 0.1 78)" }} />
-                <div className="font-semibold mb-1" style={{ color: "oklch(19% 0.08 252)" }}>{t("dashboard.noResultsTitle")}</div>
-                <p className="text-sm" style={{ color: "oklch(45% 0.02 240)" }}>{t("dashboard.noResultsCoursesText")}</p>
+              <div className="text-center py-12 rounded-xl" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+                <Search className="w-10 h-10 mx-auto mb-3" style={{ color: "var(--link)" }} />
+                <div className="font-semibold mb-1" style={{ color: "var(--foreground)" }}>{t("dashboard.noResultsTitle")}</div>
+                <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>{t("dashboard.noResultsCoursesText")}</p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -473,11 +476,11 @@ export default function Dashboard() {
                   const statusConf = STATUS_CONFIG[enrollment.status] ?? STATUS_CONFIG.not_started;
                   const StatusIcon = statusConf.icon;
                   return (
-                    <div key={enrollment.id} className="rounded-xl p-5" style={{ background: "oklch(100% 0 0)", border: "1px solid oklch(88% 0.015 88)" }}>
+                    <div key={enrollment.id} className="rounded-xl p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <h3 className="font-semibold" style={{ color: "oklch(19% 0.08 252)" }}>
+                            <h3 className="font-semibold" style={{ color: "var(--foreground)" }}>
                               {enrollment.training?.title ?? t("dashboard.courseFallback")}
                             </h3>
                             <span className="flex items-center gap-1 text-xs font-medium" style={{ color: statusConf.color }}>
@@ -485,7 +488,7 @@ export default function Dashboard() {
                               {t(statusConf.labelKey)}
                             </span>
                           </div>
-                          <div className="flex flex-wrap items-center gap-4 text-xs mb-3" style={{ color: "oklch(62% 0.02 240)" }}>
+                          <div className="flex flex-wrap items-center gap-4 text-xs mb-3" style={{ color: "var(--muted-foreground)" }}>
                             <span>{t("dashboard.progressLabel", { percent: enrollment.progressPercent ?? 0 })}</span>
                             <span className="flex items-center gap-1">
                               <Calendar className="w-3 h-3" />
@@ -498,7 +501,7 @@ export default function Dashboard() {
                           <Progress value={enrollment.progressPercent ?? 0} className="h-1.5" />
                         </div>
                         <Link href={`/formation/${enrollment.training?.slug ?? ""}/apprendre?enrollment=${enrollment.id}`}>
-                          <Button size="sm" style={{ background: "oklch(19% 0.08 252)", color: "oklch(97% 0.01 88)" }}>
+                          <Button size="sm" style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>
                             {enrollment.status === "not_started" ? t("dashboard.btnStart") : enrollment.status === "completed" ? t("dashboard.btnReview") : t("dashboard.btnContinue")}
                             <ArrowRight className="w-3 h-3 ml-1" />
                           </Button>
@@ -527,44 +530,44 @@ export default function Dashboard() {
             {certificateQuery.isError ? <DashboardLoadError busy={certificateQuery.isFetching} retry={() => { void certificateQuery.refetch(); }} /> : loadingCerts ? (
               <div className="space-y-4">
                 {Array.from({ length: 2 }).map((_, i) => (
-                  <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "oklch(88% 0.015 88)" }} />
+                  <div key={i} className="h-20 rounded-xl animate-pulse" style={{ background: "var(--border)" }} />
                 ))}
               </div>
             ) : certificates.length === 0 ? (
               <div className="text-center py-16">
-                <Award className="w-12 h-12 mx-auto mb-4" style={{ color: "oklch(68% 0.1 78)" }} />
-                <div className="font-semibold text-lg mb-2" style={{ color: "oklch(19% 0.08 252)" }}>{t("dashboard.noCertificatesTitle")}</div>
-                <p className="text-sm" style={{ color: "oklch(45% 0.02 240)" }}>{t("dashboard.noCertificatesText")}</p>
+                <Award className="w-12 h-12 mx-auto mb-4" style={{ color: "var(--link)" }} />
+                <div className="font-semibold text-lg mb-2" style={{ color: "var(--foreground)" }}>{t("dashboard.noCertificatesTitle")}</div>
+                <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>{t("dashboard.noCertificatesText")}</p>
               </div>
             ) : filteredCertificates.length === 0 ? (
-              <div className="text-center py-12 rounded-xl" style={{ background: "oklch(100% 0 0)", border: "1px solid oklch(88% 0.015 88)" }}>
-                <Search className="w-10 h-10 mx-auto mb-3" style={{ color: "oklch(68% 0.1 78)" }} />
-                <div className="font-semibold mb-1" style={{ color: "oklch(19% 0.08 252)" }}>{t("dashboard.noResultsTitle")}</div>
-                <p className="text-sm" style={{ color: "oklch(45% 0.02 240)" }}>{t("dashboard.noResultsCertificatesText")}</p>
+              <div className="text-center py-12 rounded-xl" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+                <Search className="w-10 h-10 mx-auto mb-3" style={{ color: "var(--link)" }} />
+                <div className="font-semibold mb-1" style={{ color: "var(--foreground)" }}>{t("dashboard.noResultsTitle")}</div>
+                <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>{t("dashboard.noResultsCertificatesText")}</p>
               </div>
             ) : (
               <div className="space-y-4">
                 {filteredCertificates.map((cert) => {
                   const status = certificateStatus(cert);
                   return (
-                  <div key={cert.id} className="rounded-xl p-5 flex flex-wrap items-center justify-between gap-4" style={{ background: "oklch(100% 0 0)", border: "1px solid oklch(88% 0.015 88)" }}>
+                  <div key={cert.id} className="rounded-xl p-5 flex flex-wrap items-center justify-between gap-4" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "oklch(68% 0.1 78 / 0.1)" }}>
-                        <Award className="w-5 h-5" style={{ color: "oklch(68% 0.1 78)" }} />
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "color-mix(in srgb, var(--link) 10%, transparent)" }}>
+                        <Award className="w-5 h-5" style={{ color: "var(--link)" }} />
                       </div>
                       <div>
-                        <div className="font-semibold text-sm" style={{ color: "oklch(19% 0.08 252)" }}>
+                        <div className="font-semibold text-sm" style={{ color: "var(--foreground)" }}>
                           {cert.training?.title ?? t("dashboard.courseFallback")}
                         </div>
-                        <div className="flex flex-wrap items-center gap-3 text-xs mt-0.5" style={{ color: "oklch(62% 0.02 240)" }}>
+                        <div className="flex flex-wrap items-center gap-3 text-xs mt-0.5" style={{ color: "var(--muted-foreground)" }}>
                           <span className="font-mono">{t("dashboard.certNumber", { number: cert.certificateNumber })}</span>
-                          <span className={`rounded px-2 py-1 font-semibold ${status === 'valid' ? 'bg-green-100 text-green-800' : status === 'expired' ? 'bg-amber-100 text-amber-900' : 'bg-red-100 text-red-800'}`}>{certificateReportLabels[lang][status]}</span>
+                          <span className={`rounded px-2 py-1 font-semibold ${status === 'valid' ? "bg-success/10 text-success" : status === 'expired' ? "bg-warning/10 text-warning" : "bg-destructive/10 text-destructive"}`}>{certificateReportLabels[lang][status]}</span>
                           <span className="flex items-center gap-1">
                             <Calendar className="w-3 h-3" />
                             {t("dashboard.issuedOn", { date: new Date(cert.issuedAt).toLocaleDateString(lang) })}
                           </span>
                           {cert.expiresAt && (
-                            <span style={{ color: new Date(cert.expiresAt) < new Date() ? "oklch(55% 0.22 27)" : "oklch(62% 0.02 240)" }}>
+                            <span style={{ color: new Date(cert.expiresAt) < new Date() ? "var(--destructive)" : "var(--muted-foreground)" }}>
                               {t("dashboard.expiresOn", { date: new Date(cert.expiresAt).toLocaleDateString(lang) })}
                             </span>
                           )}
@@ -589,7 +592,7 @@ export default function Dashboard() {
                       </Link>
                       {cert.pdfUrl && (
                         <a href={cert.pdfUrl} target="_blank" rel="noopener noreferrer">
-                          <Button size="sm" style={{ background: "oklch(19% 0.08 252)", color: "oklch(97% 0.01 88)" }}>
+                          <Button size="sm" style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>
                             <Download className="w-3 h-3 mr-1" /> PDF
                           </Button>
                         </a>
@@ -623,32 +626,32 @@ export default function Dashboard() {
 
             {orderQuery.isError ? <DashboardLoadError busy={orderQuery.isFetching} retry={() => { void orderQuery.refetch(); }} /> : orderQuery.isLoading ? <p role="status">{t("common.loading")}</p> : (userOrders as any[]).length === 0 ? (
               <div className="text-center py-16">
-                <ShoppingCart className="w-12 h-12 mx-auto mb-4" style={{ color: "oklch(68% 0.1 78)" }} />
-                <div className="font-semibold text-lg mb-2" style={{ color: "oklch(19% 0.08 252)" }}>{t("dashboard.noOrdersTitle")}</div>
+                <ShoppingCart className="w-12 h-12 mx-auto mb-4" style={{ color: "var(--link)" }} />
+                <div className="font-semibold text-lg mb-2" style={{ color: "var(--foreground)" }}>{t("dashboard.noOrdersTitle")}</div>
                 <Link href="/catalogue">
-                  <Button style={{ background: "oklch(19% 0.08 252)", color: "oklch(97% 0.01 88)" }}>{t("dashboard.viewCatalog")}</Button>
+                  <Button style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>{t("dashboard.viewCatalog")}</Button>
                 </Link>
               </div>
             ) : filteredOrders.length === 0 ? (
-              <div className="text-center py-12 rounded-xl" style={{ background: "oklch(100% 0 0)", border: "1px solid oklch(88% 0.015 88)" }}>
-                <Search className="w-10 h-10 mx-auto mb-3" style={{ color: "oklch(68% 0.1 78)" }} />
-                <div className="font-semibold mb-1" style={{ color: "oklch(19% 0.08 252)" }}>{t("dashboard.noResultsTitle")}</div>
-                <p className="text-sm" style={{ color: "oklch(45% 0.02 240)" }}>{t("dashboard.noResultsOrdersText")}</p>
+              <div className="text-center py-12 rounded-xl" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+                <Search className="w-10 h-10 mx-auto mb-3" style={{ color: "var(--link)" }} />
+                <div className="font-semibold mb-1" style={{ color: "var(--foreground)" }}>{t("dashboard.noResultsTitle")}</div>
+                <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>{t("dashboard.noResultsOrdersText")}</p>
               </div>
             ) : (
               <div className="space-y-4">
                 {filteredOrders.map((order: any) => (
-                  <div key={order.id} className="rounded-xl p-5 flex flex-wrap items-center justify-between gap-4" style={{ background: "oklch(100% 0 0)", border: "1px solid oklch(88% 0.015 88)" }}>
+                  <div key={order.id} className="rounded-xl p-5 flex flex-wrap items-center justify-between gap-4" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
                     <div>
-                      <div className="font-semibold text-sm mb-1" style={{ color: "oklch(19% 0.08 252)" }}>
+                      <div className="font-semibold text-sm mb-1" style={{ color: "var(--foreground)" }}>
                         {t("dashboard.orderLabel", { ref: order.invoiceNumber ?? `#${order.id}` })}
                       </div>
-                      <div className="flex flex-wrap items-center gap-3 text-xs" style={{ color: "oklch(62% 0.02 240)" }}>
+                      <div className="flex flex-wrap items-center gap-3 text-xs" style={{ color: "var(--muted-foreground)" }}>
                         <span className="flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
                           {new Date(order.createdAt).toLocaleDateString(lang)}
                         </span>
-                        <span className="font-medium" style={{ color: "oklch(19% 0.08 252)" }}>
+                        <span className="font-medium" style={{ color: "var(--foreground)" }}>
                           {t("dashboard.amountInclTax", { amount: Number(order.totalTtc).toFixed(2) })}
                           {order.refundedAmountCents > 0 && <span className="block text-xs">{t("refund.amount", { amount: (order.refundedAmountCents / 100).toFixed(2) })}</span>}
                         </span>
@@ -657,8 +660,8 @@ export default function Dashboard() {
                     </div>
                     <div className="flex items-center gap-3 flex-shrink-0">
                       <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{
-                        color: order.status === "paid" ? "oklch(55% 0.18 145)" : order.status === "failed" ? "oklch(55% 0.22 27)" : "oklch(68% 0.1 78)",
-                        background: order.status === "paid" ? "oklch(55% 0.18 145 / 0.1)" : order.status === "failed" ? "oklch(55% 0.22 27 / 0.1)" : "oklch(68% 0.1 78 / 0.1)",
+                        color: order.status === "paid" ? "var(--success)" : order.status === "failed" ? "var(--destructive)" : "var(--link)",
+                        background: order.status === "paid" ? "color-mix(in srgb, var(--success) 10%, transparent)" : order.status === "failed" ? "color-mix(in srgb, var(--destructive) 10%, transparent)" : "color-mix(in srgb, var(--link) 10%, transparent)",
                       }}>
                         {order.status === "paid" ? t("dashboard.orderStatusPaid") : order.status === "pending" ? t("dashboard.orderStatusPending") : order.status === "failed" ? t("dashboard.orderStatusFailed") : order.status === "refunded" ? t("dashboard.orderStatusRefunded") : order.status}
                       </span>

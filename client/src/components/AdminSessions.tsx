@@ -10,9 +10,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-const DEEP_BLUE = "oklch(19% 0.08 252)";
-const MUTED = "oklch(45% 0.02 240)";
-const BORDER = "oklch(88% 0.015 88)";
+const DEEP_BLUE = "var(--foreground)";
+const MUTED = "var(--muted-foreground)";
+const BORDER = "var(--border)";
 
 export default function AdminSessions() {
   const { t, lang } = useI18n();
@@ -45,22 +45,22 @@ export default function AdminSessions() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-semibold" style={{ color: DEEP_BLUE }}>{t("adminSessions.heading")}</h2>
-        <Button size="sm" onClick={() => setOpen(true)} style={{ background: "oklch(68% 0.1 78)", color: DEEP_BLUE }}><Plus className="w-4 h-4 mr-1" /> {t("adminSessions.newSession")}</Button>
+        <h2 className="font-semibold" style={{ color: "var(--foreground)" }}>{t("adminSessions.heading")}</h2>
+        <Button size="sm" onClick={() => setOpen(true)} style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}><Plus className="w-4 h-4 mr-1" /> {t("adminSessions.newSession")}</Button>
       </div>
-      <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${BORDER}` }}>
+      <div className="rounded-xl overflow-hidden" style={{ border: `1px solid ${"var(--border)"}` }}>
         <table className="w-full text-sm">
-          <thead style={{ background: "oklch(93% 0.015 88)" }}><tr>{[t("adminSessions.colDate"), t("adminSessions.colTitle"), t("adminSessions.colFormat"), t("adminSessions.colLocation"), t("adminSessions.colSeats"), t("adminSessions.colPriceHt"), ""].map((h, idx) => <th key={idx} className="text-left px-4 py-3 text-xs font-semibold" style={{ color: MUTED }}>{h}</th>)}</tr></thead>
+          <thead style={{ background: "var(--muted)" }}><tr>{[t("adminSessions.colDate"), t("adminSessions.colTitle"), t("adminSessions.colFormat"), t("adminSessions.colLocation"), t("adminSessions.colSeats"), t("adminSessions.colPriceHt"), ""].map((h, idx) => <th key={idx} className="text-left px-4 py-3 text-xs font-semibold" style={{ color: "var(--muted-foreground)" }}>{h}</th>)}</tr></thead>
           <tbody>
             {(sessions as any[]).map((s, i) => (
-              <tr key={s.id} style={{ background: i % 2 ? "oklch(97% 0.01 88)" : "white", borderTop: `1px solid ${BORDER}` }}>
-                <td className="px-4 py-3" style={{ color: MUTED }}>{new Date(s.startDate).toLocaleString(lang)}{s.endDate && <span className="block text-xs">→ {new Date(s.endDate).toLocaleString(lang)}</span>}</td>
-                <td className="px-4 py-3 font-medium" style={{ color: DEEP_BLUE }}>{s.title}</td>
-                <td className="px-4 py-3" style={{ color: MUTED }}>{(FORMATS.find((f) => f[0] === s.format) ?? [])[1] ?? s.format}</td>
-                <td className="px-4 py-3" style={{ color: MUTED }}>{s.location ?? "—"}</td>
-                <td className="px-4 py-3" style={{ color: MUTED }}>{s.seatsTaken}/{s.seats}</td>
-                <td className="px-4 py-3" style={{ color: MUTED }}>{Number(s.priceHt) > 0 ? `${Number(s.priceHt).toFixed(0)} €` : t("adminSessions.free")}</td>
-                <td className="px-4 py-3"><Button size="sm" variant="outline" onClick={()=>setInstructorRoom(s.id)}>{lang==='fr'?'Instructeurs':lang==='ar'?'المدربون':'Instructors'}</Button><Button size="sm" variant="outline" onClick={() => setHistoryId(s.id)}>{lang === "fr" ? "Historique" : lang === "ar" ? "السجل" : "History"}</Button><Button size="sm" variant="outline" disabled={s.status === "cancelled" || s.status === "completed"} onClick={() => setSchedule(s)}>{lang === "fr" ? "Horaires" : lang === "ar" ? "المواعيد" : "Schedule"}</Button><button title={t("sessions.cancelledClassAction")} disabled={s.status === "cancelled"} onClick={() => { if (confirm(t("adminSessions.confirmDelete"))) del.mutate({ id: s.id }); }} className="text-red-500"><Trash2 className="w-4 h-4" /></button></td>
+              <tr key={s.id} style={{ background: i % 2 ? "var(--background)" : "var(--card)", borderTop: `1px solid ${"var(--border)"}` }}>
+                <td className="px-4 py-3" style={{ color: "var(--muted-foreground)" }}>{new Date(s.startDate).toLocaleString(lang)}{s.endDate && <span className="block text-xs">→ {new Date(s.endDate).toLocaleString(lang)}</span>}</td>
+                <td className="px-4 py-3 font-medium" style={{ color: "var(--foreground)" }}>{s.title}</td>
+                <td className="px-4 py-3" style={{ color: "var(--muted-foreground)" }}>{(FORMATS.find((f) => f[0] === s.format) ?? [])[1] ?? s.format}</td>
+                <td className="px-4 py-3" style={{ color: "var(--muted-foreground)" }}>{s.location ?? "—"}</td>
+                <td className="px-4 py-3" style={{ color: "var(--muted-foreground)" }}>{s.seatsTaken}/{s.seats}</td>
+                <td className="px-4 py-3" style={{ color: "var(--muted-foreground)" }}>{Number(s.priceHt) > 0 ? `${Number(s.priceHt).toFixed(0)} €` : t("adminSessions.free")}</td>
+                <td className="px-4 py-3"><Button size="sm" variant="outline" onClick={()=>setInstructorRoom(s.id)}>{lang==='fr'?'Instructeurs':lang==='ar'?'المدربون':'Instructors'}</Button><Button size="sm" variant="outline" onClick={() => setHistoryId(s.id)}>{lang === "fr" ? "Historique" : lang === "ar" ? "السجل" : "History"}</Button><Button size="sm" variant="outline" disabled={s.status === "cancelled" || s.status === "completed"} onClick={() => setSchedule(s)}>{lang === "fr" ? "Horaires" : lang === "ar" ? "المواعيد" : "Schedule"}</Button><button title={t("sessions.cancelledClassAction")} disabled={s.status === "cancelled"} onClick={() => { if (confirm(t("adminSessions.confirmDelete"))) del.mutate({ id: s.id }); }} className="text-destructive"><Trash2 className="w-4 h-4" /></button></td>
               </tr>
             ))}
           </tbody>
@@ -77,10 +77,10 @@ export default function AdminSessions() {
             <div className="space-y-3 mt-2">
               <Input placeholder={t("adminSessions.placeholderTitle")} value={form.title} onChange={(e) => set("title", e.target.value)} />
               <div className="grid grid-cols-2 gap-3">
-                <select value={form.format} onChange={(e) => set("format", e.target.value)} className="h-9 rounded-md border px-3 text-sm" style={{ borderColor: BORDER }}>
+                <select value={form.format} onChange={(e) => set("format", e.target.value)} className="h-9 rounded-md border px-3 text-sm" style={{ borderColor: "var(--border)" }}>
                   {FORMATS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                 </select>
-                <select value={form.trainingId} onChange={(e) => set("trainingId", e.target.value)} className="h-9 rounded-md border px-3 text-sm" style={{ borderColor: BORDER }}>
+                <select value={form.trainingId} onChange={(e) => set("trainingId", e.target.value)} className="h-9 rounded-md border px-3 text-sm" style={{ borderColor: "var(--border)" }}>
                   <option value="">{t("adminSessions.linkedTrainingOption")}</option>
                   {(trainings as any[]).map((t2) => <option key={t2.id} value={t2.id}>{t2.title}</option>)}
                 </select>
@@ -88,19 +88,19 @@ export default function AdminSessions() {
               <Input placeholder={t("adminSessions.placeholderLocation")} value={form.location} onChange={(e) => set("location", e.target.value)} />
               <Input placeholder={t("adminSessions.placeholderInstructor")} value={form.instructorName} onChange={(e) => set("instructorName", e.target.value)} />
               <div className="grid grid-cols-2 gap-3">
-                <div><label htmlFor="new-session-start" className="text-xs" style={{ color: MUTED }}>{t("adminSessions.labelStart")}</label><Input id="new-session-start" type="datetime-local" value={form.startDate} onChange={(e) => set("startDate", e.target.value)} /></div>
-                <div><label htmlFor="new-session-end" className="text-xs" style={{ color: MUTED }}>{t("adminSessions.labelEnd")}</label><Input id="new-session-end" type="datetime-local" value={form.endDate} onChange={(e) => set("endDate", e.target.value)} /></div>
+                <div><label htmlFor="new-session-start" className="text-sm" style={{ color: "var(--muted-foreground)" }}>{t("adminSessions.labelStart")}</label><Input id="new-session-start" type="datetime-local" value={form.startDate} onChange={(e) => set("startDate", e.target.value)} /></div>
+                <div><label htmlFor="new-session-end" className="text-sm" style={{ color: "var(--muted-foreground)" }}>{t("adminSessions.labelEnd")}</label><Input id="new-session-end" type="datetime-local" value={form.endDate} onChange={(e) => set("endDate", e.target.value)} /></div>
               </div>
               <p className="text-xs text-muted-foreground">{lang === "fr" ? "Heures locales du navigateur. Une fin après le début est obligatoire pour les classes à distance." : lang === "ar" ? "التوقيت المحلي للمتصفح. يجب تحديد نهاية بعد البداية للفصول عن بعد." : "Times use your browser’s local time zone. Remote classes require an end after the start."}</p>
               <div className="grid grid-cols-3 gap-3">
-                <div><label className="text-xs" style={{ color: MUTED }}>{t("adminSessions.labelDays")}</label><Input type="number" step="0.5" value={form.durationDays} onChange={(e) => set("durationDays", e.target.value)} /></div>
-                <div><label className="text-xs" style={{ color: MUTED }}>{t("adminSessions.labelSeats")}</label><Input type="number" value={form.seats} onChange={(e) => set("seats", e.target.value)} /></div>
-                <div><label className="text-xs" style={{ color: MUTED }}>{t("adminSessions.labelPriceHt")}</label><Input type="number" value={form.priceHt} onChange={(e) => set("priceHt", e.target.value)} /></div>
+                <div><label className="text-sm" style={{ color: "var(--muted-foreground)" }}>{t("adminSessions.labelDays")}</label><Input type="number" step="0.5" value={form.durationDays} onChange={(e) => set("durationDays", e.target.value)} /></div>
+                <div><label className="text-sm" style={{ color: "var(--muted-foreground)" }}>{t("adminSessions.labelSeats")}</label><Input type="number" value={form.seats} onChange={(e) => set("seats", e.target.value)} /></div>
+                <div><label className="text-sm" style={{ color: "var(--muted-foreground)" }}>{t("adminSessions.labelPriceHt")}</label><Input type="number" value={form.priceHt} onChange={(e) => set("priceHt", e.target.value)} /></div>
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-4">
               <Button variant="outline" onClick={() => setOpen(false)}>{t("adminSessions.cancel")}</Button>
-              <Button onClick={submit} disabled={create.isPending} style={{ background: DEEP_BLUE, color: "white" }}>{t("adminSessions.create")}</Button>
+              <Button onClick={submit} disabled={create.isPending} style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>{t("adminSessions.create")}</Button>
             </div>
           </DialogContent>
         </Dialog>

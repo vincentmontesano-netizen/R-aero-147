@@ -13,10 +13,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Plus, Pencil, Trash2, GripVertical, ChevronUp, ChevronDown, HelpCircle, FileText, Check, Target } from "lucide-react";
 import { toast } from "sonner";
 
-const DEEP_BLUE = "oklch(19% 0.08 252)";
-const GOLD = "oklch(68% 0.1 78)";
-const MUTED = "oklch(45% 0.02 240)";
-const BORDER = "oklch(88% 0.015 88)";
+const DEEP_BLUE = "var(--foreground)";
+const GOLD = "var(--link)";
+const MUTED = "var(--muted-foreground)";
+const BORDER = "var(--border)";
 
 const QUESTION_TYPE_KEYS: Record<string, string> = {
   qcu: "adminContentManager.questionTypeQcu",
@@ -118,34 +118,34 @@ function ModuleDialog({ trainingId, module, nextOrder, onClose, onSaved }: {
         <DialogHeader><DialogTitle>{module ? t("adminContentManager.moduleDialogEditTitle") : t("adminContentManager.moduleDialogNewTitle")}</DialogTitle></DialogHeader>
         <fieldset disabled={pending} className="space-y-3 mt-2">
           <div>
-            <label className={labelCls} style={{ color: MUTED }}>{t("adminContentManager.moduleTitleLabel")}</label>
+            <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.moduleTitleLabel")}</label>
             <Input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} placeholder={t("adminContentManager.moduleTitlePlaceholder")} />
           </div>
           <div>
-            <label className={labelCls} style={{ color: MUTED }}>{t("adminContentManager.moduleShortDescriptionLabel")}</label>
+            <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.moduleShortDescriptionLabel")}</label>
             <Input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
           </div>
           <div>
-            <label className={labelCls} style={{ color: MUTED }}>{t("adminContentManager.moduleContentLabel")}</label>
-            <textarea value={form.content} onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))} className="w-full rounded-md border px-3 py-2 text-sm h-36 resize-y" style={{ borderColor: BORDER }} placeholder={t("adminContentManager.moduleContentPlaceholder")} />
+            <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.moduleContentLabel")}</label>
+            <textarea value={form.content} onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))} className="w-full rounded-md border px-3 py-2 text-sm h-36 resize-y" style={{ borderColor: "var(--border)" }} placeholder={t("adminContentManager.moduleContentPlaceholder")} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={labelCls} style={{ color: MUTED }}>{t("adminContentManager.moduleVideoLabel")}</label>
+              <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.moduleVideoLabel")}</label>
               <PrivateMediaUpload disabled={pending} onStart={startImport} onFinish={finishImport} trainingId={trainingId} kind="video" onUploaded={url => setForm(f => ({ ...f, videoUrl: url }))} />
               <Input value={form.videoUrl} onChange={(e) => setForm((f) => ({ ...f, videoUrl: e.target.value }))} placeholder="https://…" />
             </div>
             <div>
-              <label className={labelCls} style={{ color: MUTED }}>{t("adminContentManager.modulePdfLabel")}</label>
+              <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.modulePdfLabel")}</label>
               <PrivateMediaUpload disabled={pending} onStart={startImport} onFinish={finishImport} trainingId={trainingId} kind="pdf" onUploaded={url => setForm(f => ({ ...f, pdfUrl: url }))} />
               <Input value={form.pdfUrl} onChange={(e) => setForm((f) => ({ ...f, pdfUrl: e.target.value }))} placeholder="https://…" />
             </div>
             <div>
-              <label className={labelCls} style={{ color: MUTED }}>{t("adminContentManager.moduleDurationLabel")}</label>
+              <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.moduleDurationLabel")}</label>
               <Input type="number" value={form.durationMinutes} onChange={(e) => setForm((f) => ({ ...f, durationMinutes: Number(e.target.value) }))} />
             </div>
             <div>
-              <label className={labelCls} style={{ color: MUTED }}>{t("adminContentManager.orderLabel")}</label>
+              <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.orderLabel")}</label>
               <Input type="number" value={form.sortOrder} onChange={(e) => setForm((f) => ({ ...f, sortOrder: Number(e.target.value) }))} />
             </div>
           </div>
@@ -154,18 +154,18 @@ function ModuleDialog({ trainingId, module, nextOrder, onClose, onSaved }: {
             <label className="grid gap-2 text-sm">{t("learningPlayer.chapterAttempts")}<Input type="number" min={1} max={20} value={form.quizMaxAttempts} onChange={e => setForm(f => ({ ...f, quizMaxAttempts: Number(e.target.value) }))} /></label>
             <label className="grid gap-2 text-sm">{t("learningPlayer.chapterTime")}<Input type="number" min={1} max={240} value={form.quizTimeLimitMin ?? ""} onChange={e => setForm(f => ({ ...f, quizTimeLimitMin: e.target.value ? Number(e.target.value) : null }))} /></label>
           </div>
-          <label className="flex items-center gap-2 text-sm" style={{ color: MUTED }}>
+          <label className="flex items-center gap-2 text-sm" style={{ color: "var(--muted-foreground)" }}>
             <input type="checkbox" checked={form.isRequired} onChange={(e) => setForm((f) => ({ ...f, isRequired: e.target.checked }))} />
             {t("adminContentManager.moduleRequiredLabel")}
           </label>
         </fieldset>
         {mediaBusy && <p role="status" className="text-sm mt-3">{t("courseMaker.importBeforeSave")}</p>}
-        {update.error?.data?.code==='CONFLICT' && <div className="mt-3 space-y-3"><p role="alert" className="text-sm text-amber-800">{t("adminContentManager.moduleEditConflict")}</p><Button variant="outline" disabled={pending} onClick={()=>{void compareLatest();}}>{t('courseMaker.compareVersions')}</Button></div>}
+        {update.error?.data?.code==='CONFLICT' && <div className="mt-3 space-y-3"><p role="alert" className="text-sm text-warning">{t("adminContentManager.moduleEditConflict")}</p><Button variant="outline" disabled={pending} onClick={()=>{void compareLatest();}}>{t('courseMaker.compareVersions')}</Button></div>}
         {comparison && <DraftConflictResolution kind="module" base={baseline.current} draft={form} latest={comparison.latest} onCancel={()=>setComparison(null)} onApply={merged=>{setForm(merged);baseline.current=comparison.latest;expectedRevision.current=comparison.revision;initialDraft.current=JSON.stringify(comparison.latest);setComparison(null);update.reset();}}/>}
-        {create.isError && <p role="alert" className="mt-3 text-sm text-amber-800">{t("adminContentManager.moduleCreateUnconfirmed")}</p>}
+        {create.isError && <p role="alert" className="mt-3 text-sm text-warning">{t("adminContentManager.moduleCreateUnconfirmed")}</p>}
         <div className="flex justify-end gap-2 mt-4">
           <Button variant="outline" disabled={create.isPending || update.isPending} onClick={closeEditor}>{t("adminContentManager.cancelButton")}</Button>
-          <Button onClick={save} disabled={pending} style={{ background: DEEP_BLUE, color: "white" }}>{t("adminContentManager.saveButton")}</Button>
+          <Button onClick={save} disabled={pending} style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>{t("adminContentManager.saveButton")}</Button>
         </div>
       </DialogContent>
     </Dialog>
@@ -292,60 +292,60 @@ function QuestionDialog({ trainingId, modules, objectives, question, nextOrder, 
         <fieldset disabled={busy} className="space-y-3 mt-2">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={labelCls} style={{ color: MUTED }}>{t("adminContentManager.questionTypeLabel")}</label>
-              <select value={type} onChange={(e) => changeType(e.target.value)} className={selectCls} style={{ borderColor: BORDER }}>
+              <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.questionTypeLabel")}</label>
+              <select value={type} onChange={(e) => changeType(e.target.value)} className={selectCls} style={{ borderColor: "var(--border)" }}>
                 {Object.entries(QUESTION_TYPE_KEYS).map(([v, k]) => <option key={v} value={v}>{t(k)}</option>)}
               </select>
             </div>
             <div>
-              <label className={labelCls} style={{ color: MUTED }}>{t("adminContentManager.questionModuleLabel")}</label>
-              <select value={moduleId} onChange={(e) => setModuleId(e.target.value === "" ? "" : Number(e.target.value))} className={selectCls} style={{ borderColor: BORDER }}>
+              <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.questionModuleLabel")}</label>
+              <select value={moduleId} onChange={(e) => setModuleId(e.target.value === "" ? "" : Number(e.target.value))} className={selectCls} style={{ borderColor: "var(--border)" }}>
                 <option value="">{t("adminContentManager.questionModuleFinalExam")}</option>
                 {modules.map((m) => <option key={m.id} value={m.id}>{m.title}</option>)}
               </select>
             </div>
           </div>
           <div>
-            <label className={labelCls} style={{ color: MUTED }}>{t("adminContentManager.questionObjectiveLabel")}</label>
-            <select value={objectiveId} onChange={(e) => setObjectiveId(e.target.value === "" ? "" : Number(e.target.value))} className={selectCls} style={{ borderColor: BORDER }}>
+            <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.questionObjectiveLabel")}</label>
+            <select value={objectiveId} onChange={(e) => setObjectiveId(e.target.value === "" ? "" : Number(e.target.value))} className={selectCls} style={{ borderColor: "var(--border)" }}>
               <option value="">{t("adminContentManager.questionObjectiveNone")}</option>
               {objectives.map((o) => <option key={o.id} value={o.id}>{o.code ? `${o.code} · ` : ""}{o.title}</option>)}
             </select>
           </div>
           <div>
-            <label className={labelCls} style={{ color: MUTED }}>{t("adminContentManager.questionTextLabel")}</label>
-            <textarea value={text} onChange={(e) => setText(e.target.value)} className="w-full rounded-md border px-3 py-2 text-sm h-20 resize-y" style={{ borderColor: BORDER }} />
+            <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.questionTextLabel")}</label>
+            <textarea value={text} onChange={(e) => setText(e.target.value)} className="w-full rounded-md border px-3 py-2 text-sm h-20 resize-y" style={{ borderColor: "var(--border)" }} />
           </div>
           {(type === "qcm" || type === "qcu" || type === "true_false") && (
             <div>
-              <label className={labelCls} style={{ color: MUTED }}>
+              <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>
                 {type === "qcm" ? t("adminContentManager.answersLabelMulti") : t("adminContentManager.answersLabelSingle")}
               </label>
               <div className="space-y-2">
                 {options.map((opt, idx) => (
                   <div key={idx} className="flex items-center gap-2">
-                    <button type="button" onClick={() => toggleCorrect(idx)} title={t("adminContentManager.markCorrectAnswerTitle")} className="w-6 h-6 rounded-full border flex items-center justify-center shrink-0" style={{ borderColor: correct.includes(idx) ? "oklch(55% 0.18 145)" : BORDER, background: correct.includes(idx) ? "oklch(55% 0.18 145)" : "transparent" }}>
+                    <button type="button" onClick={() => toggleCorrect(idx)} title={t("adminContentManager.markCorrectAnswerTitle")} className="w-6 h-6 rounded-full border flex items-center justify-center shrink-0" style={{ borderColor: correct.includes(idx) ? "var(--success)" : "var(--border)", background: correct.includes(idx) ? "color-mix(in srgb, var(--success) 18%, transparent)" : "transparent" }}>
                       {correct.includes(idx) && <Check className="w-3.5 h-3.5 text-white" />}
                     </button>
                     <Input value={opt} onChange={(e) => setOptions((o) => o.map((x, i) => (i === idx ? e.target.value : x)))} placeholder={t("adminContentManager.answerPlaceholder", { n: idx + 1 })} />
                     {type !== "true_false" && options.length > 2 && (
-                      <button type="button" onClick={() => { setOptions((o) => o.filter((_, i) => i !== idx)); setCorrect((c) => c.filter((i) => i !== idx).map((i) => (i > idx ? i - 1 : i))); }} className="text-red-500 shrink-0"><Trash2 className="w-4 h-4" /></button>
+                      <button type="button" onClick={() => { setOptions((o) => o.filter((_, i) => i !== idx)); setCorrect((c) => c.filter((i) => i !== idx).map((i) => (i > idx ? i - 1 : i))); }} className="text-destructive shrink-0"><Trash2 className="w-4 h-4" /></button>
                     )}
                   </div>
                 ))}
               </div>
               {type !== "true_false" && (
-                <button type="button" onClick={() => setOptions((o) => [...o, ""])} className="text-xs mt-2 flex items-center gap-1" style={{ color: GOLD }}><Plus className="w-3 h-3" /> {t("adminContentManager.addAnswerButton")}</button>
+                <button type="button" onClick={() => setOptions((o) => [...o, ""])} className="text-sm mt-2 flex items-center gap-1" style={{ color: "var(--link)" }}><Plus className="w-3 h-3" /> {t("adminContentManager.addAnswerButton")}</button>
               )}
             </div>
           )}
 
           {type === "free_text" && (
             <div className="space-y-2">
-              <label className={labelCls} style={{ color: MUTED }}>{t("adminContentManager.keywordsLabel")}</label>
+              <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.keywordsLabel")}</label>
               <Input value={keywords} onChange={(e) => setKeywords(e.target.value)} placeholder={t("adminContentManager.keywordsPlaceholder")} />
-              <p className="text-sm" style={{ color: MUTED }}>{t("adminContentManager.keywordGradingHint")}</p>
-              {legacyRegex && <div className="rounded border border-amber-200 bg-amber-50 p-3 space-y-2">
+              <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.keywordGradingHint")}</p>
+              {legacyRegex && <div className="rounded border border-warning/30 bg-warning/10 p-3 space-y-2">
                 <p className="text-sm">{t("adminContentManager.legacyRegexHint")}</p>
                 <code className="block break-all text-xs">{legacyRegex}</code>
                 <label className="flex gap-2 items-start text-sm"><input type="checkbox" checked={replaceLegacyRegex} onChange={e => setReplaceLegacyRegex(e.target.checked)} />{t("adminContentManager.replaceLegacyRegex")}</label>
@@ -356,34 +356,34 @@ function QuestionDialog({ trainingId, modules, objectives, question, nextOrder, 
           {type === "matching" && (
             <div className="space-y-3">
               <div>
-                <label className={labelCls} style={{ color: MUTED }}>{t("adminContentManager.matchingLeftColumnLabel")}</label>
+                <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.matchingLeftColumnLabel")}</label>
                 {options.map((opt, idx) => (
                   <div key={idx} className="flex items-center gap-2 mb-1">
                     <Input value={opt} onChange={(e) => setOptions((o) => o.map((x, i) => (i === idx ? e.target.value : x)))} placeholder={t("adminContentManager.itemPlaceholder", { n: idx + 1 })} />
-                    <button type="button" onClick={() => { setOptions((o) => o.filter((_, i) => i !== idx)); setPairs((p) => removeMatchingOption(p, idx, 0)); }} className="text-red-500 shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    <button type="button" onClick={() => { setOptions((o) => o.filter((_, i) => i !== idx)); setPairs((p) => removeMatchingOption(p, idx, 0)); }} className="text-destructive shrink-0"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 ))}
-                <button type="button" onClick={() => setOptions((o) => [...o, ""])} className="text-xs flex items-center gap-1" style={{ color: GOLD }}><Plus className="w-3 h-3" /> {t("adminContentManager.addLeftItemButton")}</button>
+                <button type="button" onClick={() => setOptions((o) => [...o, ""])} className="text-sm flex items-center gap-1" style={{ color: "var(--link)" }}><Plus className="w-3 h-3" /> {t("adminContentManager.addLeftItemButton")}</button>
               </div>
               <div>
-                <label className={labelCls} style={{ color: MUTED }}>{t("adminContentManager.matchingRightColumnLabel")}</label>
+                <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.matchingRightColumnLabel")}</label>
                 {optionsRight.map((opt, idx) => (
                   <div key={idx} className="flex items-center gap-2 mb-1">
                     <Input value={opt} onChange={(e) => setOptionsRight((o) => o.map((x, i) => (i === idx ? e.target.value : x)))} placeholder={t("adminContentManager.answerPlaceholder", { n: idx + 1 })} />
-                    <button type="button" onClick={() => { setOptionsRight((o) => o.filter((_, i) => i !== idx)); setPairs(p => removeMatchingOption(p, idx, 1)); }} className="text-red-500 shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    <button type="button" onClick={() => { setOptionsRight((o) => o.filter((_, i) => i !== idx)); setPairs(p => removeMatchingOption(p, idx, 1)); }} className="text-destructive shrink-0"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 ))}
-                <button type="button" onClick={() => setOptionsRight((o) => [...o, ""])} className="text-xs flex items-center gap-1" style={{ color: GOLD }}><Plus className="w-3 h-3" /> {t("adminContentManager.addRightItemButton")}</button>
+                <button type="button" onClick={() => setOptionsRight((o) => [...o, ""])} className="text-sm flex items-center gap-1" style={{ color: "var(--link)" }}><Plus className="w-3 h-3" /> {t("adminContentManager.addRightItemButton")}</button>
               </div>
               <div>
-                <label className={labelCls} style={{ color: MUTED }}>{t("adminContentManager.matchingCorrectPairsLabel")}</label>
+                <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.matchingCorrectPairsLabel")}</label>
                 {options.map((left, li) => {
                   const cur = pairs.find((p) => p[0] === li)?.[1];
                   return (
                     <div key={li} className="flex items-center gap-2 mb-1">
-                      <span className="text-sm flex-1 min-w-0 truncate" style={{ color: DEEP_BLUE }}>{left || t("adminContentManager.itemPlaceholder", { n: li + 1 })}</span>
-                      <span style={{ color: MUTED }}>→</span>
-                      <select value={cur ?? ""} onChange={(e) => setPairs((p) => { const others = p.filter((x) => x[0] !== li); return e.target.value === "" ? others : [...others, [li, Number(e.target.value)]]; })} className={selectCls} style={{ borderColor: BORDER }}>
+                      <span className="text-sm flex-1 min-w-0 truncate" style={{ color: "var(--foreground)" }}>{left || t("adminContentManager.itemPlaceholder", { n: li + 1 })}</span>
+                      <span style={{ color: "var(--muted-foreground)" }}>→</span>
+                      <select value={cur ?? ""} onChange={(e) => setPairs((p) => { const others = p.filter((x) => x[0] !== li); return e.target.value === "" ? others : [...others, [li, Number(e.target.value)]]; })} className={selectCls} style={{ borderColor: "var(--border)" }}>
                         <option value="">—</option>
                         {optionsRight.map((r, ri) => <option key={ri} value={ri}>{r || t("adminContentManager.answerPlaceholder", { n: ri + 1 })}</option>)}
                       </select>
@@ -395,22 +395,22 @@ function QuestionDialog({ trainingId, modules, objectives, question, nextOrder, 
           )}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={labelCls} style={{ color: MUTED }}>{t("adminContentManager.pointsLabel")}</label>
+              <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.pointsLabel")}</label>
               <Input type="number" min={1} value={points} onChange={(e) => setPoints(Number(e.target.value))} />
             </div>
           </div>
           <div>
-            <label className={labelCls} style={{ color: MUTED }}>{t("adminContentManager.explanationLabel")}</label>
-            <textarea value={explanation} onChange={(e) => setExplanation(e.target.value)} className="w-full rounded-md border px-3 py-2 text-sm h-16 resize-y" style={{ borderColor: BORDER }} />
+            <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.explanationLabel")}</label>
+            <textarea value={explanation} onChange={(e) => setExplanation(e.target.value)} className="w-full rounded-md border px-3 py-2 text-sm h-16 resize-y" style={{ borderColor: "var(--border)" }} />
           </div>
         </fieldset>
         {(create.isPending || update.isPending) && <p role="status" className="text-sm mt-3">{t('adminContentManager.questionSaving')}</p>}
-        {saveFailed && <p role="alert" className="text-sm text-amber-800 mt-3">{t(question ? 'adminContentManager.questionUpdateFailed' : 'adminContentManager.questionSaveFailed')}</p>}
-        {update.error?.data?.code==='CONFLICT' && <div className="mt-3 space-y-3"><p role="alert" className="text-sm text-amber-800">{t("adminContentManager.questionEditConflict")}</p><Button variant="outline" disabled={busy} onClick={()=>{void compareLatest();}}>{t('courseMaker.compareVersions')}</Button></div>}
+        {saveFailed && <p role="alert" className="text-sm text-warning mt-3">{t(question ? 'adminContentManager.questionUpdateFailed' : 'adminContentManager.questionSaveFailed')}</p>}
+        {update.error?.data?.code==='CONFLICT' && <div className="mt-3 space-y-3"><p role="alert" className="text-sm text-warning">{t("adminContentManager.questionEditConflict")}</p><Button variant="outline" disabled={busy} onClick={()=>{void compareLatest();}}>{t('courseMaker.compareVersions')}</Button></div>}
         {comparison && <DraftConflictResolution kind="question" base={baseline.current} draft={currentDraft} latest={comparison.latest} onCancel={()=>setComparison(null)} onApply={applyComparison}/>}
         <div className="flex justify-end gap-2 mt-4">
           <Button variant="outline" disabled={busy} onClick={closeEditor}>{t("adminContentManager.cancelButton")}</Button>
-          <Button onClick={save} disabled={busy} style={{ background: DEEP_BLUE, color: "white" }}>{t("adminContentManager.saveButton")}</Button>
+          <Button onClick={save} disabled={busy} style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>{t("adminContentManager.saveButton")}</Button>
         </div>
       </DialogContent>
     </Dialog>
@@ -484,12 +484,12 @@ function ObjectiveDialog({ trainingId, modules, objective, nextOrder, onClose, o
         <fieldset disabled={comparing||!!comparison||create.isPending||update.isPending} className="space-y-3 mt-2">
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className={labelCls} style={{ color: MUTED }}>{t("adminContentManager.objectiveCodeLabel")}</label>
+              <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.objectiveCodeLabel")}</label>
               <Input value={form.code} onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))} placeholder="9.1" />
             </div>
             <div className="col-span-2">
-              <label className={labelCls} style={{ color: MUTED }}>{t("adminContentManager.knowledgeLevelLabel")}</label>
-              <select value={form.knowledgeLevel} onChange={(e) => setForm((f) => ({ ...f, knowledgeLevel: e.target.value as "1" | "2" | "3" }))} className={selectCls} style={{ borderColor: BORDER }}>
+              <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.knowledgeLevelLabel")}</label>
+              <select value={form.knowledgeLevel} onChange={(e) => setForm((f) => ({ ...f, knowledgeLevel: e.target.value as "1" | "2" | "3" }))} className={selectCls} style={{ borderColor: "var(--border)" }}>
                 <option value="1">{t("adminContentManager.knowledgeLevel1")}</option>
                 <option value="2">{t("adminContentManager.knowledgeLevel2")}</option>
                 <option value="3">{t("adminContentManager.knowledgeLevel3")}</option>
@@ -497,34 +497,34 @@ function ObjectiveDialog({ trainingId, modules, objective, nextOrder, onClose, o
             </div>
           </div>
           <div>
-            <label className={labelCls} style={{ color: MUTED }}>{t("adminContentManager.objectiveTitleLabel")}</label>
+            <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.objectiveTitleLabel")}</label>
             <Input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} placeholder={t("adminContentManager.objectiveTitlePlaceholder")} />
           </div>
           <div>
-            <label className={labelCls} style={{ color: MUTED }}>{t("adminContentManager.descriptionLabel")}</label>
-            <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} className="w-full rounded-md border px-3 py-2 text-sm h-20 resize-y" style={{ borderColor: BORDER }} />
+            <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.descriptionLabel")}</label>
+            <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} className="w-full rounded-md border px-3 py-2 text-sm h-20 resize-y" style={{ borderColor: "var(--border)" }} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={labelCls} style={{ color: MUTED }}>{t("adminContentManager.objectiveSubmoduleLabel")}</label>
-              <select value={form.moduleId} onChange={(e) => setForm((f) => ({ ...f, moduleId: e.target.value === "" ? "" : Number(e.target.value) }))} className={selectCls} style={{ borderColor: BORDER }}>
+              <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.objectiveSubmoduleLabel")}</label>
+              <select value={form.moduleId} onChange={(e) => setForm((f) => ({ ...f, moduleId: e.target.value === "" ? "" : Number(e.target.value) }))} className={selectCls} style={{ borderColor: "var(--border)" }}>
                 <option value="">{t("adminContentManager.objectiveSubmoduleNone")}</option>
                 {modules.map((m) => <option key={m.id} value={m.id}>{m.title}</option>)}
               </select>
             </div>
             <div>
-              <label className={labelCls} style={{ color: MUTED }}>{t("adminContentManager.orderLabel")}</label>
+              <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.orderLabel")}</label>
               <Input type="number" value={form.sortOrder} onChange={(e) => setForm((f) => ({ ...f, sortOrder: Number(e.target.value) }))} />
             </div>
           </div>
-          <label className="flex items-center gap-2 text-sm" style={{ color: MUTED }}>
+          <label className="flex items-center gap-2 text-sm" style={{ color: "var(--muted-foreground)" }}>
             <input type="checkbox" checked={form.isRequired} onChange={(e) => setForm((f) => ({ ...f, isRequired: e.target.checked }))} />
             {t("adminContentManager.objectiveRequiredLabel")}
           </label>
         </fieldset>
         <div className="flex justify-end gap-2 mt-4">
           <Button variant="outline" disabled={create.isPending||update.isPending||comparing} onClick={closeEditor}>{t("adminContentManager.cancelButton")}</Button>
-          <Button onClick={save} disabled={create.isPending || update.isPending || comparing || !!comparison} style={{ background: DEEP_BLUE, color: "white" }}>{t("adminContentManager.saveButton")}</Button>
+          <Button onClick={save} disabled={create.isPending || update.isPending || comparing || !!comparison} style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>{t("adminContentManager.saveButton")}</Button>
         </div>
       </DialogContent>
     </Dialog>
@@ -584,108 +584,108 @@ export default function AdminContentManager({ trainings }: { trainings: { id: nu
   return (
     <div>
       <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
-        <h2 className="font-semibold" style={{ color: DEEP_BLUE }}>{t("adminContentManager.heading")}</h2>
+        <h2 className="font-semibold" style={{ color: "var(--foreground)" }}>{t("adminContentManager.heading")}</h2>
         <select
           value={trainingId ?? ""}
           onChange={(e) => setTrainingId(Number(e.target.value))}
           className="h-9 rounded-md border px-3 text-sm min-w-72"
-          style={{ borderColor: BORDER }}
+          style={{ borderColor: "var(--border)" }}
         >
           {trainings.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
         </select>
       </div>
 
       {trainingId == null ? (
-        <p className="text-sm" style={{ color: MUTED }}>{t("adminContentManager.selectTraining")}</p>
+        <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.selectTraining")}</p>
       ) : (
         <div className="grid lg:grid-cols-2 gap-6">
           {/* Objectives (Part-66 backbone) — full width */}
-          <div className="rounded-xl p-5 lg:col-span-2" style={{ background: "white", border: `1px solid ${BORDER}` }}>
+          <div className="rounded-xl p-5 lg:col-span-2" style={{ background: "var(--card)", border: `1px solid ${"var(--border)"}` }}>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <Target className="w-4 h-4" style={{ color: GOLD }} />
-                <h3 className="font-semibold text-sm" style={{ color: DEEP_BLUE }}>{t("adminContentManager.objectivesSectionTitle", { count: objectives.length })}</h3>
+                <Target className="w-4 h-4" style={{ color: "var(--link)" }} />
+                <h3 className="font-semibold text-sm" style={{ color: "var(--foreground)" }}>{t("adminContentManager.objectivesSectionTitle", { count: objectives.length })}</h3>
               </div>
               <Button size="sm" variant="outline" onClick={() => setObjectiveDialog({ objective: null })}>
                 <Plus className="w-4 h-4 mr-1" /> {t("adminContentManager.objectiveButton")}
               </Button>
             </div>
             <div className="grid sm:grid-cols-2 gap-2">
-              {objectives.length === 0 && <p className="text-xs" style={{ color: MUTED }}>{t("adminContentManager.objectivesEmpty")}</p>}
+              {objectives.length === 0 && <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.objectivesEmpty")}</p>}
               {objectives.map((o,index) => (
-                <div key={o.id} className="flex items-start gap-2 p-2 rounded-lg" style={{ background: "oklch(97% 0.01 88)" }}>
+                <div key={o.id} className="flex items-start gap-2 p-2 rounded-lg" style={{ background: "var(--background)" }}>
                   <div className="flex flex-col gap-1">
                     <button type="button" aria-label={t('adminContentManager.moveObjectiveUp',{title:o.title})} disabled={index===0||reorderObjectives.isPending||objectivesQuery.isFetching} onClick={()=>moveObjective(index,-1)} className="text-muted-foreground disabled:opacity-30"><ChevronUp className="w-4 h-4"/></button>
                     <button type="button" aria-label={t('adminContentManager.moveObjectiveDown',{title:o.title})} disabled={index===objectives.length-1||reorderObjectives.isPending||objectivesQuery.isFetching} onClick={()=>moveObjective(index,1)} className="text-muted-foreground disabled:opacity-30"><ChevronDown className="w-4 h-4"/></button>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium" style={{ color: DEEP_BLUE }}>
-                      {o.code ? <span style={{ color: GOLD }}>{o.code} · </span> : null}{o.title}
+                    <div className="text-sm font-medium" style={{ color: "var(--foreground)" }}>
+                      {o.code ? <span style={{ color: "var(--link)" }}>{o.code} · </span> : null}{o.title}
                     </div>
-                    <div className="text-xs mt-0.5" style={{ color: MUTED }}>
+                    <div className="text-xs mt-0.5" style={{ color: "var(--muted-foreground)" }}>
                       {t("adminContentManager.objectiveLevelPrefix", { level: o.knowledgeLevel ?? "1" })} · {moduleName(o.moduleId)}{o.isRequired ? ` · ${t("adminContentManager.requiredSuffix")}` : ""}
                     </div>
                   </div>
-                  <button onClick={() => setObjectiveDialog({ objective: o })} className="p-1.5 rounded hover:bg-black/5" style={{ color: MUTED }}><Pencil className="w-4 h-4" /></button>
-                  <button title={t("contentArchive.action")} onClick={() => { if (confirm(t("contentArchive.confirm"))) archiveObjective.mutate({ id: o.id }); }} className="p-1.5 rounded hover:bg-black/5"><Trash2 className="w-4 h-4" /></button>
+                  <button onClick={() => setObjectiveDialog({ objective: o })} className="p-1.5 rounded hover:bg-foreground/5" style={{ color: "var(--muted-foreground)" }}><Pencil className="w-4 h-4" /></button>
+                  <button title={t("contentArchive.action")} onClick={() => { if (confirm(t("contentArchive.confirm"))) archiveObjective.mutate({ id: o.id }); }} className="p-1.5 rounded hover:bg-foreground/5"><Trash2 className="w-4 h-4" /></button>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Modules */}
-          <div className="rounded-xl p-5" style={{ background: "white", border: `1px solid ${BORDER}` }}>
+          <div className="rounded-xl p-5" style={{ background: "var(--card)", border: `1px solid ${"var(--border)"}` }}>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4" style={{ color: GOLD }} />
-                <h3 className="font-semibold text-sm" style={{ color: DEEP_BLUE }}>{t("adminContentManager.modulesSectionTitle", { count: modules.length })}</h3>
+                <FileText className="w-4 h-4" style={{ color: "var(--link)" }} />
+                <h3 className="font-semibold text-sm" style={{ color: "var(--foreground)" }}>{t("adminContentManager.modulesSectionTitle", { count: modules.length })}</h3>
               </div>
               <Button size="sm" variant="outline" onClick={() => setModuleDialog({ module: null })}>
                 <Plus className="w-4 h-4 mr-1" /> {t("adminContentManager.moduleButton")}
               </Button>
             </div>
             <div className="space-y-2">
-              {modules.length === 0 && <p className="text-xs" style={{ color: MUTED }}>{t("adminContentManager.modulesEmpty")}</p>}
+              {modules.length === 0 && <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.modulesEmpty")}</p>}
               {modules.map((m,index) => (
-                <div key={m.id} className="flex items-center gap-2 p-2 rounded-lg" style={{ background: "oklch(97% 0.01 88)" }}>
+                <div key={m.id} className="flex items-center gap-2 p-2 rounded-lg" style={{ background: "var(--background)" }}>
                   <div className="flex flex-col shrink-0">
                     <button type="button" aria-label={t('adminContentManager.moveModuleUp',{title:m.title})} disabled={index===0||reorderModules.isPending||modulesQuery.isFetching} onClick={()=>moveModule(index,-1)} className="text-muted-foreground disabled:opacity-30"><ChevronUp className="w-4 h-4"/></button>
                     <button type="button" aria-label={t('adminContentManager.moveModuleDown',{title:m.title})} disabled={index===modules.length-1||reorderModules.isPending||modulesQuery.isFetching} onClick={()=>moveModule(index,1)} className="text-muted-foreground disabled:opacity-30"><ChevronDown className="w-4 h-4"/></button>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate" style={{ color: DEEP_BLUE }}>{m.sortOrder}. {m.title}</div>
-                    <div className="text-xs" style={{ color: MUTED }}>{t("adminContentManager.moduleDurationMinutes", { minutes: m.durationMinutes ?? 0 })}{m.isRequired ? ` · ${t("adminContentManager.requiredModuleSuffix")}` : ""}</div>
+                    <div className="text-sm font-medium truncate" style={{ color: "var(--foreground)" }}>{m.sortOrder}. {m.title}</div>
+                    <div className="text-xs" style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.moduleDurationMinutes", { minutes: m.durationMinutes ?? 0 })}{m.isRequired ? ` · ${t("adminContentManager.requiredModuleSuffix")}` : ""}</div>
                   </div>
-                  <button onClick={() => setModuleDialog({ module: m })} className="p-1.5 rounded hover:bg-black/5" style={{ color: MUTED }}><Pencil className="w-4 h-4" /></button>
-                  <button title={t("contentArchive.action")} onClick={() => { if (confirm(t("contentArchive.confirm"))) archiveModule.mutate({ id: m.id }); }} className="p-1.5 rounded hover:bg-black/5"><Trash2 className="w-4 h-4" /></button>
+                  <button onClick={() => setModuleDialog({ module: m })} className="p-1.5 rounded hover:bg-foreground/5" style={{ color: "var(--muted-foreground)" }}><Pencil className="w-4 h-4" /></button>
+                  <button title={t("contentArchive.action")} onClick={() => { if (confirm(t("contentArchive.confirm"))) archiveModule.mutate({ id: m.id }); }} className="p-1.5 rounded hover:bg-foreground/5"><Trash2 className="w-4 h-4" /></button>
                 </div>
               ))}
             </div>
           </div>
 
           {/* Questions */}
-          <div className="rounded-xl p-5" style={{ background: "white", border: `1px solid ${BORDER}` }}>
+          <div className="rounded-xl p-5" style={{ background: "var(--card)", border: `1px solid ${"var(--border)"}` }}>
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <HelpCircle className="w-4 h-4" style={{ color: GOLD }} />
-                <h3 className="font-semibold text-sm" style={{ color: DEEP_BLUE }}>{t("adminContentManager.questionsSectionTitle", { count: questions.length })}</h3>
+                <HelpCircle className="w-4 h-4" style={{ color: "var(--link)" }} />
+                <h3 className="font-semibold text-sm" style={{ color: "var(--foreground)" }}>{t("adminContentManager.questionsSectionTitle", { count: questions.length })}</h3>
               </div>
               <Button size="sm" variant="outline" onClick={() => setQuestionDialog({ question: null })}>
                 <Plus className="w-4 h-4 mr-1" /> {t("adminContentManager.questionButton")}
               </Button>
             </div>
             <div className="space-y-2">
-              {questions.length === 0 && <p className="text-xs" style={{ color: MUTED }}>{t("adminContentManager.questionsEmpty")}</p>}
+              {questions.length === 0 && <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.questionsEmpty")}</p>}
               {questions.map((q) => (
-                <div key={q.id} className="flex items-start gap-2 p-2 rounded-lg" style={{ background: "oklch(97% 0.01 88)" }}>
+                <div key={q.id} className="flex items-start gap-2 p-2 rounded-lg" style={{ background: "var(--background)" }}>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium" style={{ color: DEEP_BLUE }}>{q.question}</div>
-                    <div className="text-xs mt-0.5" style={{ color: MUTED }}>
+                    <div className="text-sm font-medium" style={{ color: "var(--foreground)" }}>{q.question}</div>
+                    <div className="text-xs mt-0.5" style={{ color: "var(--muted-foreground)" }}>
                       {t(QUESTION_TYPE_KEYS[q.type])} · {t("adminContentManager.pointsAbbrev", { points: q.points ?? 1 })} · {moduleName(q.moduleId)}
                     </div>
                   </div>
-                  <button onClick={() => setQuestionDialog({ question: q })} className="p-1.5 rounded hover:bg-black/5" style={{ color: MUTED }}><Pencil className="w-4 h-4" /></button>
-                  <button title={t("contentArchive.action")} onClick={() => { if (confirm(t("contentArchive.confirm"))) archiveQuestion.mutate({ id: q.id }); }} className="p-1.5 rounded hover:bg-black/5"><Trash2 className="w-4 h-4" /></button>
+                  <button onClick={() => setQuestionDialog({ question: q })} className="p-1.5 rounded hover:bg-foreground/5" style={{ color: "var(--muted-foreground)" }}><Pencil className="w-4 h-4" /></button>
+                  <button title={t("contentArchive.action")} onClick={() => { if (confirm(t("contentArchive.confirm"))) archiveQuestion.mutate({ id: q.id }); }} className="p-1.5 rounded hover:bg-foreground/5"><Trash2 className="w-4 h-4" /></button>
                 </div>
               ))}
             </div>

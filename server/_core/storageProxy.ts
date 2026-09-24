@@ -58,7 +58,9 @@ export function registerStorageProxy(app: Express) {
         }
         await logAccess({ actorId: ctx.user!.id, actorRole: ctx.user!.role, action: "DOWNLOAD_PRIVATE_FILE",
           dataAccessed: { key: safeKey }, ip: ipFromReq(req) });
-        res.set("Content-Disposition", `${safeKey.startsWith("course-media/") || safeKey.startsWith("courses/") ? "inline" : "attachment"}; filename*=UTF-8''${encodeURIComponent(path.basename(safeKey))}`);
+        const generatedPdfPreview = req.query.preview === "1" && path.extname(safeKey).toLowerCase() === ".pdf" &&
+          (safeKey.startsWith("certificates/") || safeKey.startsWith("invoices/"));
+        res.set("Content-Disposition", `${generatedPdfPreview || safeKey.startsWith("course-media/") || safeKey.startsWith("courses/") ? "inline" : "attachment"}; filename*=UTF-8''${encodeURIComponent(path.basename(safeKey))}`);
       } else {
         res.set("Cache-Control", "public, max-age=3600");
       }

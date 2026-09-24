@@ -11,7 +11,7 @@ export default function LearningVideo({mediaRef,...props}:Props){
  const [failedSource,setFailedSource]=useState<string|null>(null);
  return <>
   <video {...props} ref={ref} onError={()=>setFailedSource(props.src??'')} onLoadedData={()=>setFailedSource(null)} />
-  {failedSource===(props.src??'')&&<div role="alert" className="rounded border bg-white p-3 text-sm text-slate-900 space-y-2">
+  {failedSource===(props.src??'')&&<div role="alert" className="rounded border bg-card p-3 text-sm text-foreground space-y-2">
    <p>{t('learningMedia.videoError')}</p>
    <Button variant="outline" onClick={()=>{setFailedSource(null);ref.current?.load();}}>{t('learningMedia.reload')}</Button>
   </div>}

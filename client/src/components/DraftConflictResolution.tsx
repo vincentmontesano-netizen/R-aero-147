@@ -23,7 +23,7 @@ export default function DraftConflictResolution<T extends Record<string,unknown>
   const text=key==='type'&&typeof value==='string'&&questionTypes[value]?t(questionTypes[value]):key==='pairs'&&Array.isArray(value)?value.map(pair=>Array.isArray(pair)?`${Number(pair[0])+1} → ${Number(pair[1])+1}`:'').join('\n'):typeof value==='boolean'?(value?tr('Oui','Yes','نعم'):tr('Non','No','لا')):(key==='quizCorrect'||key==='correct')&&Array.isArray(value)?value.map(i=>Number(i)+1).join(', '):(key==='quizOptions'||key==='options'||key==='optionsRight')&&Array.isArray(value)?value.map((v,i)=>`${i+1}. ${v}`).join('\n'):typeof value==='string'||typeof value==='number'?String(value):value==null?'':JSON.stringify(value,null,2);
   return `${labels[key]??key}\n${text||'—'}`;
  }).join('\n\n');
- return <section className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4 space-y-4">
+ return <section className="mt-4 rounded-lg border border-warning/30 bg-warning/10 p-4 space-y-4">
   <h3 className="font-semibold">{tr('Rapprocher les versions','Reconcile versions','مراجعة النسختين')}</h3>
   <p className="text-sm">{tr('Les changements sans conflit sont conservés ensemble. Pour chaque conflit, choisissez le contenu à garder. Vous pourrez ensuite vérifier le brouillon avant de l’enregistrer.','Non-conflicting changes are combined. For each conflict, choose which content to keep. You can then review the draft before saving.','يتم دمج التغييرات غير المتعارضة. اختر المحتوى الذي تريد الاحتفاظ به لكل تعارض، ثم راجع المسودة قبل الحفظ.')}</p>
   {conflicts.length===0&&<p className="text-sm">{tr('Aucun choix nécessaire : les changements sont compatibles.','No choices needed: the changes are compatible.','لا يلزم اختيار: التغييرات متوافقة.')}</p>}
@@ -31,7 +31,7 @@ export default function DraftConflictResolution<T extends Record<string,unknown>
    <legend className="font-medium px-1">{labels[group]}</legend>
    <div className="grid sm:grid-cols-2 gap-3">{(['draft','latest'] as const).map(source=><label key={source} className="space-y-2 min-w-0 block">
     <span className="flex items-center gap-2 text-sm"><input type="radio" name={`draft-merge-${group}`} checked={choices[group]===source} onChange={()=>setChoices(previous=>({...previous,[group]:source}))}/>{source==='draft'?tr('Mon brouillon','My draft','مسودتي'):tr('Version enregistrée','Saved version','النسخة المحفوظة')}</span>
-    <textarea readOnly aria-label={`${labels[group]} — ${source==='draft'?tr('Mon brouillon','My draft','مسودتي'):tr('Version enregistrée','Saved version','النسخة المحفوظة')}`} value={describe(source==='draft'?draft:latest,group)} className="w-full h-40 border rounded p-2 bg-white text-xs resize-y"/>
+    <textarea readOnly aria-label={`${labels[group]} — ${source==='draft'?tr('Mon brouillon','My draft','مسودتي'):tr('Version enregistrée','Saved version','النسخة المحفوظة')}`} value={describe(source==='draft'?draft:latest,group)} className="w-full h-40 border rounded p-2 bg-card text-xs resize-y"/>
    </label>)}</div>
   </fieldset>)}
   <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={onCancel}>{tr('Revenir au brouillon','Back to draft','العودة إلى المسودة')}</Button><Button disabled={result.conflicts.length>0} onClick={()=>onApply(result.merged)}>{tr('Préparer le brouillon rapproché','Prepare reconciled draft','إعداد المسودة المراجعة')}</Button></div>

@@ -1,0 +1,10 @@
+{
+  "source": "a320_cockpit_2/scene.gltf",
+  "sourceGltfSha256": "8aaec5be93f78e866469982bb7c016a64e098b87358cb2a15801815a3c3b955b",
+  "sourceBinSha256": "6206128ba892671ef6643690419f2630e97b5ea50a694879e5c87ce8d81b4bdf",
+  "outputSha256": "1a9d3a80a67a2b1408478e0666be3241480575afde80b9b553506e050d424a89",
+  "bytes": 4415940,
+  "geometrySimplified": false,
+  "textureMaxDimension": 2048,
+  "command": "pnpm dlx @gltf-transform/cli@4.5.0 optimize a320_cockpit_2/scene.gltf client/public/models/a320/cockpit.glb --compress draco --simplify false --texture-compress webp --texture-size 2048"
+}

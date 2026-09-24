@@ -11,18 +11,18 @@ import TicketThread from "@/components/TicketThread";
 import { Plus, LogIn, ChevronDown, ChevronUp } from "lucide-react";
 import { useI18n } from "@/i18n";
 
-const BLUE = "oklch(19% 0.08 252)";
-const MUTED = "oklch(45% 0.02 240)";
-const BORDER = "oklch(88% 0.015 88)";
+const BLUE = "var(--foreground)";
+const MUTED = "var(--muted-foreground)";
+const BORDER = "var(--border)";
 
 /** Learner support: create tickets + follow the conversation with R-AERO. */
 export default function Support() {
   const { t,lang } = useI18n();
   const requestLabels=supportRequestLabels[lang];
   const STATUS: Record<string, [string, string]> = {
-    OPEN: ["oklch(55% 0.18 145)", t("support.statusOpen")],
-    PENDING: ["oklch(60% 0.12 78)", t("support.statusPending")],
-    CLOSED: ["oklch(60% 0.02 240)", t("support.statusClosed")],
+    OPEN: ["var(--success)", t("support.statusOpen")],
+    PENDING: ["var(--link)", t("support.statusPending")],
+    CLOSED: ["var(--muted-foreground)", t("support.statusClosed")],
   };
   const { user, isAuthenticated, loading: authLoading, error: authError } = useAuth();
   const utils = trpc.useUtils();
@@ -67,8 +67,8 @@ export default function Support() {
   if (!isAuthenticated) {
     return (
       <div className="container py-20 text-center">
-        <p className="mb-4" style={{ color: MUTED }}>{t("support.loginPrompt")}</p>
-        <a href={getLoginUrl()}><Button style={{ background: "oklch(68% 0.1 78)", color: BLUE }}><LogIn className="w-4 h-4 mr-1" /> {t("support.login")}</Button></a>
+        <p className="mb-4" style={{ color: "var(--muted-foreground)" }}>{t("support.loginPrompt")}</p>
+        <a href={getLoginUrl()}><Button style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}><LogIn className="w-4 h-4 mr-1" /> {t("support.login")}</Button></a>
       </div>
     );
   }
@@ -77,22 +77,22 @@ export default function Support() {
     <div className="container py-8 max-w-3xl">
       <BackButton />
       <div className="flex items-center justify-between mb-1 mt-2">
-        <h1 className="text-2xl font-bold" style={{ color: BLUE }}>{t("support.title")}</h1>
-        <Button size="sm" disabled={create.isPending} onClick={() => setShowNew((s) => !s)} style={{ background: BLUE, color: "white" }}><Plus className="w-4 h-4 mr-1" /> {t("support.newRequest")}</Button>
+        <h1 className="text-2xl font-bold" style={{ color: "var(--foreground)" }}>{t("support.title")}</h1>
+        <Button size="sm" disabled={create.isPending} onClick={() => setShowNew((s) => !s)} style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}><Plus className="w-4 h-4 mr-1" /> {t("support.newRequest")}</Button>
       </div>
-      <p className="text-sm mb-6" style={{ color: MUTED }}>{t("support.subtitle")}</p>
+      <p className="text-sm mb-6" style={{ color: "var(--muted-foreground)" }}>{t("support.subtitle")}</p>
 
       {createdId != null && <p role="status" className="mb-4">{t("support.createdReference", {id: String(createdId)})}</p>}
       {showNew && (
-        <form onSubmit={submit} aria-busy={create.isPending} className="rounded-xl p-4 mb-5 space-y-2" style={{ background: "white", border: `1px solid ${BORDER}` }}>
+        <form onSubmit={submit} aria-busy={create.isPending} className="rounded-xl p-4 mb-5 space-y-2" style={{ background: "var(--card)", border: `1px solid ${"var(--border)"}` }}>
           <label className="block text-sm">{requestLabels.type}<select value={requestKind} disabled={create.isPending} onChange={e=>setRequestKind(e.target.value as typeof requestKind)} className="block w-full border rounded-md p-2 mt-1">{supportRequestKinds.map(kind=><option key={kind} value={kind}>{requestLabels[kind]}</option>)}</select></label>
           {requestKind!=='GENERAL'&&<p className="text-sm text-muted-foreground">{requestLabels.notice}</p>}
           <label htmlFor="support-subject" className="block text-sm">{t("support.subjectPlaceholder")}</label>
           <Input id="support-subject" required disabled={create.isPending} maxLength={255} value={form.subject} onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))} placeholder={t("support.subjectPlaceholder")} />
           <label htmlFor="support-message" className="block text-sm">{t("support.messagePlaceholder")}</label>
-          <textarea id="support-message" disabled={create.isPending} required={requestKind !== "GENERAL"} minLength={requestKind !== "GENERAL" ? 10 : undefined} maxLength={10000} value={form.message} onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))} placeholder={t("support.messagePlaceholder")} className="w-full rounded-md border px-3 py-2 text-sm h-24 resize-y" style={{ borderColor: BORDER }} />
+          <textarea id="support-message" disabled={create.isPending} required={requestKind !== "GENERAL"} minLength={requestKind !== "GENERAL" ? 10 : undefined} maxLength={10000} value={form.message} onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))} placeholder={t("support.messagePlaceholder")} className="w-full rounded-md border px-3 py-2 text-sm h-24 resize-y" style={{ borderColor: "var(--border)" }} />
           {createError && <div role="alert"><p className="text-sm">{t("support.createUnconfirmed")}</p><Button type="button" variant="outline" disabled={ticketsQuery.isFetching} onClick={refreshAll}>{t("support.refreshRequests")}</Button></div>}
-          <Button type="submit" size="sm" disabled={!form.subject.trim() || create.isPending || (requestKind!=='GENERAL'&&form.message.trim().length<10)} style={{ background: BLUE, color: "white" }}>{t("support.send")}</Button>
+          <Button type="submit" size="sm" disabled={!form.subject.trim() || create.isPending || (requestKind!=='GENERAL'&&form.message.trim().length<10)} style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>{t("support.send")}</Button>
         </form>
       )}
 
@@ -107,21 +107,21 @@ export default function Support() {
       {ticketsQuery.isError ? (
         <p role="alert">{t("supportList.loadError")}</p>
       ) : ticketsQuery.isPending ? (
-        <div className="h-24 animate-pulse rounded-xl" style={{ background: "oklch(88% 0.015 88)" }} />
+        <div className="h-24 animate-pulse rounded-xl" style={{ background: "var(--border)" }} />
       ) : tickets.length === 0 ? (
-        <p className="text-sm" style={{ color: MUTED }}>{t(search || statusFilter ? "support.noMatchingRequests" : "support.empty")}</p>
+        <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>{t(search || statusFilter ? "support.noMatchingRequests" : "support.empty")}</p>
       ) : (
         <div className="space-y-3">
           {tickets.map((t) => {
             const [col, lbl] = STATUS[t.status] ?? STATUS.OPEN;
             return (
-              <div key={t.id} className="rounded-xl overflow-hidden" style={{ border: `1px solid ${BORDER}`, background: "white" }}>
+              <div key={t.id} className="rounded-xl overflow-hidden" style={{ border: `1px solid ${"var(--border)"}`, background: "var(--card)" }}>
                 <button onClick={() => setOpen(open === t.id ? null : t.id)} aria-expanded={open === t.id} className="w-full flex items-center justify-between p-4 text-start">
                   <div>
-                    <div className="font-semibold" style={{ color: BLUE }}>{t.subject}</div><div className="text-sm">{requestLabels[t.requestKind as (typeof supportRequestKinds)[number]]}</div>
-                    <div className="text-xs" style={{ color: MUTED }}><span style={{ color: col }}>{lbl}</span> · {new Date(t.updatedAt).toLocaleDateString(lang === "ar" ? "ar" : lang === "en" ? "en-GB" : "fr-FR")}</div>
+                    <div className="font-semibold" style={{ color: "var(--foreground)" }}>{t.subject}</div><div className="text-sm">{requestLabels[t.requestKind as (typeof supportRequestKinds)[number]]}</div>
+                    <div className="text-xs" style={{ color: "var(--muted-foreground)" }}><span style={{ color: col }}>{lbl}</span> · {new Date(t.updatedAt).toLocaleDateString(lang === "ar" ? "ar" : lang === "en" ? "en-GB" : "fr-FR")}</div>
                   </div>
-                  {open === t.id ? <ChevronUp className="w-4 h-4" style={{ color: MUTED }} /> : <ChevronDown className="w-4 h-4" style={{ color: MUTED }} />}
+                  {open === t.id ? <ChevronUp className="w-4 h-4" style={{ color: "var(--muted-foreground)" }} /> : <ChevronDown className="w-4 h-4" style={{ color: "var(--muted-foreground)" }} />}
                 </button>
                 {open === t.id && <div className="px-4 pb-4"><TicketThread ticketId={t.id} meId={user?.id} /></div>}
               </div>

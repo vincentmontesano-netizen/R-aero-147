@@ -34,11 +34,11 @@ export default function TwoFactorSettings({enabled}:{enabled:boolean}) {
   const pending=begin.isPending||confirm.isPending;
   return <div className="space-y-3">
     <div className="flex items-center justify-between gap-3">
-      <div><h3 className="text-sm font-medium">{c.title}</h3><p className="text-xs text-slate-600">{enabled?c.on:c.off}</p></div>
+      <div><h3 className="text-sm font-medium">{c.title}</h3><p className="text-xs text-muted-foreground">{enabled?c.on:c.off}</p></div>
       {stage==='idle'&&<Button type="button" variant="outline" onClick={()=>{setTarget(!enabled);setStage('password');}}>{enabled?c.disable:c.enable}</Button>}
     </div>
     {stage!=='idle'&&<form className="space-y-3" onSubmit={event=>{event.preventDefault();if(pending)return;if(stage==='password')begin.mutate({enabled:target,password});else confirm.mutate({enabled:target,code});}}>
-      <p className="text-sm text-slate-600">{c.explain}</p>
+      <p className="text-sm text-muted-foreground">{c.explain}</p>
       <p className="text-sm font-medium">{target?c.enable:c.disable}</p>
       {stage==='password'?<><label htmlFor="two-factor-password" className="block text-sm">{c.password}</label><Input id="two-factor-password" type="password" autoComplete="current-password" required maxLength={1024} value={password} onChange={event=>setPassword(event.target.value)} disabled={pending}/></>:<><label htmlFor="two-factor-code" className="block text-sm">{c.code}</label><Input id="two-factor-code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" required maxLength={6} value={code} onChange={event=>setCode(event.target.value.replace(/[^0-9]/g,''))} disabled={pending}/></>}
       <div className="flex flex-wrap gap-2"><Button type="submit" disabled={pending||(stage==='password'?!password:code.length!==6)}>{stage==='password'?c.send:c.confirm}</Button><Button type="button" variant="ghost" disabled={pending} onClick={()=>{setStage('idle');setPassword('');setCode('');}}>{c.cancel}</Button></div>

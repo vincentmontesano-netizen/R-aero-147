@@ -58,15 +58,15 @@ export default function Catalogue() {
   });
 
   return (
-    <div className="min-h-screen" style={{ background: "oklch(97% 0.01 88)" }}>
+    <div className="min-h-screen" style={{ background: "var(--background)" }}>
       <PublicNav />
       {/* Header */}
-      <div style={{ background: "oklch(19% 0.08 252)", paddingTop: "5rem" }}>
+      <div style={{ background: "var(--surface-strong)", paddingTop: "5rem" }}>
         <div className="container py-12">
           <BackButton dark />
-          <div className="text-xs font-semibold tracking-widest mb-3" style={{ color: "oklch(68% 0.1 78)" }}>{t("catalogue.eyebrow")}</div>
-          <h1 className="font-serif text-4xl font-bold text-white mb-3">{t("catalogue.title")}</h1>
-          <p className="text-white/60 max-w-xl">
+          <div className="text-xs font-semibold tracking-widest mb-3" style={{ color: "var(--link)" }}>{t("catalogue.eyebrow")}</div>
+          <h1 className="font-sans text-4xl font-bold text-white mb-3">{t("catalogue.title")}</h1>
+          <p className="text-muted-foreground max-w-xl">
             {t("catalogue.subtitle")}
           </p>
         </div>
@@ -74,11 +74,11 @@ export default function Catalogue() {
 
       <div className="container py-10">
         {/* Filters */}
-        <div className="rounded-xl p-6 mb-8 flex flex-wrap gap-4 items-end" style={{ background: "oklch(100% 0 0)", border: "1px solid oklch(88% 0.015 88)" }}>
+        <div className="rounded-xl p-6 mb-8 flex flex-wrap gap-4 items-end" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
           <div className="flex-1 min-w-48">
-            <label htmlFor="catalogue-search" className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("catalogue.searchLabel")}</label>
+            <label htmlFor="catalogue-search" className="text-sm font-semibold mb-1.5 block" style={{ color: "var(--muted-foreground)" }}>{t("catalogue.searchLabel")}</label>
             <div className="relative">
-              <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "oklch(62% 0.02 240)" }} />
+              <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "var(--muted-foreground)" }} />
               <Input id="catalogue-search" maxLength={255}
                 placeholder={t("catalogue.searchPlaceholder")}
                 value={search}
@@ -88,34 +88,34 @@ export default function Catalogue() {
             </div>
           </div>
           <div className="min-w-40">
-            <label htmlFor="catalogue-type" className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("catalogue.typeLabel")}</label>
+            <label htmlFor="catalogue-type" className="text-sm font-semibold mb-1.5 block" style={{ color: "var(--muted-foreground)" }}>{t("catalogue.typeLabel")}</label>
             <select id="catalogue-type"
               value={type}
               onChange={(e) => setType(e.target.value)}
               className="w-full h-9 rounded-md border px-3 text-sm"
-              style={{ borderColor: "oklch(88% 0.015 88)", background: "oklch(100% 0 0)", color: "oklch(19% 0.08 252)" }}
+              style={{ borderColor: "var(--border)", background: "var(--card)", color: "var(--foreground)" }}
             >
               {TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
           <div className="min-w-40">
-            <label htmlFor="catalogue-domain" className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("catalogue.domainLabel")}</label>
+            <label htmlFor="catalogue-domain" className="text-sm font-semibold mb-1.5 block" style={{ color: "var(--muted-foreground)" }}>{t("catalogue.domainLabel")}</label>
             <select id="catalogue-domain"
               value={domain}
               onChange={(e) => setDomain(e.target.value)}
               className="w-full h-9 rounded-md border px-3 text-sm"
-              style={{ borderColor: "oklch(88% 0.015 88)", background: "oklch(100% 0 0)", color: "oklch(19% 0.08 252)" }}
+              style={{ borderColor: "var(--border)", background: "var(--card)", color: "var(--foreground)" }}
             >
               {DOMAIN_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
           <div className="min-w-36">
-            <label htmlFor="catalogue-lang" className="text-xs font-semibold mb-1.5 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("catalogue.langLabel")}</label>
+            <label htmlFor="catalogue-lang" className="text-sm font-semibold mb-1.5 block" style={{ color: "var(--muted-foreground)" }}>{t("catalogue.langLabel")}</label>
             <select id="catalogue-lang"
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
               className="w-full h-9 rounded-md border px-3 text-sm"
-              style={{ borderColor: "oklch(88% 0.015 88)", background: "oklch(100% 0 0)", color: "oklch(19% 0.08 252)" }}
+              style={{ borderColor: "var(--border)", background: "var(--card)", color: "var(--foreground)" }}
             >
               {LANG_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
@@ -131,7 +131,7 @@ export default function Catalogue() {
 
         {/* Results count */}
         <div className="flex items-center justify-between mb-6">
-          <div className="text-sm" style={{ color: "oklch(45% 0.02 240)" }}>
+          <div className="text-sm" style={{ color: "var(--muted-foreground)" }}>
             {query.isError ? t("catalogue.unavailable") : isLoading ? t("catalogue.loading") : t("catalogue.resultsCount", { count: trainings.length, plural: trainings.length > 1 ? "s" : "" })}
           </div>
         </div>
@@ -143,14 +143,14 @@ export default function Catalogue() {
         ) : isLoading ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="rounded-xl h-64 animate-pulse" style={{ background: "oklch(88% 0.015 88)" }} />
+              <div key={i} className="rounded-xl h-64 animate-pulse" style={{ background: "var(--border)" }} />
             ))}
           </div>
         ) : trainings.length === 0 ? (
           <div className="text-center py-20">
-            <BookOpen className="w-12 h-12 mx-auto mb-4" style={{ color: "oklch(68% 0.1 78)" }} />
-            <div className="font-semibold text-lg mb-2" style={{ color: "oklch(19% 0.08 252)" }}>{t("catalogue.emptyTitle")}</div>
-            <div className="text-sm" style={{ color: "oklch(45% 0.02 240)" }}>{t("catalogue.emptyDescription")}</div>
+            <BookOpen className="w-12 h-12 mx-auto mb-4" style={{ color: "var(--link)" }} />
+            <div className="font-semibold text-lg mb-2" style={{ color: "var(--foreground)" }}>{t("catalogue.emptyTitle")}</div>
+            <div className="text-sm" style={{ color: "var(--muted-foreground)" }}>{t("catalogue.emptyDescription")}</div>
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -158,52 +158,52 @@ export default function Catalogue() {
               <div
                 key={training.id}
                 className="rounded-xl overflow-hidden card-hover flex flex-col"
-                style={{ background: "oklch(100% 0 0)", border: "1px solid oklch(88% 0.015 88)" }}
+                style={{ background: "var(--card)", border: "1px solid var(--border)" }}
               >
                 <div className="p-5 flex-1">
                   <div className="flex items-start justify-between mb-3 gap-2">
-                    <span className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ background: "oklch(19% 0.08 252 / 0.08)", color: "oklch(19% 0.08 252)" }}>
+                    <span className="text-xs px-2.5 py-1 rounded-full font-medium" style={{ background: "color-mix(in srgb, var(--link) 8%, transparent)", color: "var(--foreground)" }}>
                       {TYPE_LABELS[training.type] ?? training.type}
                     </span>
                     <div className="flex gap-1.5 flex-wrap justify-end">
                       {(training as any).variant && (
-                        <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "oklch(42% 0.1 218 / 0.12)", color: "oklch(42% 0.1 218)" }}>
+                        <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "color-mix(in srgb, var(--info) 12%, transparent)", color: "var(--info)" }}>
                           {(training as any).variant === "recurrent" ? t("catalogue.variantRecurrent") : t("catalogue.variantInitial")}
                         </span>
                       )}
                       {training.recurrencyMonths && (
-                        <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "oklch(68% 0.1 78 / 0.12)", color: "oklch(52% 0.09 78)" }}>
+                        <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "color-mix(in srgb, var(--link) 12%, transparent)", color: "var(--link)" }}>
                           {t("catalogue.recurrentMonths", { months: training.recurrencyMonths })}
                         </span>
                       )}
                     </div>
                   </div>
-                  <h3 className="font-semibold text-base mb-2 leading-snug" style={{ color: "oklch(19% 0.08 252)" }}>
+                  <h3 className="font-semibold text-base mb-2 leading-snug" style={{ color: "var(--foreground)" }}>
                     {training.title}
                   </h3>
-                  <p className="text-sm leading-relaxed line-clamp-3 mb-3" style={{ color: "oklch(45% 0.02 240)" }}>
+                  <p className="text-sm leading-relaxed line-clamp-3 mb-3" style={{ color: "var(--muted-foreground)" }}>
                     {training.description}
                   </p>
                   {training.part147Reference && (
-                    <div className="flex items-center gap-1 text-xs" style={{ color: "oklch(42% 0.1 218)" }}>
+                    <div className="flex items-center gap-1 text-xs" style={{ color: "var(--info)" }}>
                       <Award className="w-3 h-3" />
                       {training.part147Reference}
                     </div>
                   )}
                 </div>
 
-                <div className="px-5 py-4 border-t" style={{ borderColor: "oklch(88% 0.015 88)" }}>
+                <div className="px-5 py-4 border-t" style={{ borderColor: "var(--border)" }}>
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-1 text-xs" style={{ color: "oklch(45% 0.02 240)" }}>
+                      <div className="flex items-center gap-1 text-xs" style={{ color: "var(--muted-foreground)" }}>
                         <Clock className="w-3 h-3" />
                         {formatHours(training.durationHours, lang)}
                       </div>
-                      <div className="text-xs px-2 py-0.5 rounded" style={{ background: "oklch(93% 0.015 88)", color: "oklch(45% 0.02 240)" }}>
+                      <div className="text-xs px-2 py-0.5 rounded" style={{ background: "var(--muted)", color: "var(--muted-foreground)" }}>
                         {training.language?.toUpperCase()}
                       </div>
                     </div>
-                    <div className="font-bold text-base" style={{ color: "oklch(19% 0.08 252)" }}>
+                    <div className="font-bold text-base" style={{ color: "var(--foreground)" }}>
                       {training.priceTtc ? Number(training.priceTtc).toLocaleString(lang,{style:"currency",currency:"EUR"}) : t("catalogue.onQuote")}
                     </div>
                   </div>
@@ -218,7 +218,7 @@ export default function Catalogue() {
                         size="sm"
                         aria-label={t("trainingDetail.addToCart")}
                         className="btn-press"
-                        style={{ background: "oklch(68% 0.1 78)", color: "oklch(19% 0.08 252)" }}
+                        style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
                         onClick={() => addToCart.mutate({ trainingId: training.id })}
                         disabled={addToCart.isPending}
                       >

@@ -1,0 +1,20 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';import {chromium} from 'playwright-core';
+const origin=process.env.RAERO_E2E_ORIGIN||'http://127.0.0.1:3177',output=process.env.RAERO_E2E_OUTPUT||'tmp/e2e/simulation';
+const {trainingId}=JSON.parse(fs.readFileSync(`${output}/course.json`,'utf8'));
+const t=JSON.parse(fs.readFileSync('client/src/locales/fr.json','utf8'));
+const browser=await chromium.launch({executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH||'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',headless:true});const report=[];let last;
+try{
+ const admin=await browser.newContext({storageState:`${output}/admin-state.json`,viewport:{width:1440,height:1000}}),a=await admin.newPage();last=a;
+ await a.goto(origin+'/admin?tab=trainings');const row=a.getByRole('row').filter({hasText:'Recette complète — Maintenance aéronautique'});await row.getByRole('button',{name:t['adminDashboard.btnEdit'],exact:true}).click();
+ const form=a.getByRole('dialog');await form.getByPlaceholder('149.00').fill('62.50');await form.getByPlaceholder('178.80').fill('75.00');await form.getByPlaceholder('4.00').fill('1');await form.locator('textarea').fill('Formation dédiée à la recette de la plateforme : préparation, intervention et traçabilité.');await form.getByRole('button',{name:t['adminDashboard.btnSave'],exact:true}).click();await form.waitFor({state:'hidden'});report.push('admin updates training metadata and price');
+ const author=await browser.newContext({storageState:`${output}/author-state.json`,viewport:{width:1440,height:1000}}),page=await author.newPage();last=page;
+ await page.goto(origin+`/maker/${trainingId}`);await page.getByRole('button',{name:t['maker.addSlide'],exact:true}).click();await page.getByRole('button',{name:'Modifier la diapositive 1',exact:true}).click();
+ const slide=page.getByRole('dialog');await slide.locator('input').first().fill('Les trois étapes de la maintenance');await slide.locator('select').nth(1).selectOption({label:'Préparation et contrôle'});await slide.locator('textarea').first().fill('1. Consulter la procédure approuvée.\n2. Préparer les outils et effectuer les contrôles.\n3. Enregistrer les opérations réalisées.');await slide.getByRole('button',{name:t['common.save'],exact:true}).click();await slide.waitFor({state:'hidden'});report.push('slide created, assigned to chapter and saved');
+ await page.getByRole('button',{name:t['readiness.check'],exact:true}).click();await page.getByText(t['readiness.ready'],{exact:true}).waitFor();
+ await page.getByRole('button',{name:t['review.request'],exact:true}).click();await page.getByRole('button',{name:t['review.inspect'],exact:true}).waitFor();report.push('technical readiness and review request');
+ await a.goto(origin+`/maker/${trainingId}`);last=a;await a.getByRole('button',{name:t['review.inspect'],exact:true}).click();const review=a.getByRole('dialog');await review.getByPlaceholder(t['review.note']).fill('Recette : contenu du chapitre, diapositive, questionnaire de chapitre et examen final contrôlés par un compte indépendant.');await review.getByRole('button',{name:t['review.approved'],exact:true}).click();await review.waitFor({state:'hidden'});report.push('independent administrator approves frozen curriculum');
+ await page.reload();last=page;await page.getByRole('button',{name:t['maker.publish'],exact:true}).click();await page.getByRole('button',{name:t['maker.unpublish'],exact:true}).waitFor();report.push('instructor publishes reviewed course');
+ await page.screenshot({path:`${output}/course-published.png`,fullPage:true});
+ fs.writeFileSync(`${output}/publication-results.json`,JSON.stringify(report,null,2));console.log(JSON.stringify(report));
+}catch(error){if(last){await last.screenshot({path:`${output}/publication-failure.png`,fullPage:true});fs.writeFileSync(`${output}/publication-failure.txt`,await last.locator('body').innerText());}fs.writeFileSync(`${output}/publication-progress.json`,JSON.stringify(report,null,2));throw error;}
+finally{await browser.close();}

@@ -20,24 +20,24 @@ export default function CertificateVerification() {
   );
 
   const statusText=cert?.status==='valid'?t('certificateVerification.statusValid'):cert?.status==='expired'?(lang==='fr'?'Expiré':lang==='ar'?'منتهي الصلاحية':'Expired'):t('certificateVerification.statusRevoked');
-  const statusColor=cert?.status==='valid'?'oklch(55% 0.18 145)':'oklch(50% 0.18 30)';
+  const statusColor=cert?.status==='valid'?"var(--success)":"var(--destructive)";
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setSearchCode(inputCode.trim().toUpperCase());
   };
 
   return (
-    <div className="min-h-screen" style={{ background: "oklch(97% 0.01 88)" }}>
+    <div className="min-h-screen" style={{ background: "var(--background)" }}>
       <PublicNav />
       {/* Header */}
-      <div style={{ background: "oklch(19% 0.08 252)", paddingTop: "5rem" }}>
+      <div style={{ background: "var(--surface-strong)", paddingTop: "5rem" }}>
         <div className="container py-12 text-center">
           <div className="text-left"><BackButton dark /></div>
-          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: "oklch(68% 0.1 78 / 0.15)", border: "2px solid oklch(68% 0.1 78 / 0.4)" }}>
-            <Shield className="w-8 h-8" style={{ color: "oklch(68% 0.1 78)" }} />
+          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: "color-mix(in srgb, var(--link) 15%, transparent)", border: "2px solid color-mix(in srgb, var(--link) 40%, transparent)" }}>
+            <Shield className="w-8 h-8" style={{ color: "var(--link)" }} />
           </div>
-          <h1 className="font-serif text-3xl font-bold text-white mb-2">{t("certificateVerification.title")}</h1>
-          <p className="text-white/60 max-w-md mx-auto text-sm">
+          <h1 className="font-sans text-3xl font-bold text-white mb-2">{t("certificateVerification.title")}</h1>
+          <p className="text-muted-foreground max-w-md mx-auto text-sm">
             {t("certificateVerification.subtitle")}
           </p>
         </div>
@@ -45,8 +45,8 @@ export default function CertificateVerification() {
 
       <div className="container py-10 max-w-2xl">
         {/* Search form */}
-        <form onSubmit={handleSearch} className="rounded-xl p-6 mb-8" style={{ background: "oklch(100% 0 0)", border: "1px solid oklch(88% 0.015 88)" }}>
-          <label className="text-sm font-semibold mb-2 block" style={{ color: "oklch(19% 0.08 252)" }}>
+        <form onSubmit={handleSearch} className="rounded-xl p-6 mb-8" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+          <label className="text-sm font-semibold mb-2 block" style={{ color: "var(--foreground)" }}>
             {t("certificateVerification.codeLabel")}
           </label>
           <div className="flex gap-3">
@@ -57,11 +57,11 @@ export default function CertificateVerification() {
               placeholder={t("certificateVerification.codePlaceholder")}
               className="font-mono text-base tracking-widest"
             />
-            <Button type="submit" style={{ background: "oklch(19% 0.08 252)", color: "oklch(97% 0.01 88)" }}>
+            <Button type="submit" style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>
               <Search className="w-4 h-4 mr-2" /> {t("certificateVerification.verifyButton")}
             </Button>
           </div>
-          <p className="text-xs mt-2" style={{ color: "oklch(62% 0.02 240)" }}>
+          <p className="text-xs mt-2" style={{ color: "var(--muted-foreground)" }}>
             {t("certificateVerification.codeHint")}
           </p>
         </form>
@@ -69,16 +69,16 @@ export default function CertificateVerification() {
         {/* Loading */}
         {isLoading && (
           <div className="text-center py-10">
-            <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin mx-auto" style={{ borderColor: "oklch(68% 0.1 78)", borderTopColor: "transparent" }} />
+            <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin mx-auto" style={{ borderColor: "var(--link)", borderTopColor: "transparent" }} />
           </div>
         )}
 
         {/* Not found */}
         {searchCode && !isLoading && !cert && (
-          <div className="rounded-xl p-8 text-center" style={{ background: "oklch(55% 0.22 27 / 0.05)", border: "2px solid oklch(55% 0.22 27 / 0.3)" }}>
-            <XCircle className="w-12 h-12 mx-auto mb-3" style={{ color: "oklch(55% 0.22 27)" }} />
-            <h2 className="font-serif text-xl font-bold mb-2" style={{ color: "oklch(19% 0.08 252)" }}>{t("certificateVerification.notFoundTitle")}</h2>
-            <p className="text-sm" style={{ color: "oklch(45% 0.02 240)" }}>
+          <div className="rounded-xl p-8 text-center" style={{ background: "color-mix(in srgb, var(--destructive) 5%, transparent)", border: "2px solid color-mix(in srgb, var(--destructive) 30%, transparent)" }}>
+            <XCircle className="w-12 h-12 mx-auto mb-3" style={{ color: "var(--destructive)" }} />
+            <h2 className="font-sans text-xl font-bold mb-2" style={{ color: "var(--foreground)" }}>{t("certificateVerification.notFoundTitle")}</h2>
+            <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>
               {t("certificateVerification.notFoundPrefix")}<strong className="font-mono">{searchCode}</strong>{t("certificateVerification.notFoundSuffix")}
             </p>
           </div>
@@ -89,19 +89,19 @@ export default function CertificateVerification() {
           <div className="rounded-xl overflow-hidden" style={{ border: `2px solid ${statusColor}` }}>
             {/* Verification status */}
             <div className="px-6 py-4 flex items-center gap-3" style={{ background: statusColor }}>
-              {cert.status==='valid'?<CheckCircle className="w-6 h-6 text-white" />:<XCircle className="w-6 h-6 text-white" />}
-              <span className="font-bold text-white text-lg">{cert.status==='valid'?t('certificateVerification.validBanner'):statusText}</span>
+              {cert.status==='valid'?<CheckCircle className="w-6 h-6 text-primary-foreground" />:<XCircle className="w-6 h-6 text-primary-foreground" />}
+              <span className="font-bold text-primary-foreground text-lg">{cert.status==='valid'?t('certificateVerification.validBanner'):statusText}</span>
             </div>
 
-            <div className="p-6" style={{ background: "oklch(100% 0 0)" }}>
+            <div className="p-6" style={{ background: "var(--card)" }}>
               {/* Training title */}
               <div className="flex items-start gap-4 mb-6">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "oklch(68% 0.1 78 / 0.1)" }}>
-                  <Award className="w-6 h-6" style={{ color: "oklch(68% 0.1 78)" }} />
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "color-mix(in srgb, var(--link) 10%, transparent)" }}>
+                  <Award className="w-6 h-6" style={{ color: "var(--link)" }} />
                 </div>
                 <div>
-                  <div className="text-xs font-semibold tracking-wide mb-1" style={{ color: "oklch(68% 0.1 78)" }}>{t("certificateVerification.certifiedTrainingLabel")}</div>
-                  <h2 className="font-serif text-xl font-bold" style={{ color: "oklch(19% 0.08 252)" }}>
+                  <div className="text-xs font-semibold tracking-wide mb-1" style={{ color: "var(--link)" }}>{t("certificateVerification.certifiedTrainingLabel")}</div>
+                  <h2 className="font-sans text-xl font-bold" style={{ color: "var(--foreground)" }}>
                     {cert.training?.title ?? t("certificateVerification.defaultTrainingName")}
                   </h2>
                 </div>
@@ -117,17 +117,17 @@ export default function CertificateVerification() {
                   { label: t("certificateVerification.fieldPart147Reference"), value: cert.training?.part147Reference ?? "—" },
                   { label: t("certificateVerification.fieldStatus"), value: statusText },
                 ].map((field) => (
-                  <div key={field.label} className="p-3 rounded-lg" style={{ background: "oklch(97% 0.01 88)" }}>
-                    <div className="text-xs font-semibold mb-1" style={{ color: "oklch(62% 0.02 240)" }}>{field.label}</div>
-                    <div className="text-sm font-medium" style={{ color: "oklch(19% 0.08 252)" }}>{field.value}</div>
+                  <div key={field.label} className="p-3 rounded-lg" style={{ background: "var(--background)" }}>
+                    <div className="text-xs font-semibold mb-1" style={{ color: "var(--muted-foreground)" }}>{field.label}</div>
+                    <div className="text-sm font-medium" style={{ color: "var(--foreground)" }}>{field.value}</div>
                   </div>
                 ))}
               </div>
 
               {/* Organisme */}
-              <div className="flex items-center gap-2 p-3 rounded-lg mb-4" style={{ background: "oklch(19% 0.08 252 / 0.05)", border: "1px solid oklch(19% 0.08 252 / 0.1)" }}>
-                <Shield className="w-4 h-4" style={{ color: "oklch(68% 0.1 78)" }} />
-                <span className="text-xs font-medium" style={{ color: "oklch(19% 0.08 252)" }}>
+              <div className="flex items-center gap-2 p-3 rounded-lg mb-4" style={{ background: "color-mix(in srgb, var(--link) 5%, transparent)", border: "1px solid color-mix(in srgb, var(--link) 10%, transparent)" }}>
+                <Shield className="w-4 h-4" style={{ color: "var(--link)" }} />
+                <span className="text-xs font-medium" style={{ color: "var(--foreground)" }}>
                   {lang==='fr'?'Registre des certificats R-AERO':lang==='ar'?'سجل شهادات R-AERO':'R-AERO certificate register'}
                 </span>
               </div>

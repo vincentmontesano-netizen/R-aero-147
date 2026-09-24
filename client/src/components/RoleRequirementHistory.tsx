@@ -8,7 +8,7 @@ export default function RoleRequirementHistory(){
  const [open,setOpen]=useState(false);
  const [beforeId,setBeforeId]=useState<number>();
  const query=trpc.company.roleRequirementHistory.useQuery({beforeId},{enabled:open});
- return <section className="mt-6 rounded-xl border bg-white p-4 space-y-3">
+ return <section className="mt-6 rounded-xl border bg-card p-4 space-y-3">
   <Button variant="outline" aria-expanded={open} onClick={()=>setOpen(!open)}>{t('companyDashboard.ruleHistoryTitle')}</Button>
   {open&&<>
    <p className="text-sm">{t('companyDashboard.ruleHistoryHint')}</p>

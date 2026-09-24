@@ -11,7 +11,7 @@ export default function BroadcastHistory() {
   const utils=trpc.useUtils();
   const recovery=trpc.admin.recoverBroadcastOutcome.useMutation({onSuccess:()=>toast.success(t('broadcastHistory.recovered')),onError:e=>toast.error(e.message),onSettled:()=>{void utils.admin.broadcastHistory.invalidate();}});
   const query = trpc.admin.broadcastHistory.useQuery({beforeId});
-  return <section className="rounded-xl border bg-white p-5 max-w-2xl space-y-3">
+  return <section className="rounded-xl border bg-card p-5 max-w-2xl space-y-3">
     <h3 className="font-semibold">{t('broadcastHistory.title')}</h3>
     <p className="text-sm text-muted-foreground">{t('broadcastHistory.scope')}</p>
     <Button variant="outline" disabled={query.isFetching} onClick={() => {if (beforeId) setBeforeId(undefined); else void query.refetch();}}>{t('broadcastHistory.refresh')}</Button>

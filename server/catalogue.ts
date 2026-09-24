@@ -25,7 +25,7 @@ export async function generateCataloguePDF(): Promise<string | null> {
     doc.circle(70, 65, 26).fill("#C9A55A");
     doc.font("Helvetica-Bold").fontSize(22).fillColor("#002554").text("R", 60, 50);
     doc.font("Helvetica-Bold").fontSize(20).fillColor("#C9A55A").text("R-AERO TRAINING ACADEMY", 110, 45);
-    doc.font("Helvetica").fontSize(10).fillColor("#FFFFFF").text("Organisme de formation agréé EASA Part-147", 110, 72);
+    doc.font("Helvetica").fontSize(10).fillColor("#FFFFFF").text("Formation aéronautique — agrément Part-147 en cours", 110, 72);
     doc.font("Helvetica").fontSize(9).fillColor("#C9A55A").text(`Catalogue des formations — ${new Date().getFullYear()}`, 110, 90);
 
     let y = 160;

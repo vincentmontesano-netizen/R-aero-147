@@ -6,18 +6,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MessageCircle, X, Send, Bot } from "lucide-react";
 
-const BLUE = "oklch(19% 0.08 252)";
-const GOLD = "oklch(68% 0.1 78)";
-const MUTED = "oklch(45% 0.02 240)";
-const BORDER = "oklch(88% 0.015 88)";
+const BLUE = "var(--foreground)";
+const GOLD = "var(--link)";
+const MUTED = "var(--muted-foreground)";
+const BORDER = "var(--border)";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
 /** Turn a plain string into nodes, linkifying internal (/...) and external (http) URLs. */
 function linkify(text: string, kp: string): ReactNode[] {
   return text.split(/(\s+)/).map((tok, i) => {
-    if (/^\/[\w\-/]+$/.test(tok)) return <Link key={`${kp}-${i}`} href={tok} className="underline font-medium" style={{ color: BLUE }}>{tok}</Link>;
-    if (/^https?:\/\/\S+$/.test(tok)) return <a key={`${kp}-${i}`} href={tok} target="_blank" rel="noreferrer" className="underline font-medium" style={{ color: BLUE }}>{tok}</a>;
+    if (/^\/[\w\-/]+$/.test(tok)) return <Link key={`${kp}-${i}`} href={tok} className="underline font-medium" style={{ color: "var(--foreground)" }}>{tok}</Link>;
+    if (/^https?:\/\/\S+$/.test(tok)) return <a key={`${kp}-${i}`} href={tok} target="_blank" rel="noreferrer" className="underline font-medium" style={{ color: "var(--foreground)" }}>{tok}</a>;
     return <span key={`${kp}-${i}`}>{tok}</span>;
   });
 }
@@ -31,7 +31,7 @@ function inline(text: string, kp: string): ReactNode[] {
     if (m.index > last) out.push(...linkify(text.slice(last, m.index), `${kp}-t${i++}`));
     const t = m[0];
     if (t.startsWith("**")) out.push(<strong key={`${kp}-b${i++}`}>{t.slice(2, -2)}</strong>);
-    else if (t.startsWith("`")) out.push(<code key={`${kp}-c${i++}`} className="px-1 rounded text-[0.85em]" style={{ background: "oklch(93% 0.015 88)" }}>{t.slice(1, -1)}</code>);
+    else if (t.startsWith("`")) out.push(<code key={`${kp}-c${i++}`} className="px-1 rounded text-[0.85em]" style={{ background: "var(--muted)" }}>{t.slice(1, -1)}</code>);
     else out.push(<em key={`${kp}-e${i++}`}>{t.slice(1, -1)}</em>);
     last = m.index + t.length;
   }
@@ -111,36 +111,36 @@ export default function ChatWidget() {
       {open && (
         <div
           className="fixed z-50 flex flex-col rounded-2xl overflow-hidden shadow-2xl"
-          style={{ bottom: "5.5rem", right: "1.5rem", width: "min(370px, calc(100vw - 2rem))", height: "min(540px, calc(100vh - 8rem))", background: "white", border: `1px solid ${BORDER}` }}
+          style={{ bottom: "5.5rem", right: "1.5rem", width: "min(370px, calc(100vw - 2rem))", height: "min(540px, calc(100vh - 8rem))", background: "var(--card)", border: `1px solid ${"var(--border)"}` }}
         >
-          <div className="flex items-center gap-2 px-4 py-3" style={{ background: BLUE }}>
-            <Bot className="w-5 h-5" style={{ color: GOLD }} />
+          <div className="flex items-center gap-2 px-4 py-3" style={{ background: "var(--surface-strong)" }}>
+            <Bot className="w-5 h-5" style={{ color: "var(--link)" }} />
             <div className="flex-1">
               <div className="text-sm font-semibold text-white">{t("chatWidget.title")}</div>
-              <div className="text-[11px] text-white/60">{t("chatWidget.subtitle")}</div>
+              <div className="text-xs text-muted-foreground">{t("chatWidget.subtitle")}</div>
             </div>
-            <button onClick={() => setOpen(false)} aria-label={t("chatWidget.close")} className="text-white/70 hover:text-white"><X className="w-5 h-5" /></button>
+            <button onClick={() => setOpen(false)} aria-label={t("chatWidget.close")} className="text-muted-foreground hover:text-white"><X className="w-5 h-5" /></button>
           </div>
 
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-2" style={{ background: "oklch(98% 0.005 88)" }}>
+          <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-2" style={{ background: "var(--background)" }}>
             {messages.map((m, i) => (
               <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
                 <div className={`rounded-2xl px-3 py-2 max-w-[85%] text-sm break-words leading-relaxed ${m.role === "user" ? "whitespace-pre-wrap" : ""}`}
                   style={m.role === "user"
-                    ? { background: BLUE, color: "white" }
-                    : { background: "white", color: "oklch(28% 0.03 252)", border: `1px solid ${BORDER}` }}>
+                    ? { background: "var(--surface-strong)", color: "var(--foreground)" }
+                    : { background: "var(--card)", color: "var(--muted-foreground)", border: `1px solid ${"var(--border)"}` }}>
                   {m.role === "assistant" ? <Markdown text={m.content} /> : m.content}
                 </div>
               </div>
             ))}
             {send.isPending && (
-              <div className="flex justify-start"><div className="rounded-2xl px-3 py-2 text-sm" style={{ background: "white", color: MUTED, border: `1px solid ${BORDER}` }}>…</div></div>
+              <div className="flex justify-start"><div className="rounded-2xl px-3 py-2 text-sm" style={{ background: "var(--card)", color: "var(--muted-foreground)", border: `1px solid ${"var(--border)"}` }}>…</div></div>
             )}
           </div>
 
-          <div className="flex gap-2 p-2.5" style={{ borderTop: `1px solid ${BORDER}` }}>
+          <div className="flex gap-2 p-2.5" style={{ borderTop: `1px solid ${"var(--border)"}` }}>
             <Input value={input} onChange={(e) => setInput(e.target.value)} placeholder={t("chatWidget.inputPlaceholder")} onKeyDown={(e) => { if (e.key === "Enter") submit(); }} />
-            <Button disabled={!input.trim() || send.isPending} onClick={submit} style={{ background: BLUE, color: "white" }}><Send className="w-4 h-4" /></Button>
+            <Button disabled={!input.trim() || send.isPending} onClick={submit} style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}><Send className="w-4 h-4" /></Button>
           </div>
         </div>
       )}
@@ -150,7 +150,7 @@ export default function ChatWidget() {
         onClick={() => setOpen((o) => !o)}
         aria-label={open ? t("chatWidget.closeChat") : t("chatWidget.openChat")}
         className="fixed z-50 w-14 h-14 rounded-full flex items-center justify-center shadow-xl transition-transform hover:scale-105"
-        style={{ bottom: "1.5rem", right: "1.5rem", background: GOLD, color: BLUE }}
+        style={{ bottom: "1.5rem", right: "1.5rem", background: "var(--primary)", color: "var(--primary-foreground)" }}
       >
         {open ? <X className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
       </button>

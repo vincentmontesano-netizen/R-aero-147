@@ -15,9 +15,9 @@ export default function SessionScheduleDialog({session,onClose,onSaved}:{session
  <p className="text-sm text-muted-foreground">{text.notice}</p>
  <label htmlFor="schedule-start">{text.start}</label><Input id="schedule-start" type="datetime-local" required value={start} onChange={e=>setStart(e.target.value)} disabled={mutation.isPending}/>
  <label htmlFor="schedule-end">{text.end}</label><Input id="schedule-end" type="datetime-local" required value={end} onChange={e=>setEnd(e.target.value)} disabled={mutation.isPending}/>
- {!valid&&<p className="text-sm text-red-600">{text.invalid}</p>}
+ {!valid&&<p className="text-sm text-destructive">{text.invalid}</p>}
  <label htmlFor="schedule-reason">{text.reason}</label><Input id="schedule-reason" required minLength={3} maxLength={1000} value={reason} onChange={e=>setReason(e.target.value)} disabled={mutation.isPending}/>
- {mutation.error&&<p role="alert" className="text-sm text-red-600">{mutation.error.message}</p>}
+ {mutation.error&&<p role="alert" className="text-sm text-destructive">{mutation.error.message}</p>}
  <div className="flex gap-2"><Button type="submit" disabled={!valid||reason.trim().length<3||mutation.isPending}>{text.save}</Button><Button type="button" variant="outline" onClick={onClose} disabled={mutation.isPending}>{text.cancel}</Button></div>
  </form></DialogContent></Dialog>;
 }

@@ -1,3 +1,4 @@
+import { LanguageSwitcher } from "@/components/PublicNav";
 import {rolePeriodOverlaps} from "../../../shared/rolePeriodOverlaps";
 import {ruleMatchesEmployee} from "../../../shared/roleMatching";
 import RoleRequirementHistory from "@/components/RoleRequirementHistory";
@@ -28,10 +29,10 @@ import { useI18n } from "@/i18n";
 import { useUrlTab } from "@/hooks/useUrlTab";
 
 const RECURRENCY_STATUS: Record<string, { color: string; bg: string }> = {
-  ok: { color: "oklch(55% 0.18 145)", bg: "oklch(55% 0.18 145 / 0.1)" },
-  due_soon: { color: "oklch(68% 0.1 78)", bg: "oklch(68% 0.1 78 / 0.1)" },
-  overdue: { color: "oklch(55% 0.22 27)", bg: "oklch(55% 0.22 27 / 0.1)" },
-  not_started: { color: "oklch(62% 0.02 240)", bg: "oklch(62% 0.02 240 / 0.1)" },
+  ok: { color: "var(--success)", bg: "color-mix(in srgb, var(--success) 10%, transparent)" },
+  due_soon: { color: "var(--link)", bg: "color-mix(in srgb, var(--link) 10%, transparent)" },
+  overdue: { color: "var(--destructive)", bg: "color-mix(in srgb, var(--destructive) 10%, transparent)" },
+  not_started: { color: "var(--muted-foreground)", bg: "color-mix(in srgb, var(--muted-foreground) 10%, transparent)" },
 };
 
 function AddEmployeeDialog({ onSuccess }: { onSuccess: () => void }) {
@@ -46,7 +47,7 @@ function AddEmployeeDialog({ onSuccess }: { onSuccess: () => void }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" style={{ background: "oklch(68% 0.1 78)", color: "oklch(19% 0.08 252)" }}>
+        <Button size="sm" style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>
           <UserPlus className="w-4 h-4 mr-1" /> {t("companyDashboard.addEmployee")}
         </Button>
       </DialogTrigger>
@@ -65,14 +66,14 @@ function AddEmployeeDialog({ onSuccess }: { onSuccess: () => void }) {
             { key: "base", label: t("companyDashboard.fieldBase"), placeholder: "CDG" },
           ].map((field) => (
             <div key={field.key}>
-              <label className="text-xs font-medium mb-1 block" style={{ color: "oklch(45% 0.02 240)" }}>{field.label}</label>
+              <label className="text-sm font-medium mb-1 block" style={{ color: "var(--muted-foreground)" }}>{field.label}</label>
               <Input placeholder={field.placeholder} value={(form as any)[field.key]} onChange={(e) => setForm((f) => ({ ...f, [field.key]: e.target.value }))} />
             </div>
           ))}
         </div>
         <div className="flex justify-end gap-2 mt-4">
           <Button variant="outline" onClick={() => setOpen(false)}>{t("companyDashboard.cancel")}</Button>
-          <Button onClick={() => createEmployee.mutate(form)} disabled={!form.firstName || !form.lastName || !form.email || createEmployee.isPending} style={{ background: "oklch(19% 0.08 252)", color: "oklch(97% 0.01 88)" }}>
+          <Button onClick={() => createEmployee.mutate(form)} disabled={!form.firstName || !form.lastName || !form.email || createEmployee.isPending} style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>
             {t("companyDashboard.add")}
           </Button>
         </div>
@@ -171,9 +172,9 @@ function ImportCSVDialog({ onSuccess }: { onSuccess: () => void }) {
       <DialogContent className="max-w-lg">
         <DialogHeader><DialogTitle>{t("companyDashboard.importCsvTitle")}</DialogTitle></DialogHeader>
         <div className="space-y-4 mt-2">
-          <div className="rounded-lg p-4" style={{ background: "oklch(97% 0.01 88)", border: "1px solid oklch(88% 0.015 88)" }}>
-            <div className="text-xs font-semibold mb-2" style={{ color: "oklch(45% 0.02 240)" }}>{t("companyDashboard.csvExpectedFormat")}</div>
-            <code dir="ltr" className="text-xs block overflow-x-auto" style={{ color: "oklch(19% 0.08 252)" }}>
+          <div className="rounded-lg p-4" style={{ background: "var(--background)", border: "1px solid var(--border)" }}>
+            <div className="text-xs font-semibold mb-2" style={{ color: "var(--muted-foreground)" }}>{t("companyDashboard.csvExpectedFormat")}</div>
+            <code dir="ltr" className="text-xs block overflow-x-auto" style={{ color: "var(--foreground)" }}>
               {employeeCsvHeader.join(";")}
             </code>
             <Button asChild variant="outline" size="sm" className="mt-3">
@@ -184,25 +185,25 @@ function ImportCSVDialog({ onSuccess }: { onSuccess: () => void }) {
             <p id="employee-csv-help" className="text-xs mt-3">{t("companyDashboard.csvHelp")}</p>
           </div>
           <div>
-            <label htmlFor="employee-csv-file" className="text-xs font-medium mb-2 block" style={{ color: "oklch(45% 0.02 240)" }}>{t("companyDashboard.csvFile")}</label>
+            <label htmlFor="employee-csv-file" className="text-sm font-medium mb-2 block" style={{ color: "var(--muted-foreground)" }}>{t("companyDashboard.csvFile")}</label>
             <input id="employee-csv-file" aria-describedby="employee-csv-help" ref={fileRef} type="file" accept=".csv,.txt" onChange={handleFile} className="w-full text-sm" disabled={busy} />
           </div>
-          {busy && <div className="text-sm text-center" style={{ color: "oklch(45% 0.02 240)" }}>{t(importCSV.isPending ? "companyDashboard.importing" : "companyDashboard.csvReading")}</div>}
+          {busy && <div className="text-sm text-center" style={{ color: "var(--muted-foreground)" }}>{t(importCSV.isPending ? "companyDashboard.importing" : "companyDashboard.csvReading")}</div>}
           {prepared && !busy && <p role="status" className="text-sm break-words">{t("companyDashboard.csvPrepared", { name: prepared.name })}</p>}
-          {problem && <p role="alert" className="text-sm text-red-700">{t(problem === "size" ? "companyDashboard.csvSizeError" : problem === "read" ? "companyDashboard.csvReadError" : "companyDashboard.csvSendError")}</p>}
+          {problem && <p role="alert" className="text-sm text-destructive">{t(problem === "size" ? "companyDashboard.csvSizeError" : problem === "read" ? "companyDashboard.csvReadError" : "companyDashboard.csvSendError")}</p>}
           {result && (
-            <div className="rounded-lg p-4 space-y-2" style={{ background: result.imported > 0 ? "oklch(55% 0.18 145 / 0.08)" : "oklch(55% 0.22 27 / 0.08)", border: `1px solid ${result.imported > 0 ? "oklch(55% 0.18 145 / 0.3)" : "oklch(55% 0.22 27 / 0.3)"}` }}>
-              <div className="text-sm font-medium" style={{ color: "oklch(19% 0.08 252)" }}>
+            <div className="rounded-lg p-4 space-y-2" style={{ background: result.imported > 0 ? "color-mix(in srgb, var(--success) 8%, transparent)" : "color-mix(in srgb, var(--destructive) 8%, transparent)", border: `1px solid ${result.imported > 0 ? "color-mix(in srgb, var(--success) 30%, transparent)" : "color-mix(in srgb, var(--destructive) 30%, transparent)"}` }}>
+              <div className="text-sm font-medium" style={{ color: "var(--foreground)" }}>
                 {t("companyDashboard.importResultSuccess", { count: result.imported })}
               </div>
               {result.errors.map((err, i) => (
-                <div key={i} className="text-xs" style={{ color: "oklch(55% 0.22 27)" }}>{err}</div>
+                <div key={i} className="text-xs" style={{ color: "var(--destructive)" }}>{err}</div>
               ))}
             </div>
           )}
         </div>
         <div className="flex justify-end gap-2 mt-4">
-          <Button disabled={busy} variant="outline" onClick={() => changeOpen(false)} style={{ background: "oklch(19% 0.08 252)", color: "oklch(97% 0.01 88)" }}>{t("companyDashboard.close")}</Button>
+          <Button disabled={busy} variant="outline" onClick={() => changeOpen(false)} style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>{t("companyDashboard.close")}</Button>
           <Button disabled={busy || !prepared} onClick={startImport}>{t("companyDashboard.csvStartImport")}</Button>
         </div>
       </DialogContent>
@@ -273,15 +274,15 @@ export default function CompanyDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center" style={{ background: "oklch(97% 0.01 88)" }}><div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "oklch(68% 0.1 78)", borderTopColor: "transparent" }} /></div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--background)" }}><div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "var(--link)", borderTopColor: "transparent" }} /></div>;
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "oklch(97% 0.01 88)" }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--background)" }}>
         <div className="text-center max-w-sm">
-          <LogIn className="w-12 h-12 mx-auto mb-4" style={{ color: "oklch(68% 0.1 78)" }} />
-          <h2 className="font-serif text-2xl font-bold mb-2" style={{ color: "oklch(19% 0.08 252)" }}>{t("companyDashboard.loginRequired")}</h2>
-          <a href={getLoginUrl()}><Button style={{ background: "oklch(19% 0.08 252)", color: "oklch(97% 0.01 88)" }}>{t("companyDashboard.login")}</Button></a>
+          <LogIn className="w-12 h-12 mx-auto mb-4" style={{ color: "var(--link)" }} />
+          <h2 className="font-sans text-2xl font-bold mb-2" style={{ color: "var(--foreground)" }}>{t("companyDashboard.loginRequired")}</h2>
+          <a href={getLoginUrl()}><Button style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>{t("companyDashboard.login")}</Button></a>
         </div>
       </div>
     );
@@ -292,10 +293,10 @@ export default function CompanyDashboard() {
   const corePending = coreQueries.some(query => query.isPending);
   if (coreError || corePending || !company) {
     return (
-      <div className="min-h-screen p-6" style={{ background: "oklch(97% 0.01 88)" }}>
+      <div className="min-h-screen p-6" style={{ background: "var(--background)" }}>
         <BackButton />
-        <div className="max-w-lg mx-auto mt-12 rounded-xl border bg-white p-6 space-y-4">
-          <h1 className="font-serif text-2xl">{t("companyDashboard.companySpace")}</h1>
+        <div className="max-w-lg mx-auto mt-12 rounded-xl border bg-card p-6 space-y-4">
+          <h1 className="font-sans text-2xl">{t("companyDashboard.companySpace")}</h1>
           {coreError || !corePending ? (
             <>
               <p role="alert">{t(coreError ? "companyDashboard.dataUnavailable" : "companyDashboard.noCompany")}</p>
@@ -363,39 +364,40 @@ export default function CompanyDashboard() {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: "oklch(97% 0.01 88)" }}>
-      <div style={{ background: "oklch(19% 0.08 252)" }}>
+    <div className="min-h-screen" style={{ background: "var(--background)" }}>
+      <div style={{ background: "var(--surface-strong)" }}>
         <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
           <BackButton dark />
-          <div className="flex items-center justify-between gap-3 mb-6">
-            <div className="flex items-center gap-3">
-              <Building2 className="w-6 h-6" style={{ color: "oklch(68% 0.1 78)" }} />
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+            <div className="flex min-w-0 flex-1 basis-64 items-center gap-3">
+              <Building2 className="w-6 h-6" style={{ color: "var(--link)" }} />
               <div>
-                <h1 className="font-serif text-2xl font-bold text-white">{company?.name ?? t("companyDashboard.companySpace")}</h1>
-                <p className="text-white/60 text-sm">{t("companyDashboard.headerSubtitle")}</p>
+                <h1 className="font-sans text-2xl font-bold text-white">{company?.name ?? t("companyDashboard.companySpace")}</h1>
+                <p className="text-muted-foreground text-sm">{t("companyDashboard.headerSubtitle")}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <CartButton dark />
+              <LanguageSwitcher />
               <UserMenu />
             </div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { status: null, value: employees.length, label: t("companyDashboard.statEmployees"), icon: Users, color: "oklch(68% 0.1 78)" },
-              { status: "ok", value: okCount, label: t("companyDashboard.statTrainingsUpToDate"), icon: CheckCircle, color: "oklch(55% 0.18 145)" },
-              { status: "due_soon", value: dueSoonCount, label: t("companyDashboard.statDueSoon"), icon: Clock, color: "oklch(68% 0.1 78)" },
-              { status: "overdue", value: overdueCount, label: t("companyDashboard.statOverdue"), icon: AlertCircle, color: "oklch(55% 0.22 27)" },
+              { status: null, value: employees.length, label: t("companyDashboard.statEmployees"), icon: Users, color: "var(--link)" },
+              { status: "ok", value: okCount, label: t("companyDashboard.statTrainingsUpToDate"), icon: CheckCircle, color: "var(--success)" },
+              { status: "due_soon", value: dueSoonCount, label: t("companyDashboard.statDueSoon"), icon: Clock, color: "var(--link)" },
+              { status: "overdue", value: overdueCount, label: t("companyDashboard.statOverdue"), icon: AlertCircle, color: "var(--destructive)" },
             ].map((stat) => (
               <button key={stat.label} type="button" className="rounded-xl p-4 text-start focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white" onClick={() => {
                 if (stat.status) { setRecurrencyFilter(stat.status); setTab("recurrencies"); }
                 else { setEmployeeSearch(""); setTab("employees"); }
-              }} style={{ background: "oklch(97% 0.01 88 / 0.07)", border: "1px solid oklch(97% 0.01 88 / 0.1)" }}>
+              }} style={{ background: "color-mix(in srgb, var(--foreground) 7%, transparent)", border: "1px solid color-mix(in srgb, var(--foreground) 10%, transparent)" }}>
                 <span className="flex items-center gap-2 mb-1">
                   <stat.icon className="w-4 h-4" style={{ color: stat.color }} />
-                  <span className="font-serif text-2xl font-bold" style={{ color: stat.color }}>{stat.value}</span>
+                  <span className="font-sans text-2xl font-bold" style={{ color: stat.color }}>{stat.value}</span>
                 </span>
-                <span className="block text-xs text-white/50">{stat.label}</span>
+                <span className="block text-xs text-muted-foreground">{stat.label}</span>
               </button>
             ))}
           </div>
@@ -418,7 +420,7 @@ export default function CompanyDashboard() {
 
           <TabsContent value="employees">
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-              <h2 className="font-semibold" style={{ color: "oklch(19% 0.08 252)" }}>{t("companyDashboard.employeesListTitle")}</h2>
+              <h2 className="font-semibold" style={{ color: "var(--foreground)" }}>{t("companyDashboard.employeesListTitle")}</h2>
               <div className="flex flex-wrap gap-2">
                 <Button variant="outline" size="sm" onClick={exportEmployeesCSV}>
                   <Download className="w-4 h-4 mr-1" /> {t("companyDashboard.exportFullRoster")}
@@ -439,33 +441,33 @@ export default function CompanyDashboard() {
             </div>
 
             {employees.length === 0 ? (
-              <div className="text-center py-16 rounded-xl" style={{ background: "oklch(100% 0 0)", border: "1px solid oklch(88% 0.015 88)" }}>
-                <Users className="w-12 h-12 mx-auto mb-4" style={{ color: "oklch(68% 0.1 78)" }} />
-                <div className="font-semibold mb-2" style={{ color: "oklch(19% 0.08 252)" }}>{t("companyDashboard.noEmployees")}</div>
-                <p className="text-sm mb-4" style={{ color: "oklch(45% 0.02 240)" }}>{t("companyDashboard.noEmployeesHint")}</p>
+              <div className="text-center py-16 rounded-xl" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+                <Users className="w-12 h-12 mx-auto mb-4" style={{ color: "var(--link)" }} />
+                <div className="font-semibold mb-2" style={{ color: "var(--foreground)" }}>{t("companyDashboard.noEmployees")}</div>
+                <p className="text-sm mb-4" style={{ color: "var(--muted-foreground)" }}>{t("companyDashboard.noEmployeesHint")}</p>
               </div>
             ) : visibleEmployees.length === 0 ? (
-              <p className="rounded-xl border bg-white p-6">{t("companyDashboard.noEmployeeMatch")}</p>
+              <p className="rounded-xl border bg-card p-6">{t("companyDashboard.noEmployeeMatch")}</p>
             ) : (
-              <div className="rounded-xl overflow-x-auto" style={{ border: "1px solid oklch(88% 0.015 88)" }}>
+              <div className="rounded-xl overflow-x-auto" style={{ border: "1px solid var(--border)" }}>
                 <table className="w-full text-sm min-w-[560px]">
-                  <thead style={{ background: "oklch(93% 0.015 88)" }}>
+                  <thead style={{ background: "var(--muted)" }}>
                     <tr>{[t("companyDashboard.thName"), t("companyDashboard.thEmail"), t("companyDashboard.thJobTitle"), t("companyDashboard.thLicense"), t("companyDashboard.thCategories"), t("companyDashboard.thTypeRatings"), t("companyDashboard.thDepartment"), t("companyDashboard.thBase"), t("companyDashboard.thFile")].map((h) => (
-                      <th key={h} className="text-left px-4 py-3 font-semibold text-xs tracking-wide" style={{ color: "oklch(45% 0.02 240)" }}>{h}</th>
+                      <th key={h} className="text-left px-4 py-3 font-semibold text-xs tracking-wide" style={{ color: "var(--muted-foreground)" }}>{h}</th>
                     ))}</tr>
                   </thead>
                   <tbody>
                     {visibleEmployees.map((emp, i) => (
-                      <tr key={emp.id} style={{ background: i % 2 === 0 ? "oklch(100% 0 0)" : "oklch(97% 0.01 88)", borderTop: "1px solid oklch(93% 0.015 88)" }}>
-                        <td className="px-4 py-3 font-medium" style={{ color: "oklch(19% 0.08 252)" }}>{emp.firstName} {emp.lastName}</td>
-                        <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{emp.email}</td>
-                        <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{emp.jobTitle ?? "—"}</td>
-                        <td className="px-4 py-3 font-mono text-xs" style={{ color: "oklch(45% 0.02 240)" }}>{emp.licenseNumber ?? "—"}</td>
-                        <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{emp.licenseCategories ?? "—"}</td>
-                        <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{(emp as any).typeRatings ?? "—"}</td>
-                        <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{emp.department ?? "—"}</td>
-                        <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{emp.base ?? "—"}</td>
-                        <td className="px-4 py-3"><button onClick={() => setFileEmployee(emp.id)} className="text-xs font-semibold" style={{ color: "oklch(42% 0.1 218)" }}>{t("companyDashboard.open")}</button></td>
+                      <tr key={emp.id} style={{ background: i % 2 === 0 ? "var(--card)" : "var(--background)", borderTop: "1px solid var(--muted-foreground)" }}>
+                        <td className="px-4 py-3 font-medium" style={{ color: "var(--foreground)" }}>{emp.firstName} {emp.lastName}</td>
+                        <td className="px-4 py-3" style={{ color: "var(--muted-foreground)" }}>{emp.email}</td>
+                        <td className="px-4 py-3" style={{ color: "var(--muted-foreground)" }}>{emp.jobTitle ?? "—"}</td>
+                        <td className="px-4 py-3 font-mono text-xs" style={{ color: "var(--muted-foreground)" }}>{emp.licenseNumber ?? "—"}</td>
+                        <td className="px-4 py-3" style={{ color: "var(--muted-foreground)" }}>{emp.licenseCategories ?? "—"}</td>
+                        <td className="px-4 py-3" style={{ color: "var(--muted-foreground)" }}>{(emp as any).typeRatings ?? "—"}</td>
+                        <td className="px-4 py-3" style={{ color: "var(--muted-foreground)" }}>{emp.department ?? "—"}</td>
+                        <td className="px-4 py-3" style={{ color: "var(--muted-foreground)" }}>{emp.base ?? "—"}</td>
+                        <td className="px-4 py-3"><button onClick={() => setFileEmployee(emp.id)} className="text-sm font-semibold" style={{ color: "var(--info)" }}>{t("companyDashboard.open")}</button></td>
                       </tr>
                     ))}
                   </tbody>
@@ -476,14 +478,14 @@ export default function CompanyDashboard() {
 
           <TabsContent value="recurrencies">
             <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-              <h2 className="font-semibold" style={{ color: "oklch(19% 0.08 252)" }}>{t("companyDashboard.recurrenciesTitle")}</h2>
+              <h2 className="font-semibold" style={{ color: "var(--foreground)" }}>{t("companyDashboard.recurrenciesTitle")}</h2>
               <Button variant="outline" size="sm" onClick={exportRecurrenciesCSV}>
                 <Download className="w-4 h-4 mr-1" /> {t("companyDashboard.exportAllRecurrencies")}
               </Button>
             </div>
             <div className="mb-4 space-y-2">
               <label htmlFor="recurrency-filter" className="text-sm font-medium block">{t("companyDashboard.filterRecurrencyStatus")}</label>
-              <select id="recurrency-filter" value={recurrencyFilter} onChange={event=>setRecurrencyFilter(event.target.value)} className="rounded-md border p-2 text-sm bg-white">
+              <select id="recurrency-filter" value={recurrencyFilter} onChange={event=>setRecurrencyFilter(event.target.value)} className="rounded-md border p-2 text-sm bg-card">
                 <option value="all">{t("companyDashboard.allRecurrencyStatuses")}</option>
                 {["ok", "due_soon", "overdue", "not_started"].map(status=><option key={status} value={status}>{t(`companyDashboard.status_${status}`)}</option>)}
               </select>
@@ -491,31 +493,31 @@ export default function CompanyDashboard() {
             </div>
 
             {recurrencies.length === 0 ? (
-              <div className="text-center py-16 rounded-xl" style={{ background: "oklch(100% 0 0)", border: "1px solid oklch(88% 0.015 88)" }}>
-                <BarChart3 className="w-12 h-12 mx-auto mb-4" style={{ color: "oklch(68% 0.1 78)" }} />
-                <div className="font-semibold mb-2" style={{ color: "oklch(19% 0.08 252)" }}>{t("companyDashboard.noRecurrencies")}</div>
-                <p className="text-sm" style={{ color: "oklch(45% 0.02 240)" }}>{t("companyDashboard.noRecurrenciesHint")}</p>
+              <div className="text-center py-16 rounded-xl" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+                <BarChart3 className="w-12 h-12 mx-auto mb-4" style={{ color: "var(--link)" }} />
+                <div className="font-semibold mb-2" style={{ color: "var(--foreground)" }}>{t("companyDashboard.noRecurrencies")}</div>
+                <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>{t("companyDashboard.noRecurrenciesHint")}</p>
               </div>
             ) : visibleRecurrencies.length === 0 ? (
-              <p className="rounded-xl border bg-white p-6">{t("companyDashboard.noRecurrencyMatch")}</p>
+              <p className="rounded-xl border bg-card p-6">{t("companyDashboard.noRecurrencyMatch")}</p>
             ) : (
-              <div className="rounded-xl overflow-x-auto" style={{ border: "1px solid oklch(88% 0.015 88)" }}>
+              <div className="rounded-xl overflow-x-auto" style={{ border: "1px solid var(--border)" }}>
                 <table className="w-full text-sm min-w-[560px]">
-                  <thead style={{ background: "oklch(93% 0.015 88)" }}>
+                  <thead style={{ background: "var(--muted)" }}>
                     <tr>{[t("companyDashboard.thEmployee"), t("companyDashboard.thTraining"), t("companyDashboard.thPeriodicity"), t("companyDashboard.thLastCompletion"), t("companyDashboard.thNextDue"), t("companyDashboard.thStatus")].map((h) => (
-                      <th key={h} className="text-left px-4 py-3 font-semibold text-xs tracking-wide" style={{ color: "oklch(45% 0.02 240)" }}>{h}</th>
+                      <th key={h} className="text-left px-4 py-3 font-semibold text-xs tracking-wide" style={{ color: "var(--muted-foreground)" }}>{h}</th>
                     ))}</tr>
                   </thead>
                   <tbody>
                     {visibleRecurrencies.map((rec, i) => {
                       const statusConf = RECURRENCY_STATUS[rec.status ?? "not_started"];
                       return (
-                        <tr key={rec.id} style={{ background: i % 2 === 0 ? "oklch(100% 0 0)" : "oklch(97% 0.01 88)", borderTop: "1px solid oklch(93% 0.015 88)" }}>
-                          <td className="px-4 py-3 font-medium" style={{ color: "oklch(19% 0.08 252)" }}>{rec.employee?.firstName} {rec.employee?.lastName}</td>
-                          <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{rec.training?.title ?? "—"}</td>
-                          <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{t("companyDashboard.periodMonths", { count: rec.periodMonths })}</td>
-                          <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{rec.lastCompletedAt ? new Date(rec.lastCompletedAt).toLocaleDateString(lang) : "—"}</td>
-                          <td className="px-4 py-3" style={{ color: "oklch(45% 0.02 240)" }}>{rec.nextDueAt ? new Date(rec.nextDueAt).toLocaleDateString(lang) : "—"}</td>
+                        <tr key={rec.id} style={{ background: i % 2 === 0 ? "var(--card)" : "var(--background)", borderTop: "1px solid var(--muted-foreground)" }}>
+                          <td className="px-4 py-3 font-medium" style={{ color: "var(--foreground)" }}>{rec.employee?.firstName} {rec.employee?.lastName}</td>
+                          <td className="px-4 py-3" style={{ color: "var(--muted-foreground)" }}>{rec.training?.title ?? "—"}</td>
+                          <td className="px-4 py-3" style={{ color: "var(--muted-foreground)" }}>{t("companyDashboard.periodMonths", { count: rec.periodMonths })}</td>
+                          <td className="px-4 py-3" style={{ color: "var(--muted-foreground)" }}>{rec.lastCompletedAt ? new Date(rec.lastCompletedAt).toLocaleDateString(lang) : "—"}</td>
+                          <td className="px-4 py-3" style={{ color: "var(--muted-foreground)" }}>{rec.nextDueAt ? new Date(rec.nextDueAt).toLocaleDateString(lang) : "—"}</td>
                           <td className="px-4 py-3">
                             <span className="text-xs font-semibold px-2 py-1 rounded-full" style={{ color: statusConf.color, background: statusConf.bg }}>{t(`companyDashboard.status_${rec.status ?? "not_started"}`)}</span>
                           </td>
@@ -529,8 +531,8 @@ export default function CompanyDashboard() {
           </TabsContent>
 
           <TabsContent value="company">
-            <div className="rounded-xl p-6 max-w-lg" style={{ background: "oklch(100% 0 0)", border: "1px solid oklch(88% 0.015 88)" }}>
-              <h2 className="font-semibold mb-4" style={{ color: "oklch(19% 0.08 252)" }}>{t("companyDashboard.companyInfoTitle")}</h2>
+            <div className="rounded-xl p-6 max-w-lg" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+              <h2 className="font-semibold mb-4" style={{ color: "var(--foreground)" }}>{t("companyDashboard.companyInfoTitle")}</h2>
               {company ? (
                 <div className="space-y-3">
                   {[
@@ -543,14 +545,14 @@ export default function CompanyDashboard() {
                     { label: t("companyDashboard.companyPhone"), value: company.contactPhone ?? "—" },
                     { label: t("companyDashboard.companySubscription"), value: company.subscriptionType ?? "none" },
                   ].map((field) => (
-                    <div key={field.label} className="flex justify-between py-2 border-b" style={{ borderColor: "oklch(93% 0.015 88)" }}>
-                      <span className="text-sm font-medium" style={{ color: "oklch(45% 0.02 240)" }}>{field.label}</span>
-                      <span className="text-sm" style={{ color: "oklch(19% 0.08 252)" }}>{field.value}</span>
+                    <div key={field.label} className="flex justify-between py-2 border-b" style={{ borderColor: "var(--muted-foreground)" }}>
+                      <span className="text-sm font-medium" style={{ color: "var(--muted-foreground)" }}>{field.label}</span>
+                      <span className="text-sm" style={{ color: "var(--foreground)" }}>{field.value}</span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-sm" style={{ color: "oklch(45% 0.02 240)" }}>{t("companyDashboard.noCompanyProfile")}</p>
+                <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>{t("companyDashboard.noCompanyProfile")}</p>
               )}
             </div>
           </TabsContent>
@@ -564,7 +566,7 @@ export default function CompanyDashboard() {
           </TabsContent>
 
           <TabsContent value="subscription">
-            <div className="rounded-2xl p-6" style={{ background: "white", border: "1px solid oklch(88% 0.015 88)" }}>
+            <div className="rounded-2xl p-6" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
               {subscriptionQuery.isError || subscriptionQuery.isPending || !subscription ? (
                 <div className="space-y-3">
                   {subscriptionQuery.isError || !subscriptionQuery.isPending ? <>
@@ -576,40 +578,40 @@ export default function CompanyDashboard() {
                 <div>
                   <div className="flex items-center gap-3 mb-5">
                     <div>
-                      <div className="font-serif text-xl font-bold" style={{ color: "oklch(19% 0.08 252)" }}>
+                      <div className="font-sans text-xl font-bold" style={{ color: "var(--foreground)" }}>
                         {t("companyDashboard.subscriptionPlanTitle", { plan: subscription.subscriptionType === "all_inclusive" ? "All Inclusive" : "Standard" })}
                       </div>
-                      <div className="text-sm" style={{ color: "oklch(45% 0.02 240)" }}>
+                      <div className="text-sm" style={{ color: "var(--muted-foreground)" }}>
                         {t("companyDashboard.subscriptionStatusLabel", { status: subscription.subscriptionStatus ?? t("companyDashboard.subscriptionStatusUnknown") })}
                         {subscription.subscriptionExpiresAt ? t("companyDashboard.subscriptionNextDue", { date: new Date(subscription.subscriptionExpiresAt).toLocaleDateString(lang) }) : ""}
                       </div>
                     </div>
                   </div>
-                  {subscription.subscriptionType === "standard" && <div className={`rounded-xl p-4 mb-5 text-sm ${subscription.capacityAvailable ? "bg-slate-50" : "bg-amber-50 text-amber-900"}`}>
+                  {subscription.subscriptionType === "standard" && <div className={`rounded-xl p-4 mb-5 text-sm ${subscription.capacityAvailable ? "bg-muted" : "bg-warning/10 text-warning"}`}>
                     <p>{lang === "fr" ? "Salariés actifs / places payées" : lang === "ar" ? "الموظفون النشطون / المقاعد المدفوعة" : "Active employees / paid seats"} : {subscription.employeeCount} / {subscription.subscriptionQuantity ?? "—"}</p>
                     {!subscription.capacityAvailable && <p className="mt-2">{lang === "fr" ? "L’effectif dépasse les places vérifiées, ou leur nombre reste à vérifier. Les accès liés à cet abonnement sont suspendus. Ajustez votre formule dans le portail de facturation, puis actualisez l’abonnement." : lang === "ar" ? "يتجاوز العدد المقاعد المتحقق منها أو يلزم التحقق منها. الوصول المرتبط بالاشتراك معلق. عدّل الخطة في بوابة الفوترة ثم حدّث الاشتراك." : "The roster exceeds verified seats, or the seat count needs verification. Subscription access is suspended. Adjust your plan in the billing portal, then refresh the subscription."}</p>}
                   </div>}
                   <div className="grid sm:grid-cols-2 gap-4 mb-5">
-                    <div className="rounded-xl p-4" style={{ background: "oklch(97% 0.01 88)" }}>
-                      <div className="font-serif text-2xl font-bold" style={{ color: "oklch(68% 0.1 78)" }}>{subscription.employeeCount}</div>
-                      <div className="text-xs" style={{ color: "oklch(45% 0.02 240)" }}>{t("companyDashboard.subscriptionActiveRoster")}</div>
+                    <div className="rounded-xl p-4" style={{ background: "var(--background)" }}>
+                      <div className="font-sans text-2xl font-bold" style={{ color: "var(--link)" }}>{subscription.employeeCount}</div>
+                      <div className="text-xs" style={{ color: "var(--muted-foreground)" }}>{t("companyDashboard.subscriptionActiveRoster")}</div>
                     </div>
-                    <div className="rounded-xl p-4" style={{ background: "oklch(97% 0.01 88)" }}>
-                      <div className="font-serif text-2xl font-bold" style={{ color: "oklch(68% 0.1 78)" }}>{subscription.regulatoryTrainingCount}</div>
-                      <div className="text-xs" style={{ color: "oklch(45% 0.02 240)" }}>{t("companyDashboard.subscriptionCatalogueCount")}</div>
+                    <div className="rounded-xl p-4" style={{ background: "var(--background)" }}>
+                      <div className="font-sans text-2xl font-bold" style={{ color: "var(--link)" }}>{subscription.regulatoryTrainingCount}</div>
+                      <div className="text-xs" style={{ color: "var(--muted-foreground)" }}>{t("companyDashboard.subscriptionCatalogueCount")}</div>
                     </div>
                   </div>
                   <Button onClick={() => createPortal.mutate({ origin: window.location.origin })} disabled={createPortal.isPending || !subscription.hasStripeCustomer} variant="outline">
                     {t("companyDashboard.manageSubscription")}
                   </Button>
                   <Button className="ms-2" variant="outline" disabled={confirmSub.isPending} onClick={() => confirmSub.mutate()}>{lang === "fr" ? "Actualiser l’abonnement" : lang === "ar" ? "تحديث الاشتراك" : "Refresh subscription"}</Button>
-                  {!subscription.hasStripeCustomer && <p className="text-xs mt-2" style={{ color: "oklch(45% 0.02 240)" }}>{t("companyDashboard.billingPortalUnavailable")}</p>}
-                  <p className="text-xs mt-2" style={{ color: "oklch(45% 0.02 240)" }}>{t("companyDashboard.subscriptionAccessConditions")}</p>
+                  {!subscription.hasStripeCustomer && <p className="text-xs mt-2" style={{ color: "var(--muted-foreground)" }}>{t("companyDashboard.billingPortalUnavailable")}</p>}
+                  <p className="text-xs mt-2" style={{ color: "var(--muted-foreground)" }}>{t("companyDashboard.subscriptionAccessConditions")}</p>
                 </div>
               ) : (
                 <div>
-                  <h3 className="font-serif text-xl font-bold mb-1" style={{ color: "oklch(19% 0.08 252)" }}>{t("companyDashboard.complianceAsSubscription")}</h3>
-                  <p className="text-sm mb-5" style={{ color: "oklch(45% 0.02 240)" }}>
+                  <h3 className="font-sans text-xl font-bold mb-1" style={{ color: "var(--foreground)" }}>{t("companyDashboard.complianceAsSubscription")}</h3>
+                  <p className="text-sm mb-5" style={{ color: "var(--muted-foreground)" }}>
                     {t("companyDashboard.complianceAsSubscriptionDesc")}
                   </p>
                   <div className="grid sm:grid-cols-2 gap-4">
@@ -617,13 +619,13 @@ export default function CompanyDashboard() {
                       { plan: "standard", name: "Standard", desc: t("companyDashboard.planStandardDesc") },
                       { plan: "all_inclusive", name: "All Inclusive", desc: t("companyDashboard.planAllInclusiveDesc") },
                     ].map((p) => (
-                      <div key={p.plan} className="rounded-xl p-5 flex flex-col" style={{ border: "1px solid oklch(88% 0.015 88)" }}>
-                        <div className="font-serif text-lg font-bold" style={{ color: "oklch(19% 0.08 252)" }}>{p.name}</div>
-                        <p className="text-sm flex-1 mt-1 mb-4" style={{ color: "oklch(45% 0.02 240)" }}>{p.desc}</p>
+                      <div key={p.plan} className="rounded-xl p-5 flex flex-col" style={{ border: "1px solid var(--border)" }}>
+                        <div className="font-sans text-lg font-bold" style={{ color: "var(--foreground)" }}>{p.name}</div>
+                        <p className="text-sm flex-1 mt-1 mb-4" style={{ color: "var(--muted-foreground)" }}>{p.desc}</p>
                         <Button
                           onClick={() => createSubscription.mutate({ plan: p.plan as "standard" | "all_inclusive", origin: window.location.origin })}
                           disabled={createSubscription.isPending}
-                          style={{ background: "oklch(19% 0.08 252)", color: "white" }}
+                          style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
                         >
                           {t("companyDashboard.subscribe")}
                         </Button>
@@ -636,15 +638,15 @@ export default function CompanyDashboard() {
           </TabsContent>
           <TabsContent value="conformite">
             {analysisError || analysisPending || !consolidated ? (
-              <div className="rounded-2xl border bg-white p-6 space-y-3">
+              <div className="rounded-2xl border bg-card p-6 space-y-3">
                 {analysisError || !analysisPending ? <>
                   <p role="alert">{t("companyDashboard.analysisUnavailable")}</p>
                   <Button variant="outline" disabled={analysisQueries.some(query => query.isFetching)} onClick={() => { void Promise.all(analysisQueries.map(query => query.refetch())); }}>{t("companyDashboard.retryData")}</Button>
                 </> : <p role="status">{t("common.loading")}</p>}
               </div>
             ) : <fieldset disabled={analysisBusy} className="space-y-6 min-w-0">
-              {archivedRuleId != null && <p role="status" className="rounded-xl bg-green-50 p-4 text-sm">{t('companyDashboard.ruleArchivedConfirmation',{id:archivedRuleId})}</p>}
-              {(createRule.isError || deleteRule.isError || runTNA.isError) && <div className="rounded-xl bg-amber-50 p-4 text-sm space-y-3">
+              {archivedRuleId != null && <p role="status" className="rounded-xl bg-success/10 p-4 text-sm">{t('companyDashboard.ruleArchivedConfirmation',{id:archivedRuleId})}</p>}
+              {(createRule.isError || deleteRule.isError || runTNA.isError) && <div className="rounded-xl bg-warning/10 p-4 text-sm space-y-3">
                 <p role="alert">{t(runTNA.error?.data?.code === "PRECONDITION_FAILED" && runTNA.error.message.startsWith("Périodes contradictoires pour le salarié #") ? "companyDashboard.analysisRuleConflict" : "companyDashboard.analysisActionError")}</p>
                 {runTNA.error?.data?.code === "PRECONDITION_FAILED" && runTNA.error.message.startsWith("Périodes contradictoires pour le salarié #") && <p>{runTNA.error.message}</p>}
                 {runTNA.error?.data?.code === "PRECONDITION_FAILED" && runTNA.error.message.startsWith("Formation indisponible pour le suivi #") && <div className="space-y-2"><p>{t("companyDashboard.ruleCourseUnavailable")}</p><p>{runTNA.error.message}</p></div>}
@@ -654,60 +656,60 @@ export default function CompanyDashboard() {
                   if (results.every(result => result.isSuccess)) { createRule.reset(); deleteRule.reset(); runTNA.reset(); }
                 }}>{t("companyDashboard.retryData")}</Button>
               </div>}
-              <div className="rounded-2xl p-6" style={{ background: "white", border: "1px solid oklch(88% 0.015 88)" }}>
-                <h2 className="font-serif text-lg font-bold mb-1" style={{ color: "oklch(19% 0.08 252)" }}>{t("companyDashboard.consolidatedView")}</h2>
-                <p className="text-sm mb-4" style={{ color: "oklch(45% 0.02 240)" }}>
+              <div className="rounded-2xl p-6" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+                <h2 className="font-sans text-lg font-bold mb-1" style={{ color: "var(--foreground)" }}>{t("companyDashboard.consolidatedView")}</h2>
+                <p className="text-sm mb-4" style={{ color: "var(--muted-foreground)" }}>
                   {t("companyDashboard.consolidatedSummary", { country: consolidated?.country ?? "—", employees: consolidated?.employeeCount ?? 0, recurrencies: consolidated?.recurrencyCount ?? 0 })}
                 </p>
                 <div className="grid md:grid-cols-2 gap-6">
                   {([[t("companyDashboard.bySite"), consolidated?.byBase], [t("companyDashboard.byDepartment"), consolidated?.byDepartment]] as const).map(([label, groups]) => (
                     <div key={label}>
-                      <div className="text-xs font-semibold tracking-wide mb-2" style={{ color: "oklch(45% 0.02 240)" }}>{label.toUpperCase()}</div>
+                      <div className="text-xs font-semibold tracking-wide mb-2" style={{ color: "var(--muted-foreground)" }}>{label.toUpperCase()}</div>
                       <div className="space-y-1.5">
                         {groups && Object.keys(groups).length > 0 ? Object.entries(groups).map(([k, v]: any) => (
-                          <div key={k} className="flex items-center gap-2 p-2 rounded-lg text-sm" style={{ background: "oklch(97% 0.01 88)" }}>
-                            <span className="flex-1 font-medium" style={{ color: "oklch(19% 0.08 252)" }}>{k}</span>
-                            <span style={{ color: "oklch(55% 0.18 145)" }}>{t("companyDashboard.countOk", { count: v.ok })}</span>
-                            <span style={{ color: "oklch(60% 0.12 78)" }}>{t("companyDashboard.countDue", { count: v.due_soon })}</span>
-                            <span style={{ color: "oklch(55% 0.22 27)" }}>{t("companyDashboard.countOverdue", { count: v.overdue })}</span>
+                          <div key={k} className="flex items-center gap-2 p-2 rounded-lg text-sm" style={{ background: "var(--background)" }}>
+                            <span className="flex-1 font-medium" style={{ color: "var(--foreground)" }}>{k}</span>
+                            <span style={{ color: "var(--success)" }}>{t("companyDashboard.countOk", { count: v.ok })}</span>
+                            <span style={{ color: "var(--link)" }}>{t("companyDashboard.countDue", { count: v.due_soon })}</span>
+                            <span style={{ color: "var(--destructive)" }}>{t("companyDashboard.countOverdue", { count: v.overdue })}</span>
                           </div>
-                        )) : <p className="text-xs" style={{ color: "oklch(45% 0.02 240)" }}>{t("companyDashboard.noData")}</p>}
+                        )) : <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>{t("companyDashboard.noData")}</p>}
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="rounded-2xl p-6" style={{ background: "white", border: "1px solid oklch(88% 0.015 88)" }}>
-                <div className="flex items-center justify-between mb-3">
-                  <h2 className="font-serif text-lg font-bold" style={{ color: "oklch(19% 0.08 252)" }}>{t("companyDashboard.tnaTitle")}</h2>
-                  <Button size="sm" onClick={() => runTNA.mutate()} disabled={runTNA.isPending} style={{ background: "oklch(19% 0.08 252)", color: "white" }}>{t("companyDashboard.runTna")}</Button>
+              <div className="rounded-2xl p-6" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                  <h2 className="font-sans text-lg font-bold" style={{ color: "var(--foreground)" }}>{t("companyDashboard.tnaTitle")}</h2>
+                  <Button size="sm" onClick={() => runTNA.mutate()} disabled={runTNA.isPending} style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>{t("companyDashboard.runTna")}</Button>
                 </div>
-                <p className="text-sm mb-4" style={{ color: "oklch(45% 0.02 240)" }}>{t("companyDashboard.tnaDesc")}</p>
+                <p className="text-sm mb-4" style={{ color: "var(--muted-foreground)" }}>{t("companyDashboard.tnaDesc")}</p>
                 <p className="text-sm mb-4">{t("companyDashboard.tnaEffect")}</p>
                 {runTNA.isSuccess&&<p role="status" className="text-sm mb-4 rounded-lg border p-3">{t(runTNA.data.created===0?"companyDashboard.tnaNothingAdded":"companyDashboard.toastTna",{count:runTNA.data.created})}</p>}
                 <div className="space-y-1.5 mb-4">
-                  {roleReqs.length === 0 && <p className="text-xs" style={{ color: "oklch(45% 0.02 240)" }}>{t("companyDashboard.noRule")}</p>}
+                  {roleReqs.length === 0 && <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>{t("companyDashboard.noRule")}</p>}
                   {roleReqs.map((r: any) => (
-                    <div key={r.id} className="flex items-center gap-2 p-2 rounded-lg text-sm" style={{ background: "oklch(97% 0.01 88)" }}>
+                    <div key={r.id} className="flex items-center gap-2 p-2 rounded-lg text-sm" style={{ background: "var(--background)" }}>
                       <div className="flex-1">
-                        <div className="font-medium" style={{ color: "oklch(19% 0.08 252)" }}>{r.label ?? r.training?.title}</div>
+                        <div className="font-medium" style={{ color: "var(--foreground)" }}>{r.label ?? r.training?.title}</div>
                         <div className="text-xs">{t(r.companyId == null ? "companyDashboard.ruleGlobalScope" : "companyDashboard.ruleCompanyScope")}</div>
                         <p className="text-xs">{r.createdBy == null ? t('companyDashboard.ruleCreatorUnknown') : t('companyDashboard.ruleCreator',{id:r.createdBy,date:new Date(r.createdAt).toLocaleString(lang)})}</p>
-                        {!roleRequirementInput.shape.periodMonths.safeParse(r.periodMonths).success&&<p className="text-xs text-amber-800">{t("companyDashboard.rulePeriodReview")}</p>}
-                        {(!r.training || !r.training.isPublished || r.training.archivedAt)&&<p className="text-xs text-amber-800">{t("companyDashboard.ruleCourseReview")}</p>}
-                        <div className="text-xs" style={{ color: "oklch(45% 0.02 240)" }}>
+                        {!roleRequirementInput.shape.periodMonths.safeParse(r.periodMonths).success&&<p className="text-xs text-warning">{t("companyDashboard.rulePeriodReview")}</p>}
+                        {(!r.training || !r.training.isPublished || r.training.archivedAt)&&<p className="text-xs text-warning">{t("companyDashboard.ruleCourseReview")}</p>}
+                        <div className="text-xs" style={{ color: "var(--muted-foreground)" }}>
                           {r.jobTitleContains && r.licenseCategoryContains ? t("companyDashboard.ruleEither", { job: r.jobTitleContains, license: r.licenseCategoryContains }) : r.jobTitleContains ? t("companyDashboard.ruleJobTitleMatch", { value: r.jobTitleContains }) : r.licenseCategoryContains ? t("companyDashboard.ruleLicenseMatch", { value: r.licenseCategoryContains }) : t("companyDashboard.ruleAll")} → {r.training?.title ?? `#${r.trainingId}`} · {t("companyDashboard.periodMonths", { count: r.periodMonths })}
                         </div>
                       </div>
-                      {(r.companyId === company.id || user?.role === "admin") && <button disabled={deleteRule.isPending} onClick={() => archiveRule(r)} className="text-red-500 text-xs font-semibold">{t("companyDashboard.archiveRule")}</button>}
+                      {(r.companyId === company.id || user?.role === "admin") && <button disabled={deleteRule.isPending} onClick={() => archiveRule(r)} className="text-destructive text-sm font-semibold">{t("companyDashboard.archiveRule")}</button>}
                     </div>
                   ))}
                 </div>
                 <p id="rule-input-help" className="text-xs mb-3">{t("companyDashboard.ruleCompanyCreation", { name: company.name })} {t("companyDashboard.ruleInputLimits")} {t("companyDashboard.ruleMatchHelp")} {t("companyDashboard.ruleCourseScope")}</p>
-                <div className="rounded-lg p-3 grid sm:grid-cols-2 gap-2" style={{ background: "oklch(97% 0.01 88)", border: "1px solid oklch(88% 0.015 88)" }}>
-                  <div><label htmlFor="rule-label" className="text-xs block mb-1">{t("companyDashboard.ruleLabelPlaceholder")}</label><Input id="rule-label" maxLength={255} aria-describedby="rule-input-help" value={ruleForm.label} onChange={(e) => setRuleForm((f) => ({ ...f, label: e.target.value }))} className="h-8" /></div>
-                  <div><label htmlFor="rule-training" className="text-xs block mb-1">{t("companyDashboard.trainingPlaceholder")}</label><select id="rule-training" aria-describedby="rule-input-help" value={ruleForm.trainingId} onChange={(e) => setRuleForm((f) => ({ ...f, trainingId: e.target.value }))} className="h-8 rounded-md border px-2 text-sm" style={{ borderColor: "oklch(88% 0.015 88)" }}>
+                <div className="rounded-lg p-3 grid grid-cols-1 sm:grid-cols-2 gap-2" style={{ background: "var(--background)", border: "1px solid var(--border)" }}>
+                  <div><label htmlFor="rule-label" className="text-sm block mb-1">{t("companyDashboard.ruleLabelPlaceholder")}</label><Input id="rule-label" maxLength={255} aria-describedby="rule-input-help" value={ruleForm.label} onChange={(e) => setRuleForm((f) => ({ ...f, label: e.target.value }))} className="h-8" /></div>
+                  <div><label htmlFor="rule-training" className="text-sm block mb-1">{t("companyDashboard.trainingPlaceholder")}</label><select id="rule-training" aria-describedby="rule-input-help" value={ruleForm.trainingId} onChange={(e) => setRuleForm((f) => ({ ...f, trainingId: e.target.value }))} className="h-8 w-full min-w-0 rounded-md border px-2 text-sm" style={{ borderColor: "var(--border)" }}>
                     <option value="">{t("companyDashboard.trainingPlaceholder")}</option>
                     <optgroup label={t("companyDashboard.ruleInternalCourses")}>
                       {allTrainings.filter(course=>course.ownerOrgId!=null).map(course=><option key={course.id} value={course.id}>{course.title}</option>)}
@@ -716,14 +718,14 @@ export default function CompanyDashboard() {
                       {allTrainings.filter(course=>course.ownerOrgId==null).map(course=><option key={course.id} value={course.id}>{course.title}</option>)}
                     </optgroup>
                   </select></div>
-                  <div><label htmlFor="rule-jobTitleContains" className="text-xs block mb-1">{t("companyDashboard.ruleJobTitlePlaceholder")}</label><Input id="rule-jobTitleContains" maxLength={128} aria-describedby="rule-input-help" value={ruleForm.jobTitleContains} onChange={(e) => setRuleForm((f) => ({ ...f, jobTitleContains: e.target.value }))} className="h-8" /></div>
-                  <div><label htmlFor="rule-licenseCategoryContains" className="text-xs block mb-1">{t("companyDashboard.ruleLicensePlaceholder")}</label><Input id="rule-licenseCategoryContains" maxLength={64} aria-describedby="rule-input-help" value={ruleForm.licenseCategoryContains} onChange={(e) => setRuleForm((f) => ({ ...f, licenseCategoryContains: e.target.value }))} className="h-8" /></div>
-                  <div className="flex items-center gap-2"><label htmlFor="rule-period" className="text-xs" style={{ color: "oklch(45% 0.02 240)" }}>{t("companyDashboard.periodMonthsLabel")}</label><Input id="rule-period" aria-describedby="rule-input-help" type="number" min={1} max={120} step={1} value={ruleForm.periodMonths} onChange={(e) => setRuleForm((f) => ({ ...f, periodMonths: Number(e.target.value) }))} className="h-8 w-20" /></div>
+                  <div><label htmlFor="rule-jobTitleContains" className="text-sm block mb-1">{t("companyDashboard.ruleJobTitlePlaceholder")}</label><Input id="rule-jobTitleContains" maxLength={128} aria-describedby="rule-input-help" value={ruleForm.jobTitleContains} onChange={(e) => setRuleForm((f) => ({ ...f, jobTitleContains: e.target.value }))} className="h-8" /></div>
+                  <div><label htmlFor="rule-licenseCategoryContains" className="text-sm block mb-1">{t("companyDashboard.ruleLicensePlaceholder")}</label><Input id="rule-licenseCategoryContains" maxLength={64} aria-describedby="rule-input-help" value={ruleForm.licenseCategoryContains} onChange={(e) => setRuleForm((f) => ({ ...f, licenseCategoryContains: e.target.value }))} className="h-8" /></div>
+                  <div className="flex items-center gap-2"><label htmlFor="rule-period" className="text-sm" style={{ color: "var(--muted-foreground)" }}>{t("companyDashboard.periodMonthsLabel")}</label><Input id="rule-period" aria-describedby="rule-input-help" type="number" min={1} max={120} step={1} value={ruleForm.periodMonths} onChange={(e) => setRuleForm((f) => ({ ...f, periodMonths: Number(e.target.value) }))} className="h-8 w-20" /></div>
                   <div className="col-span-full rounded-lg border p-3 text-sm space-y-2">
                     {!validRule ? <p>{t('companyDashboard.rulePreviewInput')}</p> : employeesQuery.isFetching || requirementsQuery.isFetching ? <p role="status">{t('common.loading')}</p> : <>
                       <p role="status">{t('companyDashboard.rulePreviewCount',{count:matchingEmployees.length})}</p>
                       <p className="text-muted-foreground">{t('companyDashboard.rulePreviewHint')}</p>
-                      {periodOverlaps.length > 0 && <div className="rounded border border-amber-300 bg-amber-50 p-3 space-y-2">
+                      {periodOverlaps.length > 0 && <div className="rounded border border-warning/30 bg-warning/10 p-3 space-y-2">
                         <p>{t('companyDashboard.ruleOverlapHint',{count:periodOverlaps.length})}</p>
                         <ul className="space-y-1">{periodOverlaps.slice(0,20).map(rule=><li key={rule.id}>{t('companyDashboard.ruleOverlapRow',{id:rule.id,months:rule.periodMonths,count:rule.employeeCount})}</li>)}</ul>
                         {periodOverlaps.length > 20 && <p>{t('companyDashboard.ruleOverlapMore',{count:periodOverlaps.length-20})}</p>}
@@ -733,7 +735,7 @@ export default function CompanyDashboard() {
                       </ul>{matchingEmployees.length > 20 && <p>{t('companyDashboard.rulePreviewMore',{count:matchingEmployees.length-20})}</p>}</details>}
                     </>}
                   </div>
-                  <Button size="sm" disabled={!validRule || createRule.isPending} onClick={() => createRule.mutate({ label: ruleForm.label || undefined, jobTitleContains: ruleForm.jobTitleContains || undefined, licenseCategoryContains: ruleForm.licenseCategoryContains || undefined, trainingId: Number(ruleForm.trainingId), periodMonths: ruleForm.periodMonths })} style={{ background: "oklch(19% 0.08 252)", color: "white" }}>{t("companyDashboard.addRule")}</Button>
+                  <Button size="sm" disabled={!validRule || createRule.isPending} onClick={() => createRule.mutate({ label: ruleForm.label || undefined, jobTitleContains: ruleForm.jobTitleContains || undefined, licenseCategoryContains: ruleForm.licenseCategoryContains || undefined, trainingId: Number(ruleForm.trainingId), periodMonths: ruleForm.periodMonths })} style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>{t("companyDashboard.addRule")}</Button>
                 </div>
               </div>
             </fieldset>}

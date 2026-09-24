@@ -1,3 +1,4 @@
+import { LanguageSwitcher } from "@/components/PublicNav";
 import DraftConflictResolution from "@/components/DraftConflictResolution";
 import {requestId as createRequestId} from "@/lib/requestId";
 import { useDraftExitGuard } from "@/hooks/useDraftExitGuard";
@@ -28,11 +29,11 @@ import {
 import { toast } from "sonner";
 import { getLoginUrl } from "@/const";
 
-const DEEP_BLUE = "oklch(19% 0.08 252)";
-const GOLD = "oklch(68% 0.1 78)";
-const IVORY = "oklch(97% 0.01 88)";
-const MUTED = "oklch(45% 0.02 240)";
-const BORDER = "oklch(88% 0.015 88)";
+const DEEP_BLUE = "var(--foreground)";
+const GOLD = "var(--link)";
+const IVORY = "var(--foreground)";
+const MUTED = "var(--muted-foreground)";
+const BORDER = "var(--border)";
 
 type Provider = "openai" | "anthropic" | "google" | "mistral";
 const slugify = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60);
@@ -116,16 +117,16 @@ export default function CourseMaker() {
     reorder.mutate({ orderedIds: arr.map(s=>s.id), expectedRevisions:arr.map(s=>s.revision) });
   };
 
-  if (loading || (!!user && workspaces.isLoading)) return <div className="min-h-screen flex items-center justify-center" style={{ background: IVORY }}><Loader2 className="w-6 h-6 animate-spin" /></div>;
+  if (loading || (!!user && workspaces.isLoading)) return <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--background)" }}><Loader2 className="w-6 h-6 animate-spin" /></div>;
   if (workspaces.isError) return <div className="container py-12"><MakerReadError message={t("courseMaker.readError")} busy={workspaces.isFetching} retry={() => { void workspaces.refetch(); }} /></div>;
   if (!user || !canAuthor) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: IVORY }}>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--background)" }}>
         <div className="text-center">
-          <XCircle className="w-12 h-12 mx-auto mb-4" style={{ color: "oklch(55% 0.22 27)" }} />
-          <h2 className="font-serif text-2xl font-bold mb-2" style={{ color: DEEP_BLUE }}>403</h2>
-          <p className="text-sm" style={{ color: MUTED }}>{t("courseMaker.forbidden")}</p>
-          <Link href={getLoginUrl()}><Button className="mt-4" style={{ background: DEEP_BLUE, color: IVORY }}>{t("nav.login")}</Button></Link>
+          <XCircle className="w-12 h-12 mx-auto mb-4" style={{ color: "var(--destructive)" }} />
+          <h2 className="font-sans text-2xl font-bold mb-2" style={{ color: "var(--foreground)" }}>403</h2>
+          <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>{t("courseMaker.forbidden")}</p>
+          <Link href={getLoginUrl()}><Button className="mt-4" style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>{t("nav.login")}</Button></Link>
         </div>
       </div>
     );
@@ -137,53 +138,53 @@ export default function CourseMaker() {
   }));
 
   return (
-    <div className="min-h-screen" style={{ background: IVORY }}>
+    <div className="min-h-screen" style={{ background: "var(--background)" }}>
       {/* Header */}
-      <div style={{ background: DEEP_BLUE }}>
-        <div className="container py-5 flex items-center justify-between gap-4">
+      <div style={{ background: "var(--surface-strong)" }}>
+        <div className="container py-5 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <Sparkles className="w-6 h-6" style={{ color: GOLD }} />
+            <Sparkles className="w-6 h-6" style={{ color: "var(--link)" }} />
             <div>
-              <h1 className="font-serif text-xl font-bold text-white">{t("maker.title")}</h1>
-              <p className="text-white/60 text-xs">{t("maker.subtitle")}</p>
+              <h1 className="font-sans text-xl font-bold text-white">{t("maker.title")}</h1>
+              <p className="text-muted-foreground text-xs">{t("maker.subtitle")}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <LanguageToggle />
-            <Link href={user.role === "admin" ? "/admin" : "/dashboard"}><Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-white/10"><ArrowLeft className="w-4 h-4 mr-1" /> {user.role === "admin" ? t("userMenu.administration") : t("userMenu.mySpace")}</Button></Link>
+            <LanguageSwitcher />
+            <Link href={user.role === "admin" ? "/admin" : "/dashboard"}><Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-foreground/10"><ArrowLeft className="w-4 h-4 mr-1" /> {user.role === "admin" ? t("userMenu.administration") : t("userMenu.mySpace")}</Button></Link>
           </div>
         </div>
       </div>
 
-      <div className="container py-6 grid lg:grid-cols-[300px_1fr] gap-6">
+      <div className="container py-6 grid grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)] gap-6">
         {/* Left: course list */}
-        <div>
+        <div className="min-w-0">
           {pendingReviews.isError && <MakerReadError message={t("courseMaker.readError")} busy={pendingReviews.isFetching} retry={() => { void pendingReviews.refetch(); }} />}
-          {!pendingReviews.isError && !!pendingReviews.data?.length && <div className="border rounded p-3 mb-3 bg-white"><p className="text-sm font-semibold">{t("review.inbox")}</p>{pendingReviews.data.map(r => <button className="block text-xs underline mt-1 text-left" key={r.id} onClick={() => setTrainingId(r.trainingId)}>{r.title}</button>)}</div>}
-          <label className="block text-xs mb-3">{t("maker.creationWorkspace")}
-            <select value={workspaceId} onChange={e => setWorkspaceId(e.target.value)} className="w-full p-2 border rounded mt-1 bg-white">
+          {!pendingReviews.isError && !!pendingReviews.data?.length && <div className="border rounded p-3 mb-3 bg-card"><p className="text-sm font-semibold">{t("review.inbox")}</p>{pendingReviews.data.map(r => <button className="block text-sm underline mt-1 text-left" key={r.id} onClick={() => setTrainingId(r.trainingId)}>{r.title}</button>)}</div>}
+          <label className="block text-sm mb-3">{t("maker.creationWorkspace")}
+            <select value={workspaceId} onChange={e => setWorkspaceId(e.target.value)} className="w-full p-2 border rounded mt-1 bg-card">
               {workspaces.data?.map(w => <option key={w.orgId ?? "operator"} value={w.orgId == null ? "operator" : String(w.orgId)}>{w.name ?? t("maker.operatorWorkspace")}</option>)}
             </select>
           </label>
           <div className="flex flex-wrap gap-2 mb-2">
             <Button size="sm" className="grow" variant="outline" disabled={!selectedWorkspace} onClick={() => setNewOpen(true)}><Plus className="w-4 h-4 mr-1" /> {t("maker.newCourse")}</Button>
-            <Button size="sm" className="grow" disabled={!aiReady || !selectedWorkspace} onClick={() => setAiOpen(true)} style={{ background: GOLD, color: DEEP_BLUE }}><Wand2 className="w-4 h-4 mr-1" /> {t("maker.aiOutline")}</Button>
+            <Button size="sm" className="grow" disabled={!aiReady || !selectedWorkspace} onClick={() => setAiOpen(true)} style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}><Wand2 className="w-4 h-4 mr-1" /> {t("maker.aiOutline")}</Button>
           </div>
           <Button className="w-full mb-2" size="sm" variant="outline" disabled={!course || !selectedWorkspace || coursesQuery.isError} onClick={() => setCopyOpen(true)}>{lang === "fr" ? "Dupliquer la formation sélectionnée" : lang === "ar" ? "نسخ الدورة المحددة" : "Duplicate selected course"}</Button>
-          {!aiReady &&<p className="text-xs mb-3 p-2 rounded" style={{ background: "oklch(68% 0.1 78 / 0.12)", color: "oklch(45% 0.06 78)" }}>{t("maker.providerMissing")}</p>}
+          {!aiReady &&<p className="text-xs mb-3 p-2 rounded" style={{ background: "color-mix(in srgb, var(--link) 12%, transparent)", color: "var(--link)" }}>{t("maker.providerMissing")}</p>}
           {canAuthor && <><AiUsage /><PendingAiOutlines onCreated={id=>{setTrainingId(id);utils.maker.courses.invalidate();}}/></>}
-          <div className="text-xs font-semibold tracking-wide mb-2" style={{ color: MUTED }}>{t("maker.courses").toUpperCase()}</div>
+          <div className="text-xs font-semibold tracking-wide mb-2" style={{ color: "var(--muted-foreground)" }}>{t("maker.courses").toUpperCase()}</div>
           <div className="space-y-1.5">
             {coursesQuery.isLoading && <p role="status">{t("common.loading")}</p>}
             {coursesQuery.isError && <MakerReadError message={t("courseMaker.readError")} busy={coursesQuery.isFetching} retry={() => { void coursesQuery.refetch(); }} />}
             {!coursesQuery.isLoading && !coursesQuery.isError && courses.length === 0 && <p className="text-sm text-muted-foreground">{t("courseMaker.noCourses")}</p>}
             {!coursesQuery.isError && courses.map((c: any) => (
               <button key={c.id} onClick={() => setTrainingId(c.id)} className="w-full text-left p-2.5 rounded-lg flex items-center gap-2 transition-colors"
-                style={{ background: c.id === trainingId ? "white" : "transparent", border: `1px solid ${c.id === trainingId ? GOLD : "transparent"}` }}>
-                <BookOpen className="w-4 h-4 shrink-0" style={{ color: c.id === trainingId ? GOLD : MUTED }} />
-                <span className="flex-1 text-sm truncate" style={{ color: DEEP_BLUE }}>{c.title}<span className="block text-[10px] text-muted-foreground">{c.ownerOrgId == null ? t("maker.operatorWorkspace") : workspaces.data?.find(w => w.orgId === c.ownerOrgId)?.name ?? t("maker.companyWorkspace")}</span></span>
-                {c.reviewStatus === "needs_review" && <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: "oklch(55% 0.22 27 / 0.12)", color: "oklch(50% 0.22 27)" }}>{t("courseMaker.needsReview")}</span>}
-                <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ background: c.isPublished ? "oklch(55% 0.18 145 / 0.12)" : "oklch(62% 0.02 240 / 0.12)", color: c.isPublished ? "oklch(45% 0.15 145)" : MUTED }}>
+                style={{ background: c.id === trainingId ? "var(--card)" : "transparent", border: `1px solid ${c.id === trainingId ? "var(--link)" : "transparent"}` }}>
+                <BookOpen className="w-4 h-4 shrink-0" style={{ color: c.id === trainingId ? "var(--link)" : "var(--muted-foreground)" }} />
+                <span className="flex-1 text-sm truncate" style={{ color: "var(--foreground)" }}>{c.title}<span className="block text-xs text-muted-foreground">{c.ownerOrgId == null ? t("maker.operatorWorkspace") : workspaces.data?.find(w => w.orgId === c.ownerOrgId)?.name ?? t("maker.companyWorkspace")}</span></span>
+                {c.reviewStatus === "needs_review" && <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: "color-mix(in srgb, var(--destructive) 12%, transparent)", color: "var(--destructive)" }}>{t("courseMaker.needsReview")}</span>}
+                <span className="text-xs px-1.5 py-0.5 rounded-full" style={{ background: c.isPublished ? "color-mix(in srgb, var(--success) 12%, transparent)" : "color-mix(in srgb, var(--muted-foreground) 12%, transparent)", color: c.isPublished ? "var(--success)" : "var(--muted-foreground)" }}>
                   {c.isPublished ? t("maker.published") : t("maker.draft")}
                 </span>
               </button>
@@ -192,25 +193,25 @@ export default function CourseMaker() {
         </div>
 
         {/* Right: editor */}
-        <div>
+        <div className="min-w-0">
           {coursesQuery.isLoading ? <p role="status">{t("common.loading")}</p> : !course && coursesQuery.isError ? <MakerReadError message={t("courseMaker.readError")} busy={coursesQuery.isFetching} retry={() => { void coursesQuery.refetch(); }} /> : !course ? (
-            <div className="rounded-xl p-12 text-center" style={{ background: "white", border: `1px solid ${BORDER}` }}>
-              <GraduationCap className="w-10 h-10 mx-auto mb-3" style={{ color: GOLD }} />
-              <p className="text-sm" style={{ color: MUTED }}>{t("maker.selectCourse")}</p>
+            <div className="rounded-xl p-12 text-center" style={{ background: "var(--card)", border: `1px solid ${"var(--border)"}` }}>
+              <GraduationCap className="w-10 h-10 mx-auto mb-3" style={{ color: "var(--link)" }} />
+              <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>{t("maker.selectCourse")}</p>
             </div>
           ) : (
             <>
               {coursesQuery.isError && <MakerReadError message={t("courseMaker.readError")} busy={coursesQuery.isFetching} retry={() => { void coursesQuery.refetch(); }} />}
               <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
                 <div>
-                  <h2 className="font-serif text-xl font-bold" style={{ color: DEEP_BLUE }}>{course.title}</h2>
+                  <h2 className="font-sans text-xl font-bold" style={{ color: "var(--foreground)" }}>{course.title}</h2>
                   <p className="text-xs my-1">{t("curriculum.authorHint")}</p>
                   {versions.isLoading && <p role="status" className="text-xs">{t("common.loading")}</p>}
                   {versions.isError && <MakerReadError message={t("courseMaker.readError")} busy={versions.isFetching} retry={() => { void versions.refetch(); }} />}
                   <p className="text-xs my-1">{!versions.isError && versions.data?.map(v => t("curriculum.version", { version: v.version })).join(" · ")}</p>
-                  {!slidesUnavailable && <span className="text-xs" style={{ color: MUTED }}>{slides.length} {t("maker.slides").toLowerCase()}</span>}
+                  {!slidesUnavailable && <span className="text-xs" style={{ color: "var(--muted-foreground)" }}>{slides.length} {t("maker.slides").toLowerCase()}</span>}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Button size="sm" variant="outline" disabled={archive.isPending || publish.isPending || coursesQuery.isError} onClick={() => { if (confirm(t("contentArchive.confirm"))) archive.mutate({ trainingId: course.id }); }}>{t("contentArchive.action")}</Button>
                   <Button size="sm" variant="outline" disabled={slidesUnavailable || !slides.length} onClick={() => setPreviewOpen(true)}><Eye className="w-4 h-4 mr-1" /> {t("maker.preview")}</Button>
                   {course.isPublished && <Button size="sm" disabled={publish.isPending || archive.isPending || publicationUnavailable} onClick={() => publish.mutate({ id: course.id, isPublished: true })}>{t("curriculum.publishNext")}</Button>}
@@ -221,37 +222,37 @@ export default function CourseMaker() {
               </div>
 
               {course.ownerOrgId && <CompanyCourseAssignment key={course.id} trainingId={course.id} published={!!course.isPublished && !!course.publishedVersionId} />}
-              <div className="rounded-xl bg-white p-4 mb-4 border"><div className="flex justify-between gap-2"><strong>{t("readiness.title")}</strong><Button size="sm" variant="outline" disabled={readiness.isFetching} onClick={() => readiness.refetch()}>{t("readiness.check")}</Button></div>{readiness.isError ? <MakerReadError message={t("courseMaker.readError")} busy={readiness.isFetching} retry={() => { void readiness.refetch(); }} /> : readiness.isFetching ? <p role="status" className="text-sm mt-2">{t("common.loading")}</p> : readiness.data?.ready ? <p className="text-sm mt-2">{t("readiness.ready")}</p> : <ul className="list-disc ps-5 mt-2 text-sm space-y-1">{readiness.data?.issues.map((issue, i) => <li key={i}>{t(`readiness.${issue.code}`)} — {issue.label}{!slidesUnavailable && issue.slideId != null && slides.some(s => s.id === issue.slideId) && <button className="ms-2 underline" onClick={() => setEditSlide(slides.find(s => s.id === issue.slideId))}>{lang === "fr" ? "Corriger" : lang === "ar" ? "تصحيح" : "Fix"}</button>}</li>)}</ul>}</div>
+              <div className="rounded-xl bg-card p-4 mb-4 border"><div className="flex justify-between gap-2"><strong>{t("readiness.title")}</strong><Button size="sm" variant="outline" disabled={readiness.isFetching} onClick={() => readiness.refetch()}>{t("readiness.check")}</Button></div>{readiness.isError ? <MakerReadError message={t("courseMaker.readError")} busy={readiness.isFetching} retry={() => { void readiness.refetch(); }} /> : readiness.isFetching ? <p role="status" className="text-sm mt-2">{t("common.loading")}</p> : readiness.data?.ready ? <p className="text-sm mt-2">{t("readiness.ready")}</p> : <ul className="list-disc ps-5 mt-2 text-sm space-y-1">{readiness.data?.issues.map((issue, i) => <li key={i}>{t(`readiness.${issue.code}`)} — {issue.label}{!slidesUnavailable && issue.slideId != null && slides.some(s => s.id === issue.slideId) && <button className="ms-2 underline" onClick={() => setEditSlide(slides.find(s => s.id === issue.slideId))}>{lang === "fr" ? "Corriger" : lang === "ar" ? "تصحيح" : "Fix"}</button>}</li>)}</ul>}</div>
               <PedagogicalReviewPanel key={`review-${course.id}`} trainingId={course.id} />
-              <div className="rounded-xl bg-white p-4 mb-6 border"><AdminContentManager key={course.id} trainings={[course]} /></div>
+              <div className="rounded-xl bg-card p-4 mb-6 border"><AdminContentManager key={course.id} trainings={[course]} /></div>
               <div className="space-y-2 mb-4">
                 {slidesQuery.isLoading && <p role="status">{t("common.loading")}</p>}
                 {slidesQuery.isError && <MakerReadError message={t("courseMaker.readError")} busy={slidesQuery.isFetching} retry={() => { void slidesQuery.refetch(); }} />}
-                {!slidesUnavailable && slides.length === 0 && <p className="text-sm p-6 text-center rounded-xl" style={{ background: "white", border: `1px solid ${BORDER}`, color: MUTED }}>{t("maker.noSlides")}</p>}
+                {!slidesUnavailable && slides.length === 0 && <p className="text-sm p-6 text-center rounded-xl" style={{ background: "var(--card)", border: `1px solid ${"var(--border)"}`, color: "var(--muted-foreground)" }}>{t("maker.noSlides")}</p>}
                 {!slidesUnavailable && slides.map((s: any, i: number) => (
-                  <div key={s.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "white", border: `1px solid ${BORDER}` }}>
+                  <div key={s.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "var(--card)", border: `1px solid ${"var(--border)"}` }}>
                     <div className="flex flex-col">
                       <button aria-label={t("courseMaker.moveSlideUp", { title: s.title || String(i + 1) })} onClick={() => move(i, -1)} disabled={i === 0 || reorder.isPending || slidesQuery.isFetching} className="text-muted-foreground disabled:opacity-30"><ChevronUp className="w-4 h-4" /></button>
                       <button aria-label={t("courseMaker.moveSlideDown", { title: s.title || String(i + 1) })} onClick={() => move(i, 1)} disabled={i === slides.length - 1 || reorder.isPending || slidesQuery.isFetching} className="text-muted-foreground disabled:opacity-30"><ChevronDown className="w-4 h-4" /></button>
                     </div>
-                    <div className="w-12 h-12 rounded-lg shrink-0 overflow-hidden flex items-center justify-center" style={{ background: "oklch(93% 0.015 88)" }}>
-                      {s.imageUrl ? <img src={s.imageUrl} alt="" className="w-full h-full object-cover" /> : <ImageIcon className="w-5 h-5" style={{ color: "oklch(75% 0.02 240)" }} />}
+                    <div className="w-12 h-12 rounded-lg shrink-0 overflow-hidden flex items-center justify-center" style={{ background: "var(--muted)" }}>
+                      {s.imageUrl ? <img src={s.imageUrl} alt="" className="w-full h-full object-cover" /> : <ImageIcon className="w-5 h-5" style={{ color: "var(--muted-foreground)" }} />}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium truncate" style={{ color: DEEP_BLUE }}>{i + 1}. {s.title || "—"}</div>
-                      <div className="flex items-center gap-2 mt-0.5 text-[11px]" style={{ color: MUTED }}>
+                      <div className="text-sm font-medium truncate" style={{ color: "var(--foreground)" }}>{i + 1}. {s.title || "—"}</div>
+                      <div className="flex items-center gap-2 mt-0.5 text-xs" style={{ color: "var(--muted-foreground)" }}>
                         {s.videoUrl && <span>🎬 video</span>}
                         {s.audioUrl && <span><Mic className="w-3 h-3 inline" /> audio</span>}
                         {s.quizQuestion && <span><FileQuestion className="w-3 h-3 inline" /> quiz</span>}
                       </div>
                     </div>
-                    <button aria-label={t("courseMaker.editSlide", { title: s.title || String(i + 1) })} onClick={() => setEditSlide(s)} className="p-1.5 rounded hover:bg-black/5" style={{ color: MUTED }}><Pencil className="w-4 h-4" /></button>
-                    <button aria-label={t("courseMaker.archiveSlide", { title: s.title || String(i + 1) })} onClick={() => { if (confirm(t("contentArchive.confirm"))) deleteSlide.mutate({ id: s.id }); }} className="p-1.5 rounded hover:bg-black/5 text-red-500"><Trash2 className="w-4 h-4" /></button>
+                    <button aria-label={t("courseMaker.editSlide", { title: s.title || String(i + 1) })} onClick={() => setEditSlide(s)} className="p-1.5 rounded hover:bg-foreground/5" style={{ color: "var(--muted-foreground)" }}><Pencil className="w-4 h-4" /></button>
+                    <button aria-label={t("courseMaker.archiveSlide", { title: s.title || String(i + 1) })} onClick={() => { if (confirm(t("contentArchive.confirm"))) deleteSlide.mutate({ id: s.id }); }} className="p-1.5 rounded hover:bg-foreground/5 text-destructive"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 ))}
               </div>
 
-              {createSlide.isError && createSlide.variables?.trainingId===course.id && <p role="alert" className="text-sm text-amber-800">{t("courseMaker.slideCreateUnconfirmed")}</p>}
+              {createSlide.isError && createSlide.variables?.trainingId===course.id && <p role="alert" className="text-sm text-warning">{t("courseMaker.slideCreateUnconfirmed")}</p>}
               <Button variant="outline" className="w-full" disabled={slidesUnavailable || createSlide.isPending} onClick={addSlide}>
                 <Plus className="w-4 h-4 mr-1" /> {t("maker.addSlide")}
               </Button>
@@ -275,20 +276,7 @@ export default function CourseMaker() {
   );
 }
 
-// ── Language toggle (reused) ──
-function LanguageToggle() {
-  const { lang, setLang } = useI18n();
-  return (
-    <div className="flex items-center rounded-lg overflow-hidden" style={{ border: "1px solid oklch(68% 0.1 78 / 0.4)" }}>
-      {(["en", "fr", "ar"] as const).map((l) => (
-        <button key={l} onClick={() => setLang(l)} className="px-2.5 py-1 text-xs font-semibold"
-          style={{ background: lang === l ? GOLD : "transparent", color: lang === l ? DEEP_BLUE : "white" }}>
-          {l.toUpperCase()}
-        </button>
-      ))}
-    </div>
-  );
-}
+
 
 // ── New (empty) course ──
 function NewCourseDialog({ orgId, workspaceName, onClose, onCreated }: { orgId?: number; workspaceName: string; onClose: () => void; onCreated: (id: number) => void }) {
@@ -309,7 +297,7 @@ function NewCourseDialog({ orgId, workspaceName, onClose, onCreated }: { orgId?:
         </div>
         <div className="flex justify-end gap-2 mt-4">
           <Button variant="outline" onClick={onClose}>{t("common.cancel")}</Button>
-          <Button disabled={!title.trim() || create.isPending} onClick={() => create.mutate({ orgId, title, slug: slugify(title) + "-" + Date.now().toString(36), language: contentLanguage, slides: [] })} style={{ background: DEEP_BLUE, color: IVORY }}>
+          <Button disabled={!title.trim() || create.isPending} onClick={() => create.mutate({ orgId, title, slug: slugify(title) + "-" + Date.now().toString(36), language: contentLanguage, slides: [] })} style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>
             {create.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : t("maker.create")}
           </Button>
         </div>
@@ -361,33 +349,33 @@ function AIGenerateDialog({ orgId, workspaceName, provider, setProvider, textPro
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg max-h-[88vh] overflow-y-auto">
-        <DialogHeader><DialogTitle className="flex items-center gap-2"><Wand2 className="w-4 h-4" style={{ color: GOLD }} /> {t("maker.aiOutline")}</DialogTitle></DialogHeader><p className="text-sm">{workspaceName}</p>
+        <DialogHeader><DialogTitle className="flex items-center gap-2"><Wand2 className="w-4 h-4" style={{ color: "var(--link)" }} /> {t("maker.aiOutline")}</DialogTitle></DialogHeader><p className="text-sm">{workspaceName}</p>
         <fieldset disabled={busy || savedOutlineId != null} className="space-y-3 mt-2 disabled:opacity-60">
           <ContentLanguageSelect value={contentLanguage} onChange={setContentLanguage}/>
           <div>
-            <label className="text-xs font-medium mb-1 block" style={{ color: MUTED }}>{t("maker.topic")} *</label>
+            <label className="text-sm font-medium mb-1 block" style={{ color: "var(--muted-foreground)" }}>{t("maker.topic")} *</label>
             <Input value={topic} onChange={(e) => setTopic(e.target.value)} placeholder={t("courseMaker.topicPlaceholder")} />
           </div>
           <div>
-            <label className="text-xs font-medium mb-1 block" style={{ color: MUTED }}>{t("maker.audience")}</label>
+            <label className="text-sm font-medium mb-1 block" style={{ color: "var(--muted-foreground)" }}>{t("maker.audience")}</label>
             <Input value={audience} onChange={(e) => setAudience(e.target.value)} placeholder={t("courseMaker.audiencePlaceholder")} />
           </div>
           <div>
-            <label className="text-xs font-medium mb-1 block" style={{ color: MUTED }}>{t("courseMaker.domainLabel")}</label>
+            <label className="text-sm font-medium mb-1 block" style={{ color: "var(--muted-foreground)" }}>{t("courseMaker.domainLabel")}</label>
             <Input value={domain} onChange={(e) => setDomain(e.target.value)} placeholder={t("courseMaker.domainPlaceholder")} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-medium mb-1 block" style={{ color: MUTED }}>{t("courseMaker.levelLabel")}</label>
-              <select value={level} onChange={(e) => setLevel(e.target.value)} className="w-full h-9 rounded-md border px-3 text-sm" style={{ borderColor: BORDER }}>
+              <label className="text-sm font-medium mb-1 block" style={{ color: "var(--muted-foreground)" }}>{t("courseMaker.levelLabel")}</label>
+              <select value={level} onChange={(e) => setLevel(e.target.value)} className="w-full h-9 rounded-md border px-3 text-sm" style={{ borderColor: "var(--border)" }}>
                 <option value="beginner">{t("courseMaker.levelBeginner")}</option>
                 <option value="intermediate">{t("courseMaker.levelIntermediate")}</option>
                 <option value="advanced">{t("courseMaker.levelAdvanced")}</option>
               </select>
             </div>
             <div>
-              <label className="text-xs font-medium mb-1 block" style={{ color: MUTED }}>{t("courseMaker.toneLabel")}</label>
-              <select value={tone} onChange={(e) => setTone(e.target.value)} className="w-full h-9 rounded-md border px-3 text-sm" style={{ borderColor: BORDER }}>
+              <label className="text-sm font-medium mb-1 block" style={{ color: "var(--muted-foreground)" }}>{t("courseMaker.toneLabel")}</label>
+              <select value={tone} onChange={(e) => setTone(e.target.value)} className="w-full h-9 rounded-md border px-3 text-sm" style={{ borderColor: "var(--border)" }}>
                 <option value="formal">{t("courseMaker.toneFormal")}</option>
                 <option value="conversational">{t("courseMaker.toneConversational")}</option>
                 <option value="technical">{t("courseMaker.toneTechnical")}</option>
@@ -395,17 +383,17 @@ function AIGenerateDialog({ orgId, workspaceName, provider, setProvider, textPro
             </div>
           </div>
           <div>
-            <label className="text-xs font-medium mb-1 block" style={{ color: MUTED }}>{t("courseMaker.objectivesLabel")}</label>
-            <textarea value={objectives} onChange={(e) => setObjectives(e.target.value)} placeholder={t("courseMaker.objectivesPlaceholder")} rows={3} className="w-full rounded-md border px-3 py-2 text-sm" style={{ borderColor: BORDER }} />
+            <label className="text-sm font-medium mb-1 block" style={{ color: "var(--muted-foreground)" }}>{t("courseMaker.objectivesLabel")}</label>
+            <textarea value={objectives} onChange={(e) => setObjectives(e.target.value)} placeholder={t("courseMaker.objectivesPlaceholder")} rows={3} className="w-full rounded-md border px-3 py-2 text-sm" style={{ borderColor: "var(--border)" }} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-medium mb-1 block" style={{ color: MUTED }}>{t("maker.slideCount")}</label>
+              <label className="text-sm font-medium mb-1 block" style={{ color: "var(--muted-foreground)" }}>{t("maker.slideCount")}</label>
               <Input type="number" min={2} max={14} value={slideCount} onChange={(e) => setSlideCount(Number(e.target.value))} />
             </div>
             <div>
-              <label className="text-xs font-medium mb-1 block" style={{ color: MUTED }}>{t("courseMaker.quizCoverageLabel")}</label>
-              <select value={quizCoverage} onChange={(e) => setQuizCoverage(e.target.value as any)} className="w-full h-9 rounded-md border px-3 text-sm" style={{ borderColor: BORDER }}>
+              <label className="text-sm font-medium mb-1 block" style={{ color: "var(--muted-foreground)" }}>{t("courseMaker.quizCoverageLabel")}</label>
+              <select value={quizCoverage} onChange={(e) => setQuizCoverage(e.target.value as any)} className="w-full h-9 rounded-md border px-3 text-sm" style={{ borderColor: "var(--border)" }}>
                 <option value="none">{t("courseMaker.quizNone")}</option>
                 <option value="some">{t("courseMaker.quizSome")}</option>
                 <option value="all">{t("courseMaker.quizAll")}</option>
@@ -414,12 +402,12 @@ function AIGenerateDialog({ orgId, workspaceName, provider, setProvider, textPro
           </div>
           <div className="grid grid-cols-2 gap-3 items-center">
             <div>
-              <label className="text-xs font-medium mb-1 block" style={{ color: MUTED }}>{t("maker.provider")}</label>
-              <select value={provider} onChange={(e) => setProvider(e.target.value as Provider)} className="w-full h-9 rounded-md border px-3 text-sm" style={{ borderColor: BORDER }}>
+              <label className="text-sm font-medium mb-1 block" style={{ color: "var(--muted-foreground)" }}>{t("maker.provider")}</label>
+              <select value={provider} onChange={(e) => setProvider(e.target.value as Provider)} className="w-full h-9 rounded-md border px-3 text-sm" style={{ borderColor: "var(--border)" }}>
                 {textProviders.map((p) => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
-            <label className="flex items-center gap-2 text-xs cursor-pointer mt-5" style={{ color: MUTED }}>
+            <label className="flex items-center gap-2 text-sm cursor-pointer mt-5" style={{ color: "var(--muted-foreground)" }}>
               <input type="checkbox" checked={references} onChange={(e) => setReferences(e.target.checked)} />
               <span>{t("courseMaker.referencesLabel")}</span>
             </label>
@@ -427,7 +415,7 @@ function AIGenerateDialog({ orgId, workspaceName, provider, setProvider, textPro
         </fieldset>
         <div className="flex justify-end gap-2 mt-4">
           <Button variant="outline" onClick={onClose}>{t("common.cancel")}</Button>
-          <Button disabled={busy} onClick={run} style={{ background: GOLD, color: DEEP_BLUE }}>
+          <Button disabled={busy} onClick={run} style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>
             {busy ? <><Loader2 className="w-4 h-4 mr-1 animate-spin" /> {t("maker.generating")}</> : <><Sparkles className="w-4 h-4 mr-1" /> {savedOutlineId != null ? recoverLabel : t("common.generate")}</>}
           </Button>
         </div>
@@ -554,7 +542,7 @@ function SlideEditorDialog({ slide, provider, providers, lang, courseLanguage, o
         <fieldset disabled={update.isPending || mediaBusy} className="space-y-4 mt-2">
           <ContentLanguageSelect generation value={contentLanguage} onChange={setContentLanguage} disabled={busy || !!suggestion}/>
           <div>
-            <label className={lblCls} style={{ color: MUTED }}>{t("maker.slideTitle")}</label>
+            <label className={lblCls} style={{ color: "var(--muted-foreground)" }}>{t("maker.slideTitle")}</label>
             <Input value={form.title} onChange={(e) => set("title", e.target.value)} />
           </div>
           <div className="space-y-2">
@@ -571,7 +559,7 @@ function SlideEditorDialog({ slide, provider, providers, lang, courseLanguage, o
           {objectivesQuery.isError && <MakerReadError busy={objectivesQuery.isFetching} retry={() => { void objectivesQuery.refetch(); }} />}
           {(objectives.length > 0 || form.objectiveId !== "") && (
             <label className="block text-sm">{t("courseMaker.part66Objective")}
-              <select disabled={objectivesQuery.isLoading || objectivesQuery.isError || update.isPending} value={form.objectiveId} onChange={(e) => set("objectiveId", e.target.value === "" ? "" : Number(e.target.value))} className="w-full h-9 rounded-md border px-3 text-sm" style={{ borderColor: BORDER }}>
+              <select disabled={objectivesQuery.isLoading || objectivesQuery.isError || update.isPending} value={form.objectiveId} onChange={(e) => set("objectiveId", e.target.value === "" ? "" : Number(e.target.value))} className="w-full h-9 rounded-md border px-3 text-sm" style={{ borderColor: "var(--border)" }}>
                 <option value="">{t("courseMaker.none")}</option>
                 {form.objectiveId !== "" && (objectivesQuery.isError || !objectives.some(o => o.id === form.objectiveId)) && <option value={form.objectiveId}>#{form.objectiveId} · {t("courseMaker.unavailableSelection")}</option>}
                 {!objectivesQuery.isError && objectives.map((o) => <option key={o.id} value={o.id}>{o.code ? `${o.code} · ` : ""}{o.title}</option>)}
@@ -579,20 +567,20 @@ function SlideEditorDialog({ slide, provider, providers, lang, courseLanguage, o
             </label>
           )}
           <div>
-            <label className={lblCls} style={{ color: MUTED }}>
+            <label className={lblCls} style={{ color: "var(--muted-foreground)" }}>
               <span>{t("maker.slideText")}</span>
-              <button onClick={writeText} disabled={busy || !!suggestion} className="flex items-center gap-1 text-xs" style={{ color: GOLD }}>
+              <button onClick={writeText} disabled={busy || !!suggestion} className="flex items-center gap-1 text-sm" style={{ color: "var(--link)" }}>
                 {genText.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />} {t("maker.genText")}
               </button>
             </label>
-            <textarea value={form.body} onChange={(e) => set("body", e.target.value)} className="w-full rounded-md border px-3 py-2 text-sm h-28 resize-y" style={{ borderColor: BORDER }} />
+            <textarea value={form.body} onChange={(e) => set("body", e.target.value)} className="w-full rounded-md border px-3 py-2 text-sm h-28 resize-y" style={{ borderColor: "var(--border)" }} />
           </div>
 
           {/* Image */}
-          <div className="rounded-lg p-3" style={{ background: "oklch(97% 0.01 88)", border: `1px solid ${BORDER}` }}>
-            <label className={lblCls} style={{ color: MUTED }}>
+          <div className="rounded-lg p-3" style={{ background: "var(--background)", border: `1px solid ${"var(--border)"}` }}>
+            <label className={lblCls} style={{ color: "var(--muted-foreground)" }}>
               <span><ImageIcon className="w-3.5 h-3.5 inline mr-1" />{t("maker.image")}</span>
-              <button onClick={makeImage} disabled={busy || !!suggestion || !canImage} title={!canImage ? t("maker.providerMissing") : ""} className="flex items-center gap-1 text-xs disabled:opacity-40" style={{ color: GOLD }}>
+              <button onClick={makeImage} disabled={busy || !!suggestion || !canImage} title={!canImage ? t("maker.providerMissing") : ""} className="flex items-center gap-1 text-sm disabled:opacity-40" style={{ color: "var(--link)" }}>
                 {genImage.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />} {t("maker.genImage")}
               </button>
             </label>
@@ -605,15 +593,15 @@ function SlideEditorDialog({ slide, provider, providers, lang, courseLanguage, o
           {/* Video + audio */}
           <div className="grid sm:grid-cols-2 gap-3">
             <div>
-              <label className={lblCls} style={{ color: MUTED }}>{t("maker.video")}</label>
+              <label className={lblCls} style={{ color: "var(--muted-foreground)" }}>{t("maker.video")}</label>
               <AiVideoGenerator trainingId={slide.trainingId} onUse={url => set("videoUrl",url)} />
               <PrivateMediaUpload disabled={busy || !!suggestion} onStart={startImport} onFinish={finishImport} trainingId={slide.trainingId} kind="video" onUploaded={url => set("videoUrl", url)} />
               <Input value={form.videoUrl} onChange={(e) => set("videoUrl", e.target.value)} placeholder="https://… .mp4" />
             </div>
             <div>
-              <label className={lblCls} style={{ color: MUTED }}>
+              <label className={lblCls} style={{ color: "var(--muted-foreground)" }}>
                 <span><Mic className="w-3.5 h-3.5 inline mr-1" />{t("maker.audio")}</span>
-                <button onClick={makeAudio} disabled={busy || !!suggestion || !canTTS || !!form.videoUrl} title={!canTTS ? t("maker.providerMissing") : ""} className="flex items-center gap-1 text-xs disabled:opacity-40" style={{ color: GOLD }}>
+                <button onClick={makeAudio} disabled={busy || !!suggestion || !canTTS || !!form.videoUrl} title={!canTTS ? t("maker.providerMissing") : ""} className="flex items-center gap-1 text-sm disabled:opacity-40" style={{ color: "var(--link)" }}>
                   {genAudio.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />} {t("maker.genAudio")}
                 </button>
               </label>
@@ -621,45 +609,45 @@ function SlideEditorDialog({ slide, provider, providers, lang, courseLanguage, o
               {form.audioUrl && <audio src={form.audioUrl} controls className="w-full h-8" />}
             </div>
           </div>
-          {!form.videoUrl && <p className="text-[11px] -mt-2" style={{ color: MUTED }}>{t("maker.noVideoAudio")}</p>}
+          {!form.videoUrl && <p className="text-xs -mt-2" style={{ color: "var(--muted-foreground)" }}>{t("maker.noVideoAudio")}</p>}
 
           {/* Interactive video: timeline quiz cues */}
           {form.videoUrl && (
-            <div className="rounded-lg p-3" style={{ background: "oklch(97% 0.01 88)", border: `1px solid ${BORDER}` }}>
-              <label className={lblCls} style={{ color: MUTED }}>
+            <div className="rounded-lg p-3" style={{ background: "var(--background)", border: `1px solid ${"var(--border)"}` }}>
+              <label className={lblCls} style={{ color: "var(--muted-foreground)" }}>
                 <span><FileQuestion className="w-3.5 h-3.5 inline mr-1" />{t("courseMaker.videoQuiz")}</span>
-                <button onClick={() => set("videoCues", [...form.videoCues, { atSeconds: 10, question: "", options: ["", ""], correct: [0] }])} className="flex items-center gap-1 text-xs" style={{ color: GOLD }}>
+                <button onClick={() => set("videoCues", [...form.videoCues, { atSeconds: 10, question: "", options: ["", ""], correct: [0] }])} className="flex items-center gap-1 text-sm" style={{ color: "var(--link)" }}>
                   <Plus className="w-3 h-3" /> {t("courseMaker.addCuePoint")}
                 </button>
               </label>
-              {form.videoCues.length === 0 && <p className="text-[11px]" style={{ color: MUTED }}>{t("courseMaker.videoCueHint")}</p>}
+              {form.videoCues.length === 0 && <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>{t("courseMaker.videoCueHint")}</p>}
               <div className="space-y-3">
                 {form.videoCues.map((cue, ci) => (
-                  <div key={ci} className="rounded-md border p-2" style={{ borderColor: BORDER, background: "white" }}>
+                  <div key={ci} className="rounded-md border p-2" style={{ borderColor: "var(--border)", background: "var(--card)" }}>
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[11px]" style={{ color: MUTED }}>{t("courseMaker.atTime")}</span>
+                      <span className="text-xs" style={{ color: "var(--muted-foreground)" }}>{t("courseMaker.atTime")}</span>
                       <Input type="number" value={cue.atSeconds} onChange={(e) => updateCue(ci, { atSeconds: Number(e.target.value) })} className="w-16 h-7" />
-                      <span className="text-[11px]" style={{ color: MUTED }}>{t("courseMaker.secondsAbbr")}</span>
-                      <select value={cue.kind ?? "quiz"} onChange={(e) => updateCue(ci, { kind: e.target.value })} className="h-7 rounded border px-1 text-xs" style={{ borderColor: BORDER }}>
+                      <span className="text-xs" style={{ color: "var(--muted-foreground)" }}>{t("courseMaker.secondsAbbr")}</span>
+                      <select value={cue.kind ?? "quiz"} onChange={(e) => updateCue(ci, { kind: e.target.value })} className="h-7 rounded border px-1 text-xs" style={{ borderColor: "var(--border)" }}>
                         <option value="quiz">{t("courseMaker.cueQuiz")}</option>
                         <option value="branch">{t("courseMaker.cueBranch")}</option>
                         <option value="hotspot">{t("courseMaker.cueHotspot")}</option>
                         <option value="dragdrop">{t("courseMaker.cueDragDrop")}</option>
                       </select>
-                      <button aria-label={t("courseMaker.removeVideoCue", { number: ci + 1 })} onClick={() => set("videoCues", form.videoCues.filter((_, j) => j !== ci))} className="ml-auto text-red-500"><Trash2 className="w-4 h-4" /></button>
+                      <button aria-label={t("courseMaker.removeVideoCue", { number: ci + 1 })} onClick={() => set("videoCues", form.videoCues.filter((_, j) => j !== ci))} className="ml-auto text-destructive"><Trash2 className="w-4 h-4" /></button>
                     </div>
                     <Input value={cue.question ?? ""} onChange={(e) => updateCue(ci, { question: e.target.value })} placeholder={t("courseMaker.cueQuestionPlaceholder")} className="mb-1 h-8" />
 
                     {(cue.kind ?? "quiz") === "quiz" && (<>
                       {(cue.options ?? []).map((opt: string, oi: number) => (
                         <div key={oi} className="flex items-center gap-2 mb-1">
-                          <button aria-label={t("courseMaker.markCorrect", { number: oi + 1 })} aria-pressed={(cue.correct ?? []).includes(oi)} onClick={() => updateCue(ci, { correct: [oi] })} title={t("courseMaker.correctAnswer")} className="w-4 h-4 rounded-full border shrink-0" style={{ borderColor: (cue.correct ?? []).includes(oi) ? "oklch(55% 0.18 145)" : BORDER, background: (cue.correct ?? []).includes(oi) ? "oklch(55% 0.18 145)" : "transparent" }} />
+                          <button aria-label={t("courseMaker.markCorrect", { number: oi + 1 })} aria-pressed={(cue.correct ?? []).includes(oi)} onClick={() => updateCue(ci, { correct: [oi] })} title={t("courseMaker.correctAnswer")} className="w-4 h-4 rounded-full border shrink-0" style={{ borderColor: (cue.correct ?? []).includes(oi) ? "var(--success)" : "var(--border)", background: (cue.correct ?? []).includes(oi) ? "color-mix(in srgb, var(--success) 18%, transparent)" : "transparent" }} />
                           <Input value={opt} onChange={(e) => updateCue(ci, { options: (cue.options ?? []).map((x: string, j: number) => (j === oi ? e.target.value : x)) })} placeholder={`${t("courseMaker.option")} ${oi + 1}`} className="h-7" />
                         </div>
                       ))}
                       <div className="flex items-center gap-3">
-                        <button onClick={() => updateCue(ci, { options: [...(cue.options ?? []), ""] })} className="text-[11px]" style={{ color: GOLD }}>{t("courseMaker.addOptionShort")}</button>
-                        <label className="text-[11px] flex items-center gap-1" style={{ color: MUTED }}>{t("courseMaker.seekIfCorrect")}<Input type="number" value={cue.onCorrectSeek ?? ""} onChange={(e) => updateCue(ci, { onCorrectSeek: e.target.value === "" ? null : Number(e.target.value) })} className="h-6 w-16" /></label>
+                        <button onClick={() => updateCue(ci, { options: [...(cue.options ?? []), ""] })} className="text-sm" style={{ color: "var(--link)" }}>{t("courseMaker.addOptionShort")}</button>
+                        <label className="text-sm flex items-center gap-1" style={{ color: "var(--muted-foreground)" }}>{t("courseMaker.seekIfCorrect")}<Input type="number" value={cue.onCorrectSeek ?? ""} onChange={(e) => updateCue(ci, { onCorrectSeek: e.target.value === "" ? null : Number(e.target.value) })} className="h-6 w-16" /></label>
                       </div>
                     </>)}
 
@@ -668,10 +656,10 @@ function SlideEditorDialog({ slide, provider, providers, lang, courseLanguage, o
                         <div key={bi} className="flex items-center gap-2 mb-1">
                           <Input value={b.label} onChange={(e) => updateCue(ci, { branches: (cue.branches ?? []).map((x: any, j: number) => (j === bi ? { ...x, label: e.target.value } : x)) })} placeholder={`${t("courseMaker.choice")} ${bi + 1}`} className="h-7" />
                           <Input type="number" value={b.seekTo} onChange={(e) => updateCue(ci, { branches: (cue.branches ?? []).map((x: any, j: number) => (j === bi ? { ...x, seekTo: Number(e.target.value) } : x)) })} placeholder={t("courseMaker.seekToPlaceholder")} className="h-7 w-16" />
-                          <button onClick={() => updateCue(ci, { branches: (cue.branches ?? []).filter((_: any, j: number) => j !== bi) })} className="text-red-500 text-[11px]">✕</button>
+                          <button onClick={() => updateCue(ci, { branches: (cue.branches ?? []).filter((_: any, j: number) => j !== bi) })} className="text-destructive text-sm">✕</button>
                         </div>
                       ))}
-                      <button onClick={() => updateCue(ci, { branches: [...(cue.branches ?? []), { label: "", seekTo: 0 }] })} className="text-[11px]" style={{ color: GOLD }}>{t("courseMaker.addBranch")}</button>
+                      <button onClick={() => updateCue(ci, { branches: [...(cue.branches ?? []), { label: "", seekTo: 0 }] })} className="text-sm" style={{ color: "var(--link)" }}>{t("courseMaker.addBranch")}</button>
                     </>)}
 
                     {cue.kind === "hotspot" && (<>
@@ -680,24 +668,24 @@ function SlideEditorDialog({ slide, provider, providers, lang, courseLanguage, o
                           <Input value={h.label ?? ""} onChange={(e) => updateCue(ci, { hotspots: (cue.hotspots ?? []).map((x: any, j: number) => (j === hi ? { ...x, label: e.target.value } : x)) })} placeholder={t("courseMaker.label")} className="h-7 w-28" />
                           <Input type="number" value={h.xPct ?? 50} onChange={(e) => updateCue(ci, { hotspots: (cue.hotspots ?? []).map((x: any, j: number) => (j === hi ? { ...x, xPct: Number(e.target.value) } : x)) })} placeholder="x%" className="h-7 w-14" />
                           <Input type="number" value={h.yPct ?? 50} onChange={(e) => updateCue(ci, { hotspots: (cue.hotspots ?? []).map((x: any, j: number) => (j === hi ? { ...x, yPct: Number(e.target.value) } : x)) })} placeholder="y%" className="h-7 w-14" />
-                          <label className="text-[11px] flex items-center gap-1" style={{ color: MUTED }}><input type="checkbox" checked={h.correct ?? false} onChange={(e) => updateCue(ci, { hotspots: (cue.hotspots ?? []).map((x: any, j: number) => (j === hi ? { ...x, correct: e.target.checked } : x)) })} />{t("courseMaker.correctShort")}</label>
-                          <button onClick={() => updateCue(ci, { hotspots: (cue.hotspots ?? []).filter((_: any, j: number) => j !== hi) })} className="text-red-500 text-[11px]">✕</button>
+                          <label className="text-sm flex items-center gap-1" style={{ color: "var(--muted-foreground)" }}><input type="checkbox" checked={h.correct ?? false} onChange={(e) => updateCue(ci, { hotspots: (cue.hotspots ?? []).map((x: any, j: number) => (j === hi ? { ...x, correct: e.target.checked } : x)) })} />{t("courseMaker.correctShort")}</label>
+                          <button onClick={() => updateCue(ci, { hotspots: (cue.hotspots ?? []).filter((_: any, j: number) => j !== hi) })} className="text-destructive text-sm">✕</button>
                         </div>
                       ))}
-                      <button onClick={() => updateCue(ci, { hotspots: [...(cue.hotspots ?? []), { xPct: 50, yPct: 50, label: "", correct: true }] })} className="text-[11px]" style={{ color: GOLD }}>{t("courseMaker.addHotspot")}</button>
+                      <button onClick={() => updateCue(ci, { hotspots: [...(cue.hotspots ?? []), { xPct: 50, yPct: 50, label: "", correct: true }] })} className="text-sm" style={{ color: "var(--link)" }}>{t("courseMaker.addHotspot")}</button>
                     </>)}
 
                     {cue.kind === "dragdrop" && (<>
-                      <div className="text-[11px] mb-1" style={{ color: MUTED }}>{t("courseMaker.dragItemsLabel")}</div>
+                      <div className="text-xs mb-1" style={{ color: "var(--muted-foreground)" }}>{t("courseMaker.dragItemsLabel")}</div>
                       {(cue.dragItems ?? []).map((it: any, ii: number) => (
                         <div key={ii} className="flex items-center gap-1 mb-1">
                           <Input value={it.id} onChange={(e) => updateCue(ci, { dragItems: (cue.dragItems ?? []).map((x: any, j: number) => (j === ii ? { ...x, id: e.target.value } : x)) })} placeholder="id" className="h-7 w-20" />
                           <Input value={it.label} onChange={(e) => updateCue(ci, { dragItems: (cue.dragItems ?? []).map((x: any, j: number) => (j === ii ? { ...x, label: e.target.value } : x)) })} placeholder={t("courseMaker.label")} className="h-7" />
-                          <button onClick={() => updateCue(ci, { dragItems: (cue.dragItems ?? []).filter((_: any, j: number) => j !== ii) })} className="text-red-500 text-[11px]">✕</button>
+                          <button onClick={() => updateCue(ci, { dragItems: (cue.dragItems ?? []).filter((_: any, j: number) => j !== ii) })} className="text-destructive text-sm">✕</button>
                         </div>
                       ))}
-                      <button onClick={() => updateCue(ci, { dragItems: [...(cue.dragItems ?? []), { id: `i${(cue.dragItems?.length ?? 0) + 1}`, label: "" }] })} className="text-[11px]" style={{ color: GOLD }}>{t("courseMaker.addItem")}</button>
-                      <div className="text-[11px] mt-2 mb-1" style={{ color: MUTED }}>{t("courseMaker.dropZonesLabel")}</div>
+                      <button onClick={() => updateCue(ci, { dragItems: [...(cue.dragItems ?? []), { id: `i${(cue.dragItems?.length ?? 0) + 1}`, label: "" }] })} className="text-sm" style={{ color: "var(--link)" }}>{t("courseMaker.addItem")}</button>
+                      <div className="text-xs mt-2 mb-1" style={{ color: "var(--muted-foreground)" }}>{t("courseMaker.dropZonesLabel")}</div>
                       {(cue.dropZones ?? []).map((z: any, zi: number) => (
                         <div key={zi} className="flex items-center gap-1 mb-1 flex-wrap">
                           <Input value={z.label ?? ""} onChange={(e) => updateCue(ci, { dropZones: (cue.dropZones ?? []).map((x: any, j: number) => (j === zi ? { ...x, label: e.target.value } : x)) })} placeholder={t("courseMaker.label")} className="h-7 w-20" />
@@ -705,10 +693,10 @@ function SlideEditorDialog({ slide, provider, providers, lang, courseLanguage, o
                             <Input key={k} type="number" value={z[k] ?? (k === "wPct" || k === "hPct" ? 20 : 40)} onChange={(e) => updateCue(ci, { dropZones: (cue.dropZones ?? []).map((x: any, j: number) => (j === zi ? { ...x, [k]: Number(e.target.value) } : x)) })} placeholder={k.replace("Pct", "")} className="h-7 w-14" />
                           ))}
                           <Input value={z.correctItemId ?? ""} onChange={(e) => updateCue(ci, { dropZones: (cue.dropZones ?? []).map((x: any, j: number) => (j === zi ? { ...x, correctItemId: e.target.value } : x)) })} placeholder={t("courseMaker.correctIdPlaceholder")} className="h-7 w-20" />
-                          <button onClick={() => updateCue(ci, { dropZones: (cue.dropZones ?? []).filter((_: any, j: number) => j !== zi) })} className="text-red-500 text-[11px]">✕</button>
+                          <button onClick={() => updateCue(ci, { dropZones: (cue.dropZones ?? []).filter((_: any, j: number) => j !== zi) })} className="text-destructive text-sm">✕</button>
                         </div>
                       ))}
-                      <button onClick={() => updateCue(ci, { dropZones: [...(cue.dropZones ?? []), { id: `z${(cue.dropZones?.length ?? 0) + 1}`, label: "", xPct: 40, yPct: 40, wPct: 20, hPct: 20, correctItemId: "" }] })} className="text-[11px]" style={{ color: GOLD }}>{t("courseMaker.addZone")}</button>
+                      <button onClick={() => updateCue(ci, { dropZones: [...(cue.dropZones ?? []), { id: `z${(cue.dropZones?.length ?? 0) + 1}`, label: "", xPct: 40, yPct: 40, wPct: 20, hPct: 20, correctItemId: "" }] })} className="text-sm" style={{ color: "var(--link)" }}>{t("courseMaker.addZone")}</button>
                     </>)}
                   </div>
                 ))}
@@ -717,10 +705,10 @@ function SlideEditorDialog({ slide, provider, providers, lang, courseLanguage, o
           )}
 
           {/* Mini quiz */}
-          <div className="rounded-lg p-3" style={{ background: "oklch(97% 0.01 88)", border: `1px solid ${BORDER}` }}>
-            <label className={lblCls} style={{ color: MUTED }}>
+          <div className="rounded-lg p-3" style={{ background: "var(--background)", border: `1px solid ${"var(--border)"}` }}>
+            <label className={lblCls} style={{ color: "var(--muted-foreground)" }}>
               <span><FileQuestion className="w-3.5 h-3.5 inline mr-1" />{t("maker.miniQuiz")}</span>
-              <button onClick={makeQuiz} disabled={busy || !!suggestion} className="flex items-center gap-1 text-xs" style={{ color: GOLD }}>
+              <button onClick={makeQuiz} disabled={busy || !!suggestion} className="flex items-center gap-1 text-sm" style={{ color: "var(--link)" }}>
                 {genQuiz.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />} {t("maker.genQuiz")}
               </button>
             </label>
@@ -731,25 +719,25 @@ function SlideEditorDialog({ slide, provider, providers, lang, courseLanguage, o
                   {form.quizOptions.map((opt, i) => (
                     <div key={i} className="flex items-center gap-2">
                       <button aria-label={t("courseMaker.markCorrect", { number: i + 1 })} aria-pressed={form.quizCorrect.includes(i)} onClick={() => toggleCorrect(i)} className="w-5 h-5 rounded-full border flex items-center justify-center shrink-0"
-                        style={{ borderColor: form.quizCorrect.includes(i) ? "oklch(55% 0.18 145)" : BORDER, background: form.quizCorrect.includes(i) ? "oklch(55% 0.18 145)" : "transparent" }}>
+                        style={{ borderColor: form.quizCorrect.includes(i) ? "var(--success)" : "var(--border)", background: form.quizCorrect.includes(i) ? "color-mix(in srgb, var(--success) 18%, transparent)" : "transparent" }}>
                         {form.quizCorrect.includes(i) && <Check className="w-3 h-3 text-white" />}
                       </button>
                       <Input value={opt} onChange={(e) => set("quizOptions", form.quizOptions.map((x, j) => (j === i ? e.target.value : x)))} placeholder={`${t("maker.option")} ${i + 1}`} />
-                      {form.quizOptions.length > 2 && <button aria-label={t("courseMaker.removeOption", { number: i + 1 })} onClick={() => { set("quizOptions", form.quizOptions.filter((_, j) => j !== i)); set("quizCorrect", form.quizCorrect.filter((x) => x !== i).map((x) => (x > i ? x - 1 : x))); }} className="text-red-500"><Trash2 className="w-4 h-4" /></button>}
+                      {form.quizOptions.length > 2 && <button aria-label={t("courseMaker.removeOption", { number: i + 1 })} onClick={() => { set("quizOptions", form.quizOptions.filter((_, j) => j !== i)); set("quizCorrect", form.quizCorrect.filter((x) => x !== i).map((x) => (x > i ? x - 1 : x))); }} className="text-destructive"><Trash2 className="w-4 h-4" /></button>}
                     </div>
                   ))}
                 </div>
-                <button onClick={() => set("quizOptions", [...form.quizOptions, ""])} className="text-xs mt-2 flex items-center gap-1" style={{ color: GOLD }}><Plus className="w-3 h-3" /> {t("maker.addOption")}</button>
+                <button onClick={() => set("quizOptions", [...form.quizOptions, ""])} className="text-sm mt-2 flex items-center gap-1" style={{ color: "var(--link)" }}><Plus className="w-3 h-3" /> {t("maker.addOption")}</button>
                 <Input value={form.quizExplanation} onChange={(e) => set("quizExplanation", e.target.value)} placeholder={t("maker.explanation")} className="mt-2" />
               </>
             )}
           </div>
         </fieldset>
-        {update.isError && update.error.data?.code==='CONFLICT' && <div className="mt-3 space-y-3"><p role="alert" className="text-sm text-amber-800">{t("courseMaker.slideEditConflict")}</p><Button variant="outline" disabled={busy||!!suggestion} onClick={()=>{void compareLatest();}}>{t('courseMaker.compareVersions')}</Button></div>}
+        {update.isError && update.error.data?.code==='CONFLICT' && <div className="mt-3 space-y-3"><p role="alert" className="text-sm text-warning">{t("courseMaker.slideEditConflict")}</p><Button variant="outline" disabled={busy||!!suggestion} onClick={()=>{void compareLatest();}}>{t('courseMaker.compareVersions')}</Button></div>}
         {comparison && <DraftConflictResolution base={baseline.current} draft={form} latest={comparison.latest} onCancel={()=>setComparison(null)} onApply={merged=>{setForm(merged);baseline.current=comparison.latest;initialDraft.current=JSON.stringify(comparison.latest);expectedRevision.current=comparison.revision;setComparison(null);update.reset();}}/>}
         {mediaBusy && <p role="status" className="text-sm mt-3">{t("courseMaker.importBeforeSave")}</p>}
         {busy && !update.isPending && !mediaBusy && <p role="status" className="text-sm mt-3">{t("courseMaker.generatingProposal")}</p>}
-        {suggestion && <section className="border border-amber-300 rounded-lg p-4 space-y-3 mt-4">
+        {suggestion && <section className="border border-warning/30 rounded-lg p-4 space-y-3 mt-4">
           <h3 className="font-semibold">{t("courseMaker.proposalTitle")}</h3>
           <p className="text-sm">{t("courseMaker.proposalHelp")}</p>
           {suggestion.body !== undefined && <p className="whitespace-pre-wrap text-sm">{suggestion.body}</p>}
@@ -760,7 +748,7 @@ function SlideEditorDialog({ slide, provider, providers, lang, courseLanguage, o
         </section>}
         <div className="flex justify-end gap-2 mt-4">
           <Button variant="outline" disabled={update.isPending} onClick={closeEditor}>{t("common.cancel")}</Button>
-          <Button onClick={save} disabled={busy || !!suggestion} style={{ background: DEEP_BLUE, color: IVORY }}>{t("common.save")}</Button>
+          <Button onClick={save} disabled={busy || !!suggestion} style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>{t("common.save")}</Button>
         </div>
       </DialogContent>
     </Dialog>
@@ -769,7 +757,7 @@ function SlideEditorDialog({ slide, provider, providers, lang, courseLanguage, o
 
 function MakerReadError({ busy, retry, message }: { busy: boolean; retry: () => void; message?: string }) {
   const { t } = useI18n();
-  return <div className="space-y-2 rounded border border-amber-200 bg-amber-50 p-3">
+  return <div className="space-y-2 rounded border border-warning/30 bg-warning/10 p-3">
     <p role="alert" className="text-sm">{message ?? t("courseMaker.curriculumReadError")}</p>
     <Button type="button" variant="outline" size="sm" disabled={busy} onClick={retry}>{t("learningPlayer.save.retry")}</Button>
   </div>;

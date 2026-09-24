@@ -59,6 +59,19 @@ describe("private storage HTTP boundary", () => {
     expect(response.headers.get("x-content-type-options")).toBe("nosniff");
     expect(await response.text()).toBe("private-document");
   });
+  it("allows an explicit generated PDF preview without weakening access or uploaded-document isolation", async () => {
+    const preview = await fetch(`${base}/storage/certificates/test.pdf?preview=1`, { headers: { authorization: "owner" } });
+    expect(preview.status).toBe(200);
+    expect(preview.headers.get("content-disposition")).toContain("inline");
+    expect(preview.headers.get("cache-control")).toBe("private, no-store");
+    expect(preview.headers.get("content-security-policy")).toBe("sandbox");
+    expect((await fetch(`${base}/storage/certificates/test.pdf?preview=1`)).status).toBe(404);
+    const download = await fetch(`${base}/storage/certificates/test.pdf`, { headers: { authorization: "owner" } });
+    expect(download.headers.get("content-disposition")).toContain("attachment");
+    const uploaded = await fetch(`${base}/storage/passport/1/id.pdf?preview=1`, { headers: { authorization: "owner" } });
+    expect(uploaded.headers.get("content-disposition")).toContain("attachment");
+    expect((await fetch(`${base}/storage/certificates/tampered.pdf?preview=1`, { headers: { authorization: "owner" } })).status).toBe(404);
+  });
   it("never serves operational files from the storage root", async () => {
     const response = await fetch(`${base}/storage/.jwt_secret`);
     expect(response.status).toBe(404);

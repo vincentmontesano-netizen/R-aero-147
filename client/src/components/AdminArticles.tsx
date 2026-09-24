@@ -7,9 +7,9 @@ import { Plus, Trash2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { useI18n } from "@/i18n";
 
-const DEEP_BLUE = "oklch(19% 0.08 252)";
-const MUTED = "oklch(45% 0.02 240)";
-const BORDER = "oklch(88% 0.015 88)";
+const DEEP_BLUE = "var(--foreground)";
+const MUTED = "var(--muted-foreground)";
+const BORDER = "var(--border)";
 const slugify = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 70);
 
 export default function AdminArticles() {
@@ -25,18 +25,18 @@ export default function AdminArticles() {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-semibold" style={{ color: DEEP_BLUE }}>{t("adminArticles.heading")}</h2>
-        <Button size="sm" onClick={() => setEdit({ title: "", slug: "", excerpt: "", content: "", category: "", author: "L'équipe R-AERO", isPublished: true })} style={{ background: "oklch(68% 0.1 78)", color: DEEP_BLUE }}><Plus className="w-4 h-4 mr-1" /> {t("adminArticles.newArticle")}</Button>
+        <h2 className="font-semibold" style={{ color: "var(--foreground)" }}>{t("adminArticles.heading")}</h2>
+        <Button size="sm" onClick={() => setEdit({ title: "", slug: "", excerpt: "", content: "", category: "", author: "L'équipe R-AERO", isPublished: true })} style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}><Plus className="w-4 h-4 mr-1" /> {t("adminArticles.newArticle")}</Button>
       </div>
       <div className="space-y-2">
         {(articles as any[]).map((a) => (
-          <div key={a.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "white", border: `1px solid ${BORDER}` }}>
+          <div key={a.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "var(--card)", border: `1px solid ${"var(--border)"}` }}>
             <div className="flex-1 min-w-0">
-              <div className="font-medium truncate" style={{ color: DEEP_BLUE }}>{a.title}</div>
-              <div className="text-xs" style={{ color: MUTED }}>{a.category ?? "—"} · {a.isPublished ? t("adminArticles.statusPublished") : t("adminArticles.statusDraft")}</div>
+              <div className="font-medium truncate" style={{ color: "var(--foreground)" }}>{a.title}</div>
+              <div className="text-xs" style={{ color: "var(--muted-foreground)" }}>{a.category ?? "—"} · {a.isPublished ? t("adminArticles.statusPublished") : t("adminArticles.statusDraft")}</div>
             </div>
-            <button onClick={() => setEdit(a)} className="p-1.5 rounded hover:bg-black/5" style={{ color: MUTED }}><Pencil className="w-4 h-4" /></button>
-            <button onClick={() => { if (confirm(t("adminArticles.confirmDelete"))) del.mutate({ id: a.id }); }} className="p-1.5 rounded hover:bg-black/5 text-red-500"><Trash2 className="w-4 h-4" /></button>
+            <button onClick={() => setEdit(a)} className="p-1.5 rounded hover:bg-foreground/5" style={{ color: "var(--muted-foreground)" }}><Pencil className="w-4 h-4" /></button>
+            <button onClick={() => { if (confirm(t("adminArticles.confirmDelete"))) del.mutate({ id: a.id }); }} className="p-1.5 rounded hover:bg-foreground/5 text-destructive"><Trash2 className="w-4 h-4" /></button>
           </div>
         ))}
       </div>
@@ -53,9 +53,9 @@ export default function AdminArticles() {
                 <Input placeholder={t("adminArticles.placeholderAuthor")} value={edit.author ?? ""} onChange={(e) => setEdit({ ...edit, author: e.target.value })} />
               </div>
               <Input placeholder={t("adminArticles.placeholderCoverImage")} value={edit.coverImageUrl ?? ""} onChange={(e) => setEdit({ ...edit, coverImageUrl: e.target.value })} />
-              <textarea placeholder={t("adminArticles.placeholderExcerpt")} value={edit.excerpt ?? ""} onChange={(e) => setEdit({ ...edit, excerpt: e.target.value })} className="w-full rounded-md border px-3 py-2 text-sm h-16 resize-y" style={{ borderColor: BORDER }} />
-              <textarea placeholder={t("adminArticles.placeholderContent")} value={edit.content ?? ""} onChange={(e) => setEdit({ ...edit, content: e.target.value })} className="w-full rounded-md border px-3 py-2 text-sm h-40 resize-y" style={{ borderColor: BORDER }} />
-              <label className="flex items-center gap-2 text-sm" style={{ color: MUTED }}><input type="checkbox" checked={edit.isPublished} onChange={(e) => setEdit({ ...edit, isPublished: e.target.checked })} /> {t("adminArticles.statusPublished")}</label>
+              <textarea placeholder={t("adminArticles.placeholderExcerpt")} value={edit.excerpt ?? ""} onChange={(e) => setEdit({ ...edit, excerpt: e.target.value })} className="w-full rounded-md border px-3 py-2 text-sm h-16 resize-y" style={{ borderColor: "var(--border)" }} />
+              <textarea placeholder={t("adminArticles.placeholderContent")} value={edit.content ?? ""} onChange={(e) => setEdit({ ...edit, content: e.target.value })} className="w-full rounded-md border px-3 py-2 text-sm h-40 resize-y" style={{ borderColor: "var(--border)" }} />
+              <label className="flex items-center gap-2 text-sm" style={{ color: "var(--muted-foreground)" }}><input type="checkbox" checked={edit.isPublished} onChange={(e) => setEdit({ ...edit, isPublished: e.target.checked })} /> {t("adminArticles.statusPublished")}</label>
             </div>
             <div className="flex justify-end gap-2 mt-4">
               <Button variant="outline" onClick={() => setEdit(null)}>{t("adminArticles.cancel")}</Button>
@@ -67,7 +67,7 @@ export default function AdminArticles() {
                   if (edit.id) update.mutate({ id: edit.id, ...payload, publishedAt: edit.isPublished ? (edit.publishedAt ?? new Date()) : null });
                   else create.mutate({ ...payload, publishedAt: edit.isPublished ? new Date().toISOString() : undefined });
                 }}
-                style={{ background: DEEP_BLUE, color: "white" }}
+                style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
               >{t("adminArticles.save")}</Button>
             </div>
           </DialogContent>

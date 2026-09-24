@@ -96,7 +96,7 @@ function Router() {
 function PageLoading() {
   const { t } = useI18n();
   return <div role="status" className="min-h-screen flex flex-col gap-4 items-center justify-center">
-    <div aria-hidden="true" className="h-8 w-8 rounded-full border-2 border-slate-300 border-t-slate-900 animate-spin motion-reduce:animate-none" />
+    <div aria-hidden="true" className="h-8 w-8 rounded-full border-2 border-input border-t-slate-900 animate-spin motion-reduce:animate-none" />
     <p>{t('common.loading')}</p>
   </div>;
 }
@@ -104,10 +104,10 @@ function PageLoading() {
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="light">
+      <ThemeProvider defaultTheme="dark">
         <I18nProvider>
           <TooltipProvider>
-            <Toaster />
+            <Toaster theme="dark" />
             <Suspense fallback={<PageLoading />}><Router /></Suspense>
             <ChatWidget />
             <CartWidget />

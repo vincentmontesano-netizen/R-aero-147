@@ -9,15 +9,15 @@ import { toast } from "sonner";
 import { useI18n } from "@/i18n";
 import { requestId as createRequestId } from "@/lib/requestId";
 
-const BLUE = "oklch(19% 0.08 252)";
-const GOLD = "oklch(68% 0.1 78)";
-const MUTED = "oklch(45% 0.02 240)";
-const BORDER = "oklch(88% 0.015 88)";
+const BLUE = "var(--foreground)";
+const GOLD = "var(--link)";
+const MUTED = "var(--muted-foreground)";
+const BORDER = "var(--border)";
 const REC_COLOR: Record<string, string> = {
-  ok: "oklch(55% 0.18 145)",
-  due_soon: "oklch(60% 0.12 78)",
-  overdue: "oklch(55% 0.22 27)",
-  not_started: "oklch(60% 0.02 240)",
+  ok: "var(--success)",
+  due_soon: "var(--link)",
+  overdue: "var(--destructive)",
+  not_started: "var(--muted-foreground)",
 };
 
 function Section({ title, icon: Icon, count, action, children }: { title: string; icon: any; count: number; action?: any; children?: any }) {
@@ -25,18 +25,18 @@ function Section({ title, icon: Icon, count, action, children }: { title: string
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2"><Icon className="w-4 h-4" style={{ color: GOLD }} /><h3 className="font-semibold text-sm" style={{ color: BLUE }}>{title} ({count})</h3></div>
+        <div className="flex items-center gap-2"><Icon className="w-4 h-4" style={{ color: "var(--link)" }} /><h3 className="font-semibold text-sm" style={{ color: "var(--foreground)" }}>{title} ({count})</h3></div>
         {action}
       </div>
-      <div className="space-y-1.5">{count === 0 && !action ? <p className="text-xs" style={{ color: MUTED }}>{t("technicianFileDialog.none")}</p> : children}</div>
+      <div className="space-y-1.5">{count === 0 && !action ? <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>{t("technicianFileDialog.none")}</p> : children}</div>
     </div>
   );
 }
 
 function Row({ title, sub, right }: { title: string; sub?: string; right?: any }) {
   return (
-    <div className="flex items-center gap-2 p-2 rounded-lg" style={{ background: "oklch(97% 0.01 88)" }}>
-      <div className="flex-1 min-w-0"><div className="text-sm font-medium truncate" style={{ color: BLUE }}>{title}</div>{sub && <div className="text-xs" style={{ color: MUTED }}>{sub}</div>}</div>
+    <div className="flex items-center gap-2 p-2 rounded-lg" style={{ background: "var(--background)" }}>
+      <div className="flex-1 min-w-0"><div className="text-sm font-medium truncate" style={{ color: "var(--foreground)" }}>{title}</div>{sub && <div className="text-xs" style={{ color: "var(--muted-foreground)" }}>{sub}</div>}</div>
       <div className="text-xs font-medium shrink-0">{right}</div>
     </div>
   );
@@ -90,10 +90,10 @@ export default function TechnicianFileDialog({ employeeId, onClose }: { employee
       <DialogContent className="max-w-3xl max-h-[88vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{t("technicianFileDialog.title")}{file ? ` — ${file.employee.firstName} ${file.employee.lastName}` : ""}</DialogTitle></DialogHeader>
         {!file ? (
-          <p className="text-sm py-8 text-center" style={{ color: MUTED }}>{t("technicianFileDialog.loading")}</p>
+          <p className="text-sm py-8 text-center" style={{ color: "var(--muted-foreground)" }}>{t("technicianFileDialog.loading")}</p>
         ) : (
           <div className="space-y-5 mt-2">
-            <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm" style={{ color: MUTED }}>
+            <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm" style={{ color: "var(--muted-foreground)" }}>
               <span>{file.employee.jobTitle ?? "—"}</span>
               {file.employee.licenseNumber && <span>{t("technicianFileDialog.license", { number: file.employee.licenseNumber })}</span>}
               {file.employee.licenseCategories && <span>{t("technicianFileDialog.category", { categories: file.employee.licenseCategories })}</span>}
@@ -105,9 +105,9 @@ export default function TechnicianFileDialog({ employeeId, onClose }: { employee
 
             {file.scoped ? (
               <>
-                <div className="rounded-lg px-3 py-2 text-xs" style={{ background: "oklch(97% 0.01 88)", color: MUTED }}>
+                <div className="rounded-lg px-3 py-2 text-xs" style={{ background: "var(--background)", color: "var(--muted-foreground)" }}>
                   {t("technicianFileDialog.scopedNotice")}{" "}
-                  {t("technicianFileDialog.part66CoveragePrefix")} <strong style={{ color: BLUE }}>{file.scoped.part66Coverage.length}</strong> {t("technicianFileDialog.part66CoverageSuffix")}
+                  {t("technicianFileDialog.part66CoveragePrefix")} <strong style={{ color: "var(--foreground)" }}>{file.scoped.part66Coverage.length}</strong> {t("technicianFileDialog.part66CoverageSuffix")}
                 </div>
                 <Section title={t("technicianFileDialog.requiredModulesSection")} icon={Award} count={file.scoped.requiredModules.length}>
                   {file.scoped.requiredModules.map((m: any) => {
@@ -124,7 +124,7 @@ export default function TechnicianFileDialog({ employeeId, onClose }: { employee
                           signRequests.current.set(key,requestId);
                           sign.mutate({ requestId, employeeId: employeeId!, trainingId: m.trainingId, scope: "COMPETENCE", decision: "VALIDATED" });
                         }} disabled={sign.isPending}
-                          className="text-[11px] px-2 py-0.5 rounded" style={{ border: `1px solid ${GOLD}`, color: BLUE }}>{t("technicianFileDialog.signButton")}</button>
+                          className="text-sm px-2 py-0.5 rounded" style={{ border: `1px solid ${"var(--link)"}`, color: "var(--foreground)" }}>{t("technicianFileDialog.signButton")}</button>
                       </div>} />;
                   })}
                 </Section>
@@ -132,10 +132,10 @@ export default function TechnicianFileDialog({ employeeId, onClose }: { employee
                   {(signoffs ?? []).map((s: any) => (
                     <Row key={s.id} title={`${s.trainingTitle ?? s.scope ?? t("technicianFileDialog.competence")} — ${s.decision}`}
                       sub={t("technicianFileDialog.signedByOn", { name: s.managerName ?? "—", date: d(s.signedAt) }) + (s.note ? " · " + s.note : "")}
-                      right={<CheckCircle2 className="w-4 h-4" style={{ color: "oklch(55% 0.18 145)" }} />} />
+                      right={<CheckCircle2 className="w-4 h-4" style={{ color: "var(--success)" }} />} />
                   ))}
                 </Section>
-                <p className="text-[11px]" style={{ color: MUTED }}>
+                <p className="text-xs" style={{ color: "var(--muted-foreground)" }}>
                   {t("technicianFileDialog.humanDeterminationNotice")}
                 </p>
               </>
@@ -173,7 +173,7 @@ export default function TechnicianFileDialog({ employeeId, onClose }: { employee
                 {file.passportDocuments.map((p: any) => (
                   <Row key={p.id} title={`${p.title}${p.reference ? " · " + p.reference : ""}`}
                     sub={`${p.kind}${p.issuer ? " · " + p.issuer : ""}${p.expiresAt ? " · " + t("technicianFileDialog.expiresLabel", { date: d(p.expiresAt) }) : ""}`}
-                    right={<a href={p.fileUrl} target="_blank" rel="noopener noreferrer" style={{ color: BLUE }}><Download className="w-4 h-4" /></a>} />
+                    right={<a href={p.fileUrl} target="_blank" rel="noopener noreferrer" style={{ color: "var(--foreground)" }}><Download className="w-4 h-4" /></a>} />
                 ))}
               </Section>
             )}
