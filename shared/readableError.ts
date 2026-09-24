@@ -15,7 +15,7 @@ export function readableError(error: unknown, fallback: string): string {
       const labels = issues.flatMap(issue =>
         issue && typeof issue.message === "string" ? [issue.message] : []
       );
-      return [...new Set(labels)].slice(0, 3).join("\n") || fallback;
+      return Array.from(new Set(labels)).slice(0, 3).join("\n") || fallback;
     } catch {
       return fallback;
     }
