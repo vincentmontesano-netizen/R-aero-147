@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readableError } from "../mobile/src/errors";
+import { readableError } from "../shared/readableError";
 
 describe("native form error presentation", () => {
   it("shows field guidance without validators, patterns or serialization", () => {

@@ -1,0 +1,11 @@
+appId: com.raero.academy.qa
+---
+- tapOn: "Réessayer"
+- extendedWaitUntil:
+    visible: "Bonjour Recette."
+    timeout: 15000
+- scrollUntilVisible:
+    element: "Formation validée"
+    direction: DOWN
+- assertVisible: "Formation validée"
+- takeScreenshot: connection-recovered
