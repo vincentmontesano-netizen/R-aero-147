@@ -55,7 +55,7 @@ export default function Sessions() {
         <div className="container py-10">
           <BackButton dark />
           <div className="text-xs font-semibold tracking-widest mb-2" style={{ color: "var(--link)" }}>{t("sessions.eyebrow")}</div>
-          <h1 className="font-sans text-3xl font-bold text-white mb-2">{t("sessions.heroTitle")}</h1>
+          <h1 className="font-sans text-3xl font-bold text-foreground mb-2">{t("sessions.heroTitle")}</h1>
           <p className="text-muted-foreground text-sm max-w-2xl">{t("sessions.heroSubtitle")}</p>
         </div>
       </div>

@@ -36,7 +36,7 @@ export default function About() {
         <div className="container py-12">
           <BackButton dark />
           <div className="text-xs font-semibold tracking-widest mb-2" style={{ color: "var(--link)" }}>{t("about.eyebrow")}</div>
-          <h1 className="font-sans text-3xl font-bold text-white mb-3 max-w-2xl">{t("about.heroTitle")}</h1>
+          <h1 className="font-sans text-3xl font-bold text-foreground mb-3 max-w-2xl">{t("about.heroTitle")}</h1>
           <p className="text-muted-foreground text-sm max-w-2xl">{t("about.heroSubtitle")}</p>
         </div>
       </div>
@@ -59,11 +59,11 @@ export default function About() {
         <div className="rounded-xl p-8 mb-12" style={{ background: "var(--surface-strong)" }}>
           <div className="flex items-center gap-2 mb-4">
             <Plane className="w-5 h-5" style={{ color: "var(--link)" }} />
-            <h2 className="font-sans text-xl font-bold text-white">{t("about.domainsTitle")}</h2>
+            <h2 className="font-sans text-xl font-bold text-foreground">{t("about.domainsTitle")}</h2>
           </div>
           <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
             {DOMAINS.map((d) => (
-              <div key={d} className="flex items-center gap-2 text-sm text-white/80">
+              <div key={d} className="flex items-center gap-2 text-sm text-foreground/80">
                 <CheckCircle className="w-4 h-4 shrink-0" style={{ color: "var(--link)" }} /> {d}
               </div>
             ))}

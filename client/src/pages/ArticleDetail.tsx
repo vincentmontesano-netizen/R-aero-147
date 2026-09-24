@@ -20,12 +20,12 @@ export default function ArticleDetail() {
       <div style={{ background: "var(--surface-strong)", paddingTop: "5rem" }}>
         <div className="container py-10 max-w-3xl">
           <Link href="/actualites">
-            <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-white mb-4 transition-colors"><ArrowLeft className="w-4 h-4" /> {t("articleDetail.backToNews")}</button>
+            <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4 transition-colors"><ArrowLeft className="w-4 h-4" /> {t("articleDetail.backToNews")}</button>
           </Link>
           {article && (
             <>
               {article.category && <div className="text-xs font-semibold tracking-widest mb-2" style={{ color: "var(--link)" }}>{article.category.toUpperCase()}</div>}
-              <h1 className="font-sans text-3xl font-bold text-white mb-3">{article.title}</h1>
+              <h1 className="font-sans text-3xl font-bold text-foreground mb-3">{article.title}</h1>
               <div className="text-muted-foreground text-sm">{article.author ?? "R-AERO"} · {article.publishedAt ? new Date(article.publishedAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) : ""}</div>
             </>
           )}

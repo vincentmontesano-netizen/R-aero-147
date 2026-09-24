@@ -376,7 +376,7 @@ export default function Dashboard() {
               </div>
               <div className="min-w-0 break-words">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="font-sans text-2xl font-bold text-white">{t("dashboard.greeting", { name: user?.name ?? t("dashboard.defaultLearnerName") })}</h1>
+                  <h1 className="font-sans text-2xl font-bold text-foreground">{t("dashboard.greeting", { name: user?.name ?? t("dashboard.defaultLearnerName") })}</h1>
                   {myOrgs.map((o: any) => (
                     <span key={o.orgId} className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full"
                       style={{ background: "color-mix(in srgb, var(--link) 18%, transparent)", color: "var(--link)" }}

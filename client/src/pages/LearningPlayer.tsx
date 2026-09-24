@@ -609,7 +609,7 @@ function LearningPlayerCourse({ slug, search }: { slug: string; search: string }
       <div className="min-h-screen flex flex-col" style={{ background: "var(--background)" }}>
         <div className="flex items-center h-12 px-4 shrink-0" style={{ background: "var(--surface-strong)" }}>
           <Link href="/dashboard" onClick={event => { if (!confirmLeaveExam()) event.preventDefault(); }}>
-            <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-white transition-colors">
+            <button className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
               <ChevronLeft className="w-4 h-4" /> {t("learningPlayer.mySpace")}
             </button>
           </Link>
@@ -654,12 +654,12 @@ function LearningPlayerCourse({ slug, search }: { slug: string; search: string }
         <div className="container flex flex-wrap gap-2 items-center justify-between min-h-14 py-2">
           <div className="flex items-center gap-3 min-w-0 max-w-full">
             <Link href="/dashboard" onClick={event => { if (!confirmLeaveExam()) event.preventDefault(); }}>
-              <button className="flex shrink-0 items-center gap-1 text-sm text-muted-foreground hover:text-white transition-colors">
+              <button className="flex shrink-0 items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
                 <ChevronLeft className="w-4 h-4" /> {t("learningPlayer.mySpace")}
               </button>
             </Link>
             <span className="text-muted-foreground">|</span>
-            <span className="text-sm font-medium text-white truncate max-w-xs">{training?.title}</span>
+            <span className="text-sm font-medium text-foreground truncate max-w-xs">{training?.title}</span>
             <span className="text-xs text-muted-foreground">{enrollment?.trainingVersionId ? t("curriculum.version", { version: training?.version ?? 1 }) : t("curriculum.legacy")}</span>
           </div>
           <div className="flex items-center gap-3">
@@ -717,7 +717,7 @@ function LearningPlayerCourse({ slug, search }: { slug: string; search: string }
                   }}
                 >
                   <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: completed ? "color-mix(in srgb, var(--success) 18%, transparent)" : "var(--border)" }}>
-                    {completed ? <CheckCircle className="w-3 h-3 text-white" /> : <span className="text-xs font-bold" style={{ color: "var(--muted-foreground)" }}>{idx + 1}</span>}
+                    {completed ? <CheckCircle className="w-3 h-3 text-background" /> : <span className="text-xs font-bold" style={{ color: "var(--muted-foreground)" }}>{idx + 1}</span>}
                   </div>
                   <div>
                     <div className="text-sm font-medium leading-snug" style={{ color: "var(--foreground)" }}>{mod.title}</div>
@@ -754,7 +754,7 @@ function LearningPlayerCourse({ slug, search }: { slug: string; search: string }
                 {objectiveProgress.map((o: any) => (
                   <div key={o.id} className="flex items-start gap-2">
                     <div className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: o.isCompleted ? "color-mix(in srgb, var(--success) 18%, transparent)" : "var(--border)" }}>
-                      {o.isCompleted && <CheckCircle className="w-2.5 h-2.5 text-white" />}
+                      {o.isCompleted && <CheckCircle className="w-2.5 h-2.5 text-background" />}
                     </div>
                     <div className="text-xs leading-snug" style={{ color: o.isCompleted ? "var(--foreground)" : "var(--muted-foreground)" }}>
                       {o.code ? <span style={{ color: "var(--link)" }}>{o.code} </span> : null}{o.title}

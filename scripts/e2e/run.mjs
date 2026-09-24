@@ -16,7 +16,7 @@ try{
  command('docker',['run','-d','--name',container,'--label','raero.e2e=1','-p',`127.0.0.1:${port}:3000`,'--env-file',envFile,'--mount',`type=bind,source=${path.resolve('scripts/e2e')},target=/app/scripts/e2e,readonly`,image]);
  let ready=false;for(let i=0;i<90;i++){try{if((await fetch(origin+'/health/ready')).ok){ready=true;break;}}catch{}await new Promise(resolve=>setTimeout(resolve,1000));}if(!ready)throw new Error('Isolated application did not become ready');
  const env={...process.env,RAERO_E2E_ORIGIN:origin,RAERO_E2E_OUTPUT:output,RAERO_E2E_CONTAINER:container};delete env.RAERO_E2E_RESUME;
- for(const suite of ['accounts','course-authoring','course-publication','purchase','learning','documents','services','company','passport','verification','admin-content','live','security','sessions','final-ui','landing-scroll']){
+ for(const suite of ['accounts','course-authoring','course-publication','purchase','learning','documents','services','company','passport','verification','admin-content','live','security','sessions','final-ui','themes','landing-scroll']){
   command(process.execPath,[`scripts/e2e/${suite}.mjs`],env);result.suites.push(suite);save();
  }
  result.status='passed';result.finishedAt=new Date().toISOString();save();console.log(JSON.stringify(result));

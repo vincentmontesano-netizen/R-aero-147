@@ -143,14 +143,14 @@ export function PDFPreviewModal({
                   aria-label={labels.zoomOut}
                   onClick={handleZoomOut}
                   disabled={zoom <= 50}
-                  className="w-10 h-10 rounded flex items-center justify-center text-muted-foreground hover:text-white hover:bg-foreground/10 transition-colors disabled:opacity-30"
+                  className="w-10 h-10 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-foreground/10 transition-colors disabled:opacity-30"
                 >
                   <ZoomOut className="w-3.5 h-3.5" />
                 </button>
                 <button
                   aria-label={labels.reset}
                   onClick={handleResetZoom}
-                  className="text-sm text-muted-foreground hover:text-white transition-colors px-1 min-w-10 text-center"
+                  className="text-sm text-muted-foreground hover:text-foreground transition-colors px-1 min-w-10 text-center"
                 >
                   {zoom}%
                 </button>
@@ -158,7 +158,7 @@ export function PDFPreviewModal({
                   aria-label={labels.zoomIn}
                   onClick={handleZoomIn}
                   disabled={zoom >= 200}
-                  className="w-10 h-10 rounded flex items-center justify-center text-muted-foreground hover:text-white hover:bg-foreground/10 transition-colors disabled:opacity-30"
+                  className="w-10 h-10 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-foreground/10 transition-colors disabled:opacity-30"
                 >
                   <ZoomIn className="w-3.5 h-3.5" />
                 </button>
@@ -172,7 +172,7 @@ export function PDFPreviewModal({
                   size="sm"
                   variant="ghost"
                   onClick={handleOpenInTab}
-                  className="text-muted-foreground hover:text-white hover:bg-foreground/10 h-8 px-3"
+                  className="text-muted-foreground hover:text-foreground hover:bg-foreground/10 h-8 px-3"
                 >
                   <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
                   <span className="text-xs">{labels.open}</span>
@@ -192,7 +192,7 @@ export function PDFPreviewModal({
             <button
               aria-label={labels.close}
                   onClick={handleClose}
-              className="w-10 h-10 rounded flex items-center justify-center text-muted-foreground hover:text-white hover:bg-foreground/10 transition-colors ml-1"
+              className="w-10 h-10 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-foreground/10 transition-colors ml-1"
             >
               <X className="w-4 h-4" />
             </button>
@@ -211,7 +211,7 @@ export function PDFPreviewModal({
                 <Loader2 className="w-8 h-8 animate-spin" style={{ color: "var(--link)" }} />
               </div>
               <div className="text-center">
-                <div className="font-semibold text-white mb-1">{labels.generating}</div>
+                <div className="font-semibold text-foreground mb-1">{labels.generating}</div>
                 <div className="text-sm" style={{ color: "var(--muted-foreground)" }}>
                   {labels.wait}
                 </div>
@@ -229,7 +229,7 @@ export function PDFPreviewModal({
                 <AlertCircle className="w-8 h-8" style={{ color: "var(--destructive)" }} />
               </div>
               <div className="text-center">
-                <div className="font-semibold text-white mb-1">{labels.error}</div>
+                <div className="font-semibold text-foreground mb-1">{labels.error}</div>
                 <div className="text-sm mb-4" style={{ color: "var(--muted-foreground)" }}>{error}</div>
                 {onGenerate && (
                   <Button
@@ -294,7 +294,7 @@ export function PDFPreviewModal({
                 <FileText className="w-8 h-8" style={{ color: "var(--link)" }} />
               </div>
               <div className="text-center">
-                <div className="font-semibold text-white mb-1">{labels.unavailable}</div>
+                <div className="font-semibold text-foreground mb-1">{labels.unavailable}</div>
                 <div className="text-sm" style={{ color: "var(--muted-foreground)" }}>
                   {labels.missing}
                 </div>

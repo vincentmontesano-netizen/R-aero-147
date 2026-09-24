@@ -91,7 +91,7 @@ export default function UserProfile() {
       <div style={{ background: "var(--surface-strong)", paddingTop: "5rem" }}>
         <div className="container py-10">
           <BackButton dark />
-          <h1 className="font-sans text-2xl font-bold text-white mb-1">{t("userProfile.title")}</h1>
+          <h1 className="font-sans text-2xl font-bold text-foreground mb-1">{t("userProfile.title")}</h1>
           <p className="text-muted-foreground text-sm">{t("userProfile.subtitle")}</p>
         </div>
       </div>

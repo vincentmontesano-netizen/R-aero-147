@@ -3,6 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      try {
+        document.documentElement.classList.toggle("dark", localStorage.getItem("theme") !== "light");
+      } catch { document.documentElement.classList.add("dark"); }
+    </script>
     <title>R-AERO — Formations aéronautiques & suivi des équipes</title>
     <link rel="icon" type="image/png" href="/brand/Logo.png" />
     <meta name="description" content="Formations aéronautiques, e-learning, classes virtuelles et suivi des certificats pour indépendants, Part-145, CAMO et compagnies. Découvrez R-AERO et recevez la brochure." />

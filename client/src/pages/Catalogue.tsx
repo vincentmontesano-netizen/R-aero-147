@@ -65,7 +65,7 @@ export default function Catalogue() {
         <div className="container py-12">
           <BackButton dark />
           <div className="text-xs font-semibold tracking-widest mb-3" style={{ color: "var(--link)" }}>{t("catalogue.eyebrow")}</div>
-          <h1 className="font-sans text-4xl font-bold text-white mb-3">{t("catalogue.title")}</h1>
+          <h1 className="font-sans text-4xl font-bold text-foreground mb-3">{t("catalogue.title")}</h1>
           <p className="text-muted-foreground max-w-xl">
             {t("catalogue.subtitle")}
           </p>

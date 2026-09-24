@@ -145,13 +145,13 @@ export default function CourseMaker() {
           <div className="flex items-center gap-3">
             <Sparkles className="w-6 h-6" style={{ color: "var(--link)" }} />
             <div>
-              <h1 className="font-sans text-xl font-bold text-white">{t("maker.title")}</h1>
+              <h1 className="font-sans text-xl font-bold text-foreground">{t("maker.title")}</h1>
               <p className="text-muted-foreground text-xs">{t("maker.subtitle")}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
-            <Link href={user.role === "admin" ? "/admin" : "/dashboard"}><Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-foreground/10"><ArrowLeft className="w-4 h-4 mr-1" /> {user.role === "admin" ? t("userMenu.administration") : t("userMenu.mySpace")}</Button></Link>
+            <Link href={user.role === "admin" ? "/admin" : "/dashboard"}><Button variant="ghost" size="sm" className="text-foreground/80 hover:text-foreground hover:bg-foreground/10"><ArrowLeft className="w-4 h-4 mr-1" /> {user.role === "admin" ? t("userMenu.administration") : t("userMenu.mySpace")}</Button></Link>
           </div>
         </div>
       </div>
@@ -720,7 +720,7 @@ function SlideEditorDialog({ slide, provider, providers, lang, courseLanguage, o
                     <div key={i} className="flex items-center gap-2">
                       <button aria-label={t("courseMaker.markCorrect", { number: i + 1 })} aria-pressed={form.quizCorrect.includes(i)} onClick={() => toggleCorrect(i)} className="w-5 h-5 rounded-full border flex items-center justify-center shrink-0"
                         style={{ borderColor: form.quizCorrect.includes(i) ? "var(--success)" : "var(--border)", background: form.quizCorrect.includes(i) ? "color-mix(in srgb, var(--success) 18%, transparent)" : "transparent" }}>
-                        {form.quizCorrect.includes(i) && <Check className="w-3 h-3 text-white" />}
+                        {form.quizCorrect.includes(i) && <Check className="w-3 h-3 text-background" />}
                       </button>
                       <Input value={opt} onChange={(e) => set("quizOptions", form.quizOptions.map((x, j) => (j === i ? e.target.value : x)))} placeholder={`${t("maker.option")} ${i + 1}`} />
                       {form.quizOptions.length > 2 && <button aria-label={t("courseMaker.removeOption", { number: i + 1 })} onClick={() => { set("quizOptions", form.quizOptions.filter((_, j) => j !== i)); set("quizCorrect", form.quizCorrect.filter((x) => x !== i).map((x) => (x > i ? x - 1 : x))); }} className="text-destructive"><Trash2 className="w-4 h-4" /></button>}

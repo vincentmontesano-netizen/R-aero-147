@@ -50,7 +50,7 @@ export default function Checkout() {
       <PublicNav />
       <div style={{ background: "var(--surface-strong)", paddingTop: "5rem" }}>
         <div className="container py-10">
-          <h1 className="font-sans text-3xl font-bold text-white mb-1">{t("checkout.pageTitle")}</h1>
+          <h1 className="font-sans text-3xl font-bold text-foreground mb-1">{t("checkout.pageTitle")}</h1>
           <p className="text-muted-foreground text-sm">{t("checkout.pageSubtitle")}</p>
         </div>
       </div>
@@ -136,7 +136,7 @@ export default function Checkout() {
 
               {/* What's included */}
               <div className="rounded-xl p-5" style={{ background: "var(--surface-strong)" }}>
-                <h3 className="font-semibold text-white text-sm mb-3">{t("checkout.includedTitle")}</h3>
+                <h3 className="font-semibold text-foreground text-sm mb-3">{t("checkout.includedTitle")}</h3>
                 <ul className="space-y-2">
                   {[
                     t("checkout.includedImmediateAccess"),

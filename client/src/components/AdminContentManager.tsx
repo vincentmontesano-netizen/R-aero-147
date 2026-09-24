@@ -325,7 +325,7 @@ function QuestionDialog({ trainingId, modules, objectives, question, nextOrder, 
                 {options.map((opt, idx) => (
                   <div key={idx} className="flex items-center gap-2">
                     <button type="button" onClick={() => toggleCorrect(idx)} title={t("adminContentManager.markCorrectAnswerTitle")} className="w-6 h-6 rounded-full border flex items-center justify-center shrink-0" style={{ borderColor: correct.includes(idx) ? "var(--success)" : "var(--border)", background: correct.includes(idx) ? "color-mix(in srgb, var(--success) 18%, transparent)" : "transparent" }}>
-                      {correct.includes(idx) && <Check className="w-3.5 h-3.5 text-white" />}
+                      {correct.includes(idx) && <Check className="w-3.5 h-3.5 text-background" />}
                     </button>
                     <Input value={opt} onChange={(e) => setOptions((o) => o.map((x, i) => (i === idx ? e.target.value : x)))} placeholder={t("adminContentManager.answerPlaceholder", { n: idx + 1 })} />
                     {type !== "true_false" && options.length > 2 && (

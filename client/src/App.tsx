@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
-import { ThemeProvider } from "./contexts/ThemeContext";
+import { ThemeProvider, useTheme } from "./contexts/ThemeContext";
 import { I18nProvider, useI18n } from "./i18n";
 import Home from "./pages/Home";
 const Catalogue = lazy(() => import("./pages/Catalogue"));
@@ -101,13 +101,18 @@ function PageLoading() {
   </div>;
 }
 
+function AppToaster() {
+  const { theme } = useTheme();
+  return <Toaster theme={theme} />;
+}
+
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="dark">
+      <ThemeProvider defaultTheme="dark" switchable>
         <I18nProvider>
           <TooltipProvider>
-            <Toaster theme="dark" />
+            <AppToaster />
             <Suspense fallback={<PageLoading />}><Router /></Suspense>
             <ChatWidget />
             <CartWidget />

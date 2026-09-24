@@ -2001,5 +2001,8 @@
   "checkout.paymentsUnavailableTitle": "Online payment unavailable",
   "checkout.paymentsUnavailableText": "Card payment is not open yet. Request a quote: our team replies within 24–48 h and activates your access.",
   "checkout.requestQuote": "Request a quote",
-  "slideDeck.answerToContinue": "Answer the question correctly to continue."
+  "slideDeck.answerToContinue": "Answer the question correctly to continue.",
+  "theme.light": "Light mode",
+  "theme.switchLight": "Switch to light mode",
+  "theme.switchDark": "Switch to dark mode"
 }

@@ -2001,5 +2001,8 @@
   "checkout.paymentsUnavailableTitle": "Paiement en ligne indisponible",
   "checkout.paymentsUnavailableText": "Le paiement par carte n’est pas encore ouvert. Demandez un devis : notre équipe vous répond sous 24 à 48 h et active votre accès.",
   "checkout.requestQuote": "Demander un devis",
-  "slideDeck.answerToContinue": "Répondez correctement à la question pour continuer."
+  "slideDeck.answerToContinue": "Répondez correctement à la question pour continuer.",
+  "theme.light": "Mode clair",
+  "theme.switchLight": "Activer le mode clair",
+  "theme.switchDark": "Activer le mode sombre"
 }

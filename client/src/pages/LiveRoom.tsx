@@ -96,8 +96,8 @@ function LiveRoomSession({ type, id }: { type?: string; id?: string }) {
       {accessQuery.isError && <div className="bg-card">{accessError}</div>}
       <div className="min-h-14 flex flex-wrap gap-3 items-center justify-between px-4 py-2 shrink-0" style={{ borderBottom: "1px solid color-mix(in srgb, var(--foreground) 10%, transparent)" }}>
         <div className="flex items-center gap-3 min-w-0">
-          <Link href={roomType === "session" ? "/sessions" : "/webinars"}><button className="text-muted-foreground hover:text-white"><ArrowLeft className="w-5 h-5" /></button></Link>
-          <span className="font-sans font-bold text-white truncate">{access.title}</span>
+          <Link href={roomType === "session" ? "/sessions" : "/webinars"}><button className="text-muted-foreground hover:text-foreground"><ArrowLeft className="w-5 h-5" /></button></Link>
+          <span className="font-sans font-bold text-foreground truncate">{access.title}</span>
           {access.status === "live" && <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: "color-mix(in srgb, var(--destructive) 16%, transparent)", color: "var(--foreground)" }}><Radio className="w-3 h-3" /> LIVE</span>}
           {isReplay && <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>REPLAY</span>}
         </div>
@@ -140,7 +140,7 @@ function ReplayCorrection({currentUrl,...room}:ReplayEditorProps & {currentUrl:s
   if(editing)return <ReplaySetter {...room} revision={editing.revision} currentUrl={editing.url} onCancel={()=>setEditing(null)} onSaved={()=>{setEditing(null);setSaved(true);}}/>;
   return <div className="space-y-2">
     <Button variant="outline" onClick={()=>{setSaved(false);setEditing({revision:room.revision,url:currentUrl});}}>{t('liveRoom.correctReplay')}</Button>
-    {saved&&<p role="status" className="text-xs text-white">{t('liveRoom.replayCorrected')}</p>}
+    {saved&&<p role="status" className="text-xs text-foreground">{t('liveRoom.replayCorrected')}</p>}
   </div>;
 }
 
@@ -163,13 +163,13 @@ function ReplaySetter({ roomType, roomId, revision, currentUrl, onCancel, onSave
   };
   return (
     <form onSubmit={submit} aria-busy={setReplay.isPending} className="space-y-2">
-      {currentUrl&&<p className="text-xs text-white max-w-md break-words">{t('liveRoom.replayCurrent')}: <bdi>{currentUrl}</bdi></p>}
+      {currentUrl&&<p className="text-xs text-foreground max-w-md break-words">{t('liveRoom.replayCurrent')}: <bdi>{currentUrl}</bdi></p>}
       <div className="flex flex-wrap items-center gap-2">
-        <Input type="url" required pattern="https://.*" maxLength={512} aria-label={t("liveRoom.replayUrlPlaceholder")} disabled={setReplay.isPending} value={url} onChange={(e) => setUrl(e.target.value)} placeholder={t("liveRoom.replayUrlPlaceholder")} className="h-8 w-56 bg-foreground/10 text-white border-white/20 placeholder:text-muted-foreground" />
+        <Input type="url" required pattern="https://.*" maxLength={512} aria-label={t("liveRoom.replayUrlPlaceholder")} disabled={setReplay.isPending} value={url} onChange={(e) => setUrl(e.target.value)} placeholder={t("liveRoom.replayUrlPlaceholder")} className="h-8 w-56 bg-foreground/10 text-foreground border-foreground/20 placeholder:text-muted-foreground" />
         <Button type="submit" size="sm" disabled={!url.trim() || url.trim() === currentUrl || setReplay.isPending} style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>{t(setReplay.isPending ? 'common.loading' : currentUrl ? "liveRoom.replaceReplay" : "liveRoom.closeAndReplay")}</Button>
       </div>
       {onCancel&&<Button type="button" variant="outline" size="sm" disabled={setReplay.isPending} onClick={onCancel}>{t("liveRoom.cancel")}</Button>}
-      {setReplay.isError && <p role="alert" className="text-xs text-white max-w-md">{t(setReplay.error?.data?.code === 'CONFLICT' ? 'liveRoom.replayConflict' : 'liveRoom.replayUnconfirmed')}</p>}
+      {setReplay.isError && <p role="alert" className="text-xs text-foreground max-w-md">{t(setReplay.error?.data?.code === 'CONFLICT' ? 'liveRoom.replayConflict' : 'liveRoom.replayUnconfirmed')}</p>}
     </form>
   );
 }

@@ -48,7 +48,7 @@ export default function Cart() {
       <div style={{ background: "var(--surface-strong)", paddingTop: "5rem" }}>
         <div className="container py-10">
           <BackButton dark />
-          <h1 className="font-sans text-3xl font-bold text-white mb-1">{t("cart.title")}</h1>
+          <h1 className="font-sans text-3xl font-bold text-foreground mb-1">{t("cart.title")}</h1>
           <p className="text-muted-foreground text-sm">{cartItems.length} {cartItems.length > 1 ? t("cart.itemsPlural") : t("cart.itemSingular")}</p>
         </div>
       </div>

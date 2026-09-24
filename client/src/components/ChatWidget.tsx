@@ -116,10 +116,10 @@ export default function ChatWidget() {
           <div className="flex items-center gap-2 px-4 py-3" style={{ background: "var(--surface-strong)" }}>
             <Bot className="w-5 h-5" style={{ color: "var(--link)" }} />
             <div className="flex-1">
-              <div className="text-sm font-semibold text-white">{t("chatWidget.title")}</div>
+              <div className="text-sm font-semibold text-foreground">{t("chatWidget.title")}</div>
               <div className="text-xs text-muted-foreground">{t("chatWidget.subtitle")}</div>
             </div>
-            <button onClick={() => setOpen(false)} aria-label={t("chatWidget.close")} className="text-muted-foreground hover:text-white"><X className="w-5 h-5" /></button>
+            <button onClick={() => setOpen(false)} aria-label={t("chatWidget.close")} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
           </div>
 
           <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-2" style={{ background: "var(--background)" }}>

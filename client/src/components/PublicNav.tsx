@@ -7,11 +7,14 @@ import { LogIn, Menu, X } from "lucide-react";
 import { LOGO_EMBLEM, BRAND_NAME } from "@/lib/brand";
 import UserMenu from "@/components/UserMenu";
 import { getLoginUrl } from "@/const";
+import ThemeToggle from "@/components/ThemeToggle";
 
 /** Compact EN/FR/AR language switcher. */
 export function LanguageSwitcher() {
   const { lang, setLang } = useI18n();
   return (
+    <div className="flex shrink-0 items-center gap-2">
+      <ThemeToggle />
     <div className="app-language-switcher">
       {(["fr", "en", "ar"] as const).map(l => (
         <button
@@ -24,6 +27,7 @@ export function LanguageSwitcher() {
           {l.toUpperCase()}
         </button>
       ))}
+    </div>
     </div>
   );
 }
@@ -98,7 +102,7 @@ export default function PublicNav() {
               className="h-10 w-auto object-contain"
             />
             <div className="hidden sm:block">
-              <div className="font-sans font-bold text-white text-base leading-tight tracking-wide">
+              <div className="font-sans font-bold text-foreground text-base leading-tight tracking-wide">
                 {BRAND_NAME}
               </div>
               <div
@@ -117,7 +121,7 @@ export default function PublicNav() {
               href={item.href}
               onClick={e => followLink(e, item.href)}
               aria-current={isCurrent(item.href) ? "page" : undefined}
-              className={`text-sm transition-colors ${isCurrent(item.href) ? "text-white font-semibold" : "text-white/80 hover:text-white"}`}
+              className={`text-sm transition-colors ${isCurrent(item.href) ? "text-foreground font-semibold" : "text-foreground/80 hover:text-foreground"}`}
             >
               {item.label}
             </a>
@@ -134,7 +138,7 @@ export default function PublicNav() {
                   aria-label={t("nav.login")}
                   variant="ghost"
                   size="sm"
-                  className="text-white/80 hover:text-white hover:bg-foreground/10"
+                  className="text-foreground/80 hover:text-foreground hover:bg-foreground/10"
                 >
                   <LogIn className="w-4 h-4" />
                   <span className="hidden sm:inline">{t("nav.login")}</span>
@@ -157,7 +161,7 @@ export default function PublicNav() {
           <button
             type="button"
             ref={menuButton}
-            className="lg:hidden p-2 text-white"
+            className="lg:hidden p-2 text-foreground"
             aria-expanded={open}
             aria-controls="public-mobile-menu"
             aria-label={
@@ -176,7 +180,7 @@ export default function PublicNav() {
       {open && (
         <div
           id="public-mobile-menu"
-          className="lg:hidden container pb-5 border-t border-white/15"
+          className="lg:hidden container pb-5 border-t border-foreground/15"
         >
           {LINKS.map(item => (
             <a
@@ -187,7 +191,7 @@ export default function PublicNav() {
                 followLink(e, item.href);
               }}
               aria-current={isCurrent(item.href) ? "page" : undefined}
-              className="block py-3 text-white border-b border-white/10"
+              className="block py-3 text-foreground border-b border-foreground/10"
             >
               {item.label}
             </a>
