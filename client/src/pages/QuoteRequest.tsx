@@ -78,13 +78,13 @@ export default function QuoteRequest() {
       <div className="container py-10">
         <div className="grid lg:grid-cols-3 gap-10">
           {/* Form */}
-          <div className="lg:col-span-2">
-            <form onSubmit={handleSubmit} className="rounded-xl p-8 space-y-6" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+          <div className="lg:col-span-2 min-w-0">
+            <form onSubmit={handleSubmit} className="rounded-xl p-4 sm:p-8 space-y-6" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
               <fieldset disabled={createQuote.isPending} className="space-y-6 min-w-0">
               <div>
                 <h2 className="font-semibold text-lg mb-4" style={{ color: "var(--foreground)" }}>{t("quoteRequest.companySectionTitle")}</h2>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="sm:col-span-2">
                     <label htmlFor="quote-companyName" className="text-sm font-semibold mb-1.5 block" style={{ color: "var(--muted-foreground)" }}>{t("quoteRequest.companyNameLabel")}</label>
                     <Input required id="quote-companyName" maxLength={255} value={form.companyName} onChange={(e) => setForm((f) => ({ ...f, companyName: e.target.value }))} placeholder={t("quoteRequest.companyNamePlaceholder")} />
                   </div>
@@ -101,8 +101,8 @@ export default function QuoteRequest() {
 
               <div>
                 <h2 className="font-semibold text-lg mb-4" style={{ color: "var(--foreground)" }}>{t("quoteRequest.contactSectionTitle")}</h2>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="sm:col-span-2">
                     <label htmlFor="quote-contactName" className="text-sm font-semibold mb-1.5 block" style={{ color: "var(--muted-foreground)" }}>{t("quoteRequest.contactNameLabel")}</label>
                     <Input required id="quote-contactName" maxLength={128} value={form.contactName} onChange={(e) => setForm((f) => ({ ...f, contactName: e.target.value }))} placeholder="Marie Dupont" />
                   </div>

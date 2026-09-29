@@ -1,5 +1,5 @@
 /** SMTP acceptance is not proof of inbox delivery. No automatic retries. */
-import nodemailer from "nodemailer";
+import nodemailer, { type Transporter } from "nodemailer";
 
 // SMTP config is read LAZILY from process.env (populated from .env AND from the admin
 // Settings UI via app_settings → setSetting writes process.env). The transporter is
@@ -15,10 +15,10 @@ function smtpConfig() {
   };
 }
 
-let transporter: nodemailer.Transporter | null = null;
+let transporter: Transporter | null = null;
 let transportSig = "";
 
-function getTransport(): nodemailer.Transporter | null {
+function getTransport(): Transporter | null {
   const { host, port, user, pass } = smtpConfig();
   if (!host || !user || !pass || !Number.isInteger(port) || port < 1 || port > 65535) { transporter = null; transportSig = ""; return null; }
   const sig = `${host}:${port}:${user}:${pass}`;

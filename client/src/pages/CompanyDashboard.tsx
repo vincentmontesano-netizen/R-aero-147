@@ -27,6 +27,7 @@ import Passport from "@/components/Passport";
 import { toast } from "sonner";
 import { useI18n } from "@/i18n";
 import { useUrlTab } from "@/hooks/useUrlTab";
+import { useLocation, useSearch } from "wouter";
 
 const RECURRENCY_STATUS: Record<string, { color: string; bg: string }> = {
   ok: { color: "var(--success)", bg: "color-mix(in srgb, var(--success) 10%, transparent)" },
@@ -35,11 +36,11 @@ const RECURRENCY_STATUS: Record<string, { color: string; bg: string }> = {
   not_started: { color: "var(--muted-foreground)", bg: "color-mix(in srgb, var(--muted-foreground) 10%, transparent)" },
 };
 
-function AddEmployeeDialog({ onSuccess }: { onSuccess: () => void }) {
+function AddEmployeeDialog({ onSuccess, orgId }: { onSuccess: () => void; orgId?: number }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ firstName: "", lastName: "", email: "", jobTitle: "", licenseNumber: "", licenseCategories: "", typeRatings: "", department: "", base: "" });
-  const createEmployee = trpc.company.createEmployee.useMutation({
+  const createEmployee = trpc.companyWorkspace.createEmployee.useMutation({
     onSuccess: () => { toast.success(t("companyDashboard.toastEmployeeAdded")); setOpen(false); onSuccess(); },
     onError: () => toast.error(t("companyDashboard.toastEmployeeError")),
   });
@@ -73,7 +74,7 @@ function AddEmployeeDialog({ onSuccess }: { onSuccess: () => void }) {
         </div>
         <div className="flex justify-end gap-2 mt-4">
           <Button variant="outline" onClick={() => setOpen(false)}>{t("companyDashboard.cancel")}</Button>
-          <Button onClick={() => createEmployee.mutate(form)} disabled={!form.firstName || !form.lastName || !form.email || createEmployee.isPending} style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>
+          <Button onClick={() => createEmployee.mutate({ ...form, orgId })} disabled={!form.firstName || !form.lastName || !form.email || createEmployee.isPending} style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>
             {t("companyDashboard.add")}
           </Button>
         </div>
@@ -82,7 +83,7 @@ function AddEmployeeDialog({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
-function ImportCSVDialog({ onSuccess }: { onSuccess: () => void }) {
+function ImportCSVDialog({ onSuccess, orgId }: { onSuccess: () => void; orgId?: number }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [result, setResult] = useState<{ imported: number; errors: string[] } | null>(null);
@@ -97,7 +98,7 @@ function ImportCSVDialog({ onSuccess }: { onSuccess: () => void }) {
     mounted.current = true;
     return () => { mounted.current = false; activeReader.current?.abort(); };
   }, []);
-  const importCSV = trpc.company.importCSV.useMutation();
+  const importCSV = trpc.companyWorkspace.importCSV.useMutation();
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -144,7 +145,7 @@ function ImportCSVDialog({ onSuccess }: { onSuccess: () => void }) {
     setProblem(null);
     setResult(null);
     try {
-      const data = await importCSV.mutateAsync({ csvData: prepared.csvData });
+      const data = await importCSV.mutateAsync({ orgId, csvData: prepared.csvData });
       if (!mounted.current) return;
       setResult(data);
       if (data.imported > 0) { toast.success(t("companyDashboard.toastImportSuccess", { count: data.imported })); onSuccess(); }
@@ -212,32 +213,70 @@ function ImportCSVDialog({ onSuccess }: { onSuccess: () => void }) {
 }
 
 export default function CompanyDashboard() {
+  const { t } = useI18n();
+  const { user, isAuthenticated, loading } = useAuth();
+  const search = useSearch();
+  const [, navigate] = useLocation();
+  const memberships = trpc.me.organizations.useQuery(undefined, { enabled: isAuthenticated && user?.role !== "admin" });
+  const organizations = trpc.admin.organizations.list.useQuery(undefined, { enabled: isAuthenticated && user?.role === "admin" });
+  const options = user?.role === "admin"
+    ? (organizations.data ?? []).filter(o => o.status === "ACTIVE").map(o => ({ orgId: o.id, name: o.name }))
+    : (memberships.data ?? []).filter(o => o.role === "MANAGER");
+  const query = user?.role === "admin" ? organizations : memberships;
+  const requested = new URLSearchParams(search).get("orgId");
+  const selected = requested !== null
+    ? options.find(o => String(o.orgId) === requested)
+    : options.find(o => o.orgId === user?.companyId) ?? (options.length === 1 ? options[0] : undefined);
+  if (loading || !isAuthenticated) return <CompanyWorkspace />;
+  return <>
+    <div className="border-b bg-card px-4 py-3 space-y-2">
+      <label htmlFor="company-workspace" className="block text-sm font-semibold">{t("companyDashboard.selectOrganization")}</label>
+      <select id="company-workspace" className="w-full sm:max-w-md h-10 rounded-md border bg-background px-3" value={selected?.orgId ?? ""}
+        disabled={query.isPending || query.isError} onChange={event => {
+          const params = new URLSearchParams(search);
+          params.set("orgId", event.target.value);
+          params.delete("subscription");
+          navigate(`/entreprise?${params}`);
+        }}>
+        <option value="" disabled>{t("companyDashboard.chooseOrganization")}</option>
+        {options.map(o => <option key={o.orgId} value={o.orgId}>{o.name}</option>)}
+      </select>
+      {query.isError ? <div role="alert"><p>{t("companyDashboard.dataUnavailable")}</p><Button variant="outline" onClick={() => query.refetch()}>{t("companyDashboard.retryData")}</Button></div>
+        : query.isPending ? <p role="status">{t("common.loading")}</p>
+        : !selected ? <p role={requested !== null ? "alert" : "status"}>{t(requested !== null ? "companyDashboard.organizationUnavailable" : options.length ? "companyDashboard.chooseOrganization" : "companyDashboard.noCompany")}</p> : null}
+    </div>
+    {selected && !query.isError && <CompanyWorkspace key={selected.orgId} orgId={selected.orgId} />}
+  </>;
+}
+
+function CompanyWorkspace({ orgId }: { orgId?: number }) {
+  const scope = { orgId };
   const { t, lang } = useI18n();
   const { user, isAuthenticated, loading } = useAuth();
-  const companyQuery = trpc.company.get.useQuery(undefined, { enabled: isAuthenticated });
-  const employeesQuery = trpc.company.employees.useQuery(undefined, { enabled: isAuthenticated });
-  const recurrenciesQuery = trpc.company.recurrencies.useQuery(undefined, { enabled: isAuthenticated });
+  const companyQuery = trpc.companyWorkspace.get.useQuery(scope, { enabled: isAuthenticated });
+  const employeesQuery = trpc.companyWorkspace.employees.useQuery(scope, { enabled: isAuthenticated });
+  const recurrenciesQuery = trpc.companyWorkspace.recurrencies.useQuery(scope, { enabled: isAuthenticated });
   const { data: company } = companyQuery;
   const { data: employees = [], refetch: refetchEmployees } = employeesQuery;
   const { data: recurrencies = [] } = recurrenciesQuery;
-  const subscriptionQuery = trpc.company.subscription.useQuery(undefined, { enabled: isAuthenticated });
+  const subscriptionQuery = trpc.companyWorkspace.subscription.useQuery(scope, { enabled: isAuthenticated });
   const { data: subscription, refetch: refetchSubscription } = subscriptionQuery;
   const [fileEmployee, setFileEmployee] = useState<number | null>(null);
   const [tab, setTab] = useUrlTab("employees");
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [recurrencyFilter, setRecurrencyFilter] = useState("all");
-  const consolidatedQuery = trpc.company.consolidated.useQuery(undefined, { enabled: isAuthenticated });
-  const requirementsQuery = trpc.company.roleRequirements.useQuery(undefined, { enabled: isAuthenticated });
-  const trainingsQuery = trpc.company.roleRequirementCourses.useQuery(undefined, { enabled: isAuthenticated });
+  const consolidatedQuery = trpc.companyWorkspace.consolidated.useQuery(scope, { enabled: isAuthenticated });
+  const requirementsQuery = trpc.companyWorkspace.roleRequirements.useQuery(scope, { enabled: isAuthenticated });
+  const trainingsQuery = trpc.companyWorkspace.roleRequirementCourses.useQuery(scope, { enabled: isAuthenticated });
   const { data: consolidated } = consolidatedQuery;
   const { data: roleReqs = [] } = requirementsQuery;
   const { data: allTrainings = [] } = trainingsQuery;
   const [ruleForm, setRuleForm] = useState({ label: "", jobTitleContains: "", licenseCategoryContains: "", trainingId: "", periodMonths: 24 });
-  const refetchConf = () => Promise.all([utils.company.consolidated.invalidate(), utils.company.roleRequirements.invalidate(), utils.company.roleRequirementHistory.invalidate(), utils.company.recurrencies.invalidate()]);
-  const createRule = trpc.company.createRoleRequirement.useMutation({ onSuccess: () => { toast.success(t("companyDashboard.toastRuleAdded")); setRuleForm({ label: "", jobTitleContains: "", licenseCategoryContains: "", trainingId: "", periodMonths: 24 }); return refetchConf(); }, onError: (e) => toast.error(e.message) });
+  const refetchConf = () => Promise.all([utils.companyWorkspace.consolidated.invalidate(), utils.companyWorkspace.roleRequirements.invalidate(), utils.companyWorkspace.roleRequirementHistory.invalidate(), utils.companyWorkspace.recurrencies.invalidate()]);
+  const createRule = trpc.companyWorkspace.createRoleRequirement.useMutation({ onSuccess: () => { toast.success(t("companyDashboard.toastRuleAdded")); setRuleForm({ label: "", jobTitleContains: "", licenseCategoryContains: "", trainingId: "", periodMonths: 24 }); return refetchConf(); }, onError: (e) => toast.error(e.message) });
   const archivingRule = useRef(false);
   const [archivedRuleId,setArchivedRuleId] = useState<number | null>(null);
-  const deleteRule = trpc.company.deleteRoleRequirement.useMutation({
+  const deleteRule = trpc.companyWorkspace.deleteRoleRequirement.useMutation({
     onSuccess: async (_, input) => { setArchivedRuleId(input.id); await refetchConf(); },
     onSettled: () => { archivingRule.current = false; },
   });
@@ -247,32 +286,34 @@ export default function CompanyDashboard() {
     if (!window.confirm(t('companyDashboard.confirmArchiveRule',{id:rule.id,label:rule.label || t('companyDashboard.ruleHistoryTraining',{id:rule.trainingId}),scope}))) return;
     archivingRule.current = true;
     setArchivedRuleId(null);
-    deleteRule.mutate({id:rule.id});
+    deleteRule.mutate({orgId,id:rule.id});
   };
-  const runTNA = trpc.company.runTNA.useMutation({ onSuccess: (r) => { toast.success(t("companyDashboard.toastTna", { count: r.created })); return refetchConf(); }, onError: (e) => toast.error(e.message) });
+  const runTNA = trpc.companyWorkspace.runTNA.useMutation({ onSuccess: (r) => { toast.success(t("companyDashboard.toastTna", { count: r.created })); return refetchConf(); }, onError: (e) => toast.error(e.message) });
   const utils = trpc.useUtils();
-  const createSubscription = trpc.company.createSubscription.useMutation({
+  const createSubscription = trpc.companyWorkspace.createSubscription.useMutation({
     onSuccess: (r: any) => { if (r?.url) window.location.href = r.url; },
     onError: (e) => toast.error(e.message),
   });
-  const createPortal = trpc.company.createPortalSession.useMutation({
+  const createPortal = trpc.companyWorkspace.createPortalSession.useMutation({
     onSuccess: (r: any) => { if (r?.url) window.location.href = r.url; },
     onError: (e) => toast.error(e.message),
   });
-  const confirmSub = trpc.company.confirmSubscription.useMutation({
-    onSuccess: result => { refetchSubscription(); utils.company.recurrencies.invalidate(); if (result.status === "requires_review") toast.warning(lang === "fr" ? "Abonnement à vérifier." : lang === "ar" ? "يلزم التحقق من الاشتراك." : "Subscription needs review."); else toast.success(lang === "fr" ? "Statut de facturation actualisé." : lang === "ar" ? "تم تحديث حالة الفوترة." : "Billing status refreshed."); },
+  const confirmSub = trpc.companyWorkspace.confirmSubscription.useMutation({
+    onSuccess: result => { refetchSubscription(); utils.companyWorkspace.recurrencies.invalidate(); if (result.status === "requires_review") toast.warning(lang === "fr" ? "Abonnement à vérifier." : lang === "ar" ? "يلزم التحقق من الاشتراك." : "Subscription needs review."); else toast.success(lang === "fr" ? "Statut de facturation actualisé." : lang === "ar" ? "تم تحديث حالة الفوترة." : "Billing status refreshed."); },
     onError: error => toast.error(error.message),
   });
 
   // On return from Checkout (?subscription=success): confirm and refresh.
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
-    if (p.get("subscription") === "success") {
-      confirmSub.mutate();
-      window.history.replaceState({}, "", "/entreprise");
+    if (p.get("subscription") === "success" && company && (orgId === undefined || ("selectedOrgId" in company && company.selectedOrgId === orgId))) {
+      confirmSub.mutate(scope);
+      const url = new URL(window.location.href);
+      url.searchParams.delete("subscription");
+      window.history.replaceState(window.history.state, "", url.pathname + url.search);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [company, orgId]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--background)" }}><div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: "var(--link)", borderTopColor: "transparent" }} /></div>;
 
@@ -289,7 +330,9 @@ export default function CompanyDashboard() {
   }
 
   const coreQueries = [companyQuery, employeesQuery, recurrenciesQuery];
-  const coreError = coreQueries.some(query => query.isError);
+  // A cached frontend must not send scoped actions to an older server that ignores orgId.
+  const scopeUnavailable = companyQuery.error?.data?.code === "NOT_FOUND" || (orgId !== undefined && company != null && (!("selectedOrgId" in company) || company.selectedOrgId !== orgId));
+  const coreError = scopeUnavailable || coreQueries.some(query => query.isError);
   const corePending = coreQueries.some(query => query.isPending);
   if (coreError || corePending || !company) {
     return (
@@ -299,9 +342,9 @@ export default function CompanyDashboard() {
           <h1 className="font-sans text-2xl">{t("companyDashboard.companySpace")}</h1>
           {coreError || !corePending ? (
             <>
-              <p role="alert">{t(coreError ? "companyDashboard.dataUnavailable" : "companyDashboard.noCompany")}</p>
-              <Button disabled={coreQueries.some(query => query.isFetching)} onClick={() => { void Promise.all(coreQueries.map(query => query.refetch())); }}>
-                {t("companyDashboard.retryData")}
+              <p role="alert">{t(scopeUnavailable ? "companyDashboard.scopeUnavailable" : coreError ? "companyDashboard.dataUnavailable" : "companyDashboard.noCompany")}</p>
+              <Button disabled={coreQueries.some(query => query.isFetching)} onClick={() => { if (scopeUnavailable) window.location.reload(); else void Promise.all(coreQueries.map(query => query.refetch())); }}>
+                {t(scopeUnavailable ? "companyDashboard.reloadPage" : "companyDashboard.retryData")}
               </Button>
             </>
           ) : <p role="status">{t("common.loading")}</p>}
@@ -425,8 +468,8 @@ export default function CompanyDashboard() {
                 <Button variant="outline" size="sm" onClick={exportEmployeesCSV}>
                   <Download className="w-4 h-4 mr-1" /> {t("companyDashboard.exportFullRoster")}
                 </Button>
-                <ImportCSVDialog onSuccess={() => refetchEmployees()} />
-                <AddEmployeeDialog onSuccess={() => refetchEmployees()} />
+                <ImportCSVDialog orgId={orgId} onSuccess={() => refetchEmployees()} />
+                <AddEmployeeDialog orgId={orgId} onSuccess={() => refetchEmployees()} />
               </div>
             </div>
 
@@ -558,7 +601,7 @@ export default function CompanyDashboard() {
           </TabsContent>
 
           <TabsContent value="members">
-            <CompanyMembers meId={user?.id} />
+            <CompanyMembers orgId={orgId} meId={user?.id} />
           </TabsContent>
 
           <TabsContent value="id">
@@ -601,10 +644,10 @@ export default function CompanyDashboard() {
                       <div className="text-xs" style={{ color: "var(--muted-foreground)" }}>{t("companyDashboard.subscriptionCatalogueCount")}</div>
                     </div>
                   </div>
-                  <Button onClick={() => createPortal.mutate({ origin: window.location.origin })} disabled={createPortal.isPending || !subscription.hasStripeCustomer} variant="outline">
+                  <Button onClick={() => createPortal.mutate({ orgId, origin: window.location.origin })} disabled={createPortal.isPending || !subscription.hasStripeCustomer} variant="outline">
                     {t("companyDashboard.manageSubscription")}
                   </Button>
-                  <Button className="ms-2" variant="outline" disabled={confirmSub.isPending} onClick={() => confirmSub.mutate()}>{lang === "fr" ? "Actualiser l’abonnement" : lang === "ar" ? "تحديث الاشتراك" : "Refresh subscription"}</Button>
+                  <Button className="ms-2" variant="outline" disabled={confirmSub.isPending} onClick={() => confirmSub.mutate(scope)}>{lang === "fr" ? "Actualiser l’abonnement" : lang === "ar" ? "تحديث الاشتراك" : "Refresh subscription"}</Button>
                   {!subscription.hasStripeCustomer && <p className="text-xs mt-2" style={{ color: "var(--muted-foreground)" }}>{t("companyDashboard.billingPortalUnavailable")}</p>}
                   <p className="text-xs mt-2" style={{ color: "var(--muted-foreground)" }}>{t("companyDashboard.subscriptionAccessConditions")}</p>
                 </div>
@@ -623,7 +666,7 @@ export default function CompanyDashboard() {
                         <div className="font-sans text-lg font-bold" style={{ color: "var(--foreground)" }}>{p.name}</div>
                         <p className="text-sm flex-1 mt-1 mb-4" style={{ color: "var(--muted-foreground)" }}>{p.desc}</p>
                         <Button
-                          onClick={() => createSubscription.mutate({ plan: p.plan as "standard" | "all_inclusive", origin: window.location.origin })}
+                          onClick={() => createSubscription.mutate({ orgId, plan: p.plan as "standard" | "all_inclusive", origin: window.location.origin })}
                           disabled={createSubscription.isPending}
                           style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}
                         >
@@ -683,7 +726,7 @@ export default function CompanyDashboard() {
               <div className="rounded-2xl p-6" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
                   <h2 className="font-sans text-lg font-bold" style={{ color: "var(--foreground)" }}>{t("companyDashboard.tnaTitle")}</h2>
-                  <Button size="sm" onClick={() => runTNA.mutate()} disabled={runTNA.isPending} style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>{t("companyDashboard.runTna")}</Button>
+                  <Button size="sm" onClick={() => runTNA.mutate(scope)} disabled={runTNA.isPending} style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>{t("companyDashboard.runTna")}</Button>
                 </div>
                 <p className="text-sm mb-4" style={{ color: "var(--muted-foreground)" }}>{t("companyDashboard.tnaDesc")}</p>
                 <p className="text-sm mb-4">{t("companyDashboard.tnaEffect")}</p>
@@ -735,17 +778,17 @@ export default function CompanyDashboard() {
                       </ul>{matchingEmployees.length > 20 && <p>{t('companyDashboard.rulePreviewMore',{count:matchingEmployees.length-20})}</p>}</details>}
                     </>}
                   </div>
-                  <Button size="sm" disabled={!validRule || createRule.isPending} onClick={() => createRule.mutate({ label: ruleForm.label || undefined, jobTitleContains: ruleForm.jobTitleContains || undefined, licenseCategoryContains: ruleForm.licenseCategoryContains || undefined, trainingId: Number(ruleForm.trainingId), periodMonths: ruleForm.periodMonths })} style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>{t("companyDashboard.addRule")}</Button>
+                  <Button size="sm" disabled={!validRule || createRule.isPending} onClick={() => createRule.mutate({ orgId, label: ruleForm.label || undefined, jobTitleContains: ruleForm.jobTitleContains || undefined, licenseCategoryContains: ruleForm.licenseCategoryContains || undefined, trainingId: Number(ruleForm.trainingId), periodMonths: ruleForm.periodMonths })} style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>{t("companyDashboard.addRule")}</Button>
                 </div>
               </div>
             </fieldset>}
-            <RoleRequirementHistory />
+            <RoleRequirementHistory orgId={orgId} />
           </TabsContent>
             </div>
           </div>
         </Tabs>
 
-        <TechnicianFileDialog employeeId={fileEmployee} onClose={() => setFileEmployee(null)} />
+        <TechnicianFileDialog orgId={orgId} employeeId={fileEmployee} onClose={() => setFileEmployee(null)} />
       </div>
     </div>
   );

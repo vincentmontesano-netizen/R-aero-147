@@ -307,23 +307,46 @@ export async function getCertificateByCode(code: string) {
 }
 
 // ─── Company ──────────────────────────────────────────────────────────────────
-export async function getUserCompany(userId: number) {
+export async function getUserCompanyId(userId: number, connection?: Pick<NonNullable<Awaited<ReturnType<typeof getDb>>>, "select">, selectedCompanyId?: number): Promise<number | null> {
+  const db = connection ?? await getDb();
+  if (!db) return null;
+  const [user] = await db.select({ companyId: users.companyId, role: users.role, status: users.status }).from(users).where(eq(users.id, userId));
+  if (!user) return null;
+  if (selectedCompanyId !== undefined) {
+    const [company] = await db.select({ id: companies.id }).from(companies).where(and(eq(companies.id, selectedCompanyId), eq(companies.status, "ACTIVE")));
+    if (!company || user.status !== "active") throw new TRPCError({ code: "FORBIDDEN" });
+    if (user.role !== "admin") {
+      const [membership] = await db.select({ id: affiliations.id }).from(affiliations).where(and(eq(affiliations.personId, userId), eq(affiliations.orgId, selectedCompanyId), eq(affiliations.role, "MANAGER"), eq(affiliations.status, "ACTIVE")));
+      if (!membership) throw new TRPCError({ code: "FORBIDDEN" });
+    }
+    return selectedCompanyId;
+  }
+  if (user.companyId) return user.companyId;
+  if (user.role === "admin") return null;
+  const managed = await db.select({ id: companies.id }).from(affiliations).innerJoin(companies, eq(companies.id, affiliations.orgId))
+    .where(and(eq(affiliations.personId, userId), eq(affiliations.role, "MANAGER"), eq(affiliations.status, "ACTIVE"), eq(companies.status, "ACTIVE")));
+  if (managed.length > 1) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Sélectionnez une compagnie pour cet espace entreprise." });
+  return managed[0]?.id ?? null;
+}
+
+export async function getUserCompany(userId: number, selectedCompanyId?: number) {
   const db = await getDb();
   if (!db) return null;
-  const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-  if (!user[0]?.companyId) return null;
-  const company = await db.select().from(companies).where(eq(companies.id, user[0].companyId)).limit(1);
+  const companyId = await getUserCompanyId(userId, undefined, selectedCompanyId);
+  if (!companyId) return null;
+  const company = await db.select().from(companies).where(eq(companies.id, companyId)).limit(1);
   return company[0] ?? null;
 }
 
-export async function createOrUpdateCompany(userId: number, data: Record<string, unknown>) {
+export async function createOrUpdateCompany(userId: number, data: Record<string, unknown>, selectedCompanyId?: number) {
   const db = await getDb();
   if (!db) return null;
   const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
   if (!user[0]) return null;
-  if (user[0].companyId) {
-    await db.update(companies).set(data as any).where(eq(companies.id, user[0].companyId));
-    const updated = await db.select().from(companies).where(eq(companies.id, user[0].companyId)).limit(1);
+  const companyId = await getUserCompanyId(userId, undefined, selectedCompanyId);
+  if (companyId) {
+    await db.update(companies).set(data as any).where(eq(companies.id, companyId));
+    const updated = await db.select().from(companies).where(eq(companies.id, companyId)).limit(1);
     return updated[0];
   } else {
     const inserted = await db.insert(companies).values(data as any).returning({ id: companies.id });
@@ -335,20 +358,20 @@ export async function createOrUpdateCompany(userId: number, data: Record<string,
 }
 
 // ─── Employees ────────────────────────────────────────────────────────────────
-export async function getCompanyEmployees(userId: number) {
+export async function getCompanyEmployees(userId: number, selectedCompanyId?: number) {
   const db = await getDb();
   if (!db) return [];
-  const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-  if (!user[0]?.companyId) return [];
-  return db.select().from(employees).where(eq(employees.companyId, user[0].companyId)).orderBy(employees.lastName);
+  const companyId = await getUserCompanyId(userId, undefined, selectedCompanyId);
+  if (!companyId) return [];
+  return db.select().from(employees).where(eq(employees.companyId, companyId)).orderBy(employees.lastName);
 }
 
-export async function createEmployee(userId: number, data: Record<string, unknown>) {
+export async function createEmployee(userId: number, data: Record<string, unknown>, selectedCompanyId?: number) {
   const db = await getDb();
   if (!db) return null;
-  const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-  if (!user[0]?.companyId) return null;
-  await db.insert(employees).values({ ...data as any, companyId: user[0].companyId });
+  const companyId = await getUserCompanyId(userId, undefined, selectedCompanyId);
+  if (!companyId) return null;
+  await db.insert(employees).values({ ...data as any, companyId });
   return { success: true };
 }
 
@@ -373,12 +396,12 @@ export function computeRecurrencyStatus(
   return due - now <= DAYS_90 ? "due_soon" : "ok";
 }
 
-export async function getCompanyRecurrencies(userId: number) {
+export async function getCompanyRecurrencies(userId: number, selectedCompanyId?: number) {
   const db = await getDb();
   if (!db) return [];
-  const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-  if (!user[0]?.companyId) return [];
-  const recs = await db.select().from(recurrencies).where(eq(recurrencies.companyId, user[0].companyId));
+  const companyId = await getUserCompanyId(userId, undefined, selectedCompanyId);
+  if (!companyId) return [];
+  const recs = await db.select().from(recurrencies).where(eq(recurrencies.companyId, companyId));
   const result = [];
   for (const r of recs) {
     const fresh = computeRecurrencyStatus(r.nextDueAt, r.lastCompletedAt);
@@ -588,12 +611,12 @@ export async function upsertRecurrency(params: { companyId: number; employeeId: 
   });
 }
 
-export async function getCompanySubscriptionView(userId: number) {
+export async function getCompanySubscriptionView(userId: number, selectedCompanyId?: number) {
   const db = await getDb();
   if (!db) return null;
-  const user = (await db.select().from(users).where(eq(users.id, userId)).limit(1))[0];
-  if (!user?.companyId) return null;
-  return getSubscriptionViewForCompany(user.companyId);
+  const companyId = await getUserCompanyId(userId, undefined, selectedCompanyId);
+  if (!companyId) return null;
+  return getSubscriptionViewForCompany(companyId);
 }
 
 export async function getSubscriptionViewForCompany(companyId: number) {
@@ -1432,14 +1455,14 @@ export async function getTechnicianFile(employeeId: number) {
 
 // ─── Corporate consolidated view + TNA (V2.3) ────────────────────────────────
 // Consolidated compliance rollups grouped by site (base) and by department.
-export async function getCompanyConsolidated(userId: number) {
+export async function getCompanyConsolidated(userId: number, selectedCompanyId?: number) {
   const db = await getDb();
   if (!db) return null;
-  const user = (await db.select().from(users).where(eq(users.id, userId)).limit(1))[0];
-  if (!user?.companyId) return null;
-  const company = (await db.select().from(companies).where(eq(companies.id, user.companyId)).limit(1))[0];
-  const emps = await db.select().from(employees).where(eq(employees.companyId, user.companyId));
-  const recs = await db.select().from(recurrencies).where(eq(recurrencies.companyId, user.companyId));
+  const companyId = await getUserCompanyId(userId, undefined, selectedCompanyId);
+  if (!companyId) return null;
+  const company = (await db.select().from(companies).where(eq(companies.id, companyId)).limit(1))[0];
+  const emps = await db.select().from(employees).where(eq(employees.companyId, companyId));
+  const recs = await db.select().from(recurrencies).where(eq(recurrencies.companyId, companyId));
   const empById = new Map(emps.map((e) => [e.id, e]));
   const blank = () => ({ ok: 0, due_soon: 0, overdue: 0, not_started: 0, total: 0 });
   const byBase: Record<string, ReturnType<typeof blank>> = {};
@@ -1470,14 +1493,14 @@ export async function getRoleRequirements(companyId: number | null) {
   return rows.map(row=>({...row.rule,training:row.training}));
 }
 
-export async function createRoleRequirement(data: Record<string, unknown>, actorId: number) {
+export async function createRoleRequirement(data: Record<string, unknown>, actorId: number, selectedCompanyId?: number) {
   const parsed = roleRequirementInput.extend({ companyId: z.number().int().positive().max(2147483647).nullable() }).safeParse(data);
   if (!parsed.success) throw new TRPCError({ code: "BAD_REQUEST", message: "Règle invalide : période entière de 1 à 120 mois et champs de longueur autorisée requis." });
   const db = await getDb();
   if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
   return db.transaction(async tx => {
     const [actor] = await tx.select().from(users).where(eq(users.id, actorId)).for('share');
-    if (actor?.status !== 'active' || (actor.companyId ?? null) !== parsed.data.companyId) throw new TRPCError({code:'FORBIDDEN'});
+    if (actor?.status !== 'active' || await getUserCompanyId(actorId, tx, selectedCompanyId) !== parsed.data.companyId) throw new TRPCError({code:'FORBIDDEN'});
     if (parsed.data.companyId === null) {
       if (actor.role !== 'admin') throw new TRPCError({code:'FORBIDDEN'});
     } else {
@@ -1496,16 +1519,17 @@ export async function createRoleRequirement(data: Record<string, unknown>, actor
   });
 }
 
-export async function deleteRoleRequirement(id: number, actorId: number) {
+export async function deleteRoleRequirement(id: number, actorId: number, selectedCompanyId?: number) {
   const db = await getDb();
   if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
   return db.transaction(async tx => {
     const [row] = await tx.select().from(roleRequirements).where(eq(roleRequirements.id, id)).for("update");
     if (!row) throw new TRPCError({ code: "NOT_FOUND" });
     const [actor] = await tx.select().from(users).where(eq(users.id, actorId)).for("share");
+    if (selectedCompanyId !== undefined && row.companyId !== null && row.companyId !== selectedCompanyId) throw new TRPCError({ code: "FORBIDDEN" });
     if (actor?.status !== "active") throw new TRPCError({ code: "FORBIDDEN" });
     if (actor.role !== "admin") {
-      if (!row.companyId || actor.companyId !== row.companyId) throw new TRPCError({ code: "FORBIDDEN" });
+      if (!row.companyId || await getUserCompanyId(actorId, tx, selectedCompanyId) !== row.companyId) throw new TRPCError({ code: "FORBIDDEN" });
       const [company] = await tx.select().from(companies).where(eq(companies.id, row.companyId)).for("share");
       const [manager] = await tx.select().from(affiliations).where(and(eq(affiliations.personId, actor.id), eq(affiliations.orgId, row.companyId), eq(affiliations.role, "MANAGER"), eq(affiliations.status, "ACTIVE"))).for("share");
       if (company?.status !== "ACTIVE" || !manager) throw new TRPCError({ code: "FORBIDDEN" });
@@ -1517,7 +1541,7 @@ export async function deleteRoleRequirement(id: number, actorId: number) {
 
 // Training Needs Analysis: for each active employee, create the recurrencies
 // required by matching role rules that aren't tracked yet. Returns how many were added.
-export async function runTNA(companyId: number, actorId: number) {
+export async function runTNA(companyId: number, actorId: number, selectedCompanyId?: number) {
   const db = await getDb();
   if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
   return db.transaction(async tx => {
@@ -1527,7 +1551,7 @@ export async function runTNA(companyId: number, actorId: number) {
     if (company?.status !== "ACTIVE") throw new TRPCError({ code: "FORBIDDEN" });
     const [actor] = await tx.select().from(users).where(eq(users.id, actorId)).for("share");
     if (actor?.status !== "active") throw new TRPCError({ code: "FORBIDDEN" });
-    if (actor.companyId !== companyId) throw new TRPCError({ code: "CONFLICT", message: "La compagnie sélectionnée a changé. Actualisez avant de relancer l’analyse." });
+    if (await getUserCompanyId(actorId, tx, selectedCompanyId) !== companyId) throw new TRPCError({ code: "CONFLICT", message: "La compagnie sélectionnée a changé. Actualisez avant de relancer l’analyse." });
     if (actor.role !== "admin") {
       const [manager] = await tx.select().from(affiliations).where(and(eq(affiliations.personId, actor.id), eq(affiliations.orgId, companyId), eq(affiliations.role, "MANAGER"), eq(affiliations.status, "ACTIVE"))).for("share");
       if (!manager) throw new TRPCError({ code: "FORBIDDEN" });
@@ -2047,7 +2071,7 @@ export async function getUserById(userId: number) {
 }
 
 // ─── Import CSV Employees ─────────────────────────────────────────────────────
-export async function importEmployeesCSV(userId: number, csvData: string, companyId: number) {
+export async function importEmployeesCSV(userId: number, csvData: string, companyId: number, selectedCompanyId?: number) {
   const db = await getDb();
   if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
   let rows: ReturnType<typeof parseEmployeeCsv>;
@@ -2058,7 +2082,7 @@ export async function importEmployeesCSV(userId: number, csvData: string, compan
     const [company] = await tx.select().from(companies).where(eq(companies.id, companyId)).for("share");
     const [actor] = await tx.select().from(users).where(eq(users.id, userId)).for("share");
     if (company?.status !== "ACTIVE" || actor?.status !== "active") throw new TRPCError({ code: "FORBIDDEN" });
-    if (actor.companyId !== companyId) throw new TRPCError({ code: "CONFLICT", message: "La compagnie sélectionnée a changé. Actualisez avant de reprendre l’import." });
+    if (await getUserCompanyId(userId, tx, selectedCompanyId) !== companyId) throw new TRPCError({ code: "CONFLICT", message: "La compagnie sélectionnée a changé. Actualisez avant de reprendre l’import." });
     if (actor.role !== "admin") {
       const [manager] = await tx.select().from(affiliations).where(and(eq(affiliations.personId, actor.id), eq(affiliations.orgId, companyId), eq(affiliations.role, "MANAGER"), eq(affiliations.status, "ACTIVE"))).for("share");
       if (!manager) throw new TRPCError({ code: "FORBIDDEN" });
@@ -2251,16 +2275,12 @@ export async function adminDeleteQuestion(id: number, actorId?: number) {
 
 // ─── Admin: User status / role ────────────────────────────────────────────────
 export async function adminSetUserStatus(id: number, status: "active" | "suspended") {
-  const db = await getDb();
-  if (!db) return;
-  await db.update(users).set({ status }).where(eq(users.id, id));
+  await updateAdminManagedUser(id, { status });
   return { success: true };
 }
 
 export async function adminSetUserRole(id: number, role: "user" | "admin" | "instructor" | "company_manager") {
-  const db = await getDb();
-  if (!db) return;
-  await db.update(users).set({ role }).where(eq(users.id, id));
+  await updateAdminManagedUser(id, { role });
   return { success: true };
 }
 
@@ -2271,14 +2291,30 @@ export async function countActiveAdmins(): Promise<number> {
 }
 
 export async function adminUpdateUser(id: number, data: { name?: string; role?: string; jobTitle?: string; licenseNumber?: string; licenseCategories?: string }) {
-  const db = await getDb();
-  if (!db) return null;
   const patch: Record<string, unknown> = {};
   for (const k of ["name", "role", "jobTitle", "licenseNumber", "licenseCategories"] as const) {
     if (data[k] !== undefined) patch[k] = data[k];
   }
-  if (Object.keys(patch).length) await db.update(users).set(patch).where(eq(users.id, id));
-  return (await db.select().from(users).where(eq(users.id, id)).limit(1))[0] ?? null;
+  return updateAdminManagedUser(id, patch as Partial<InsertUser>);
+}
+
+async function updateAdminManagedUser(id: number, patch: Partial<InsertUser>) {
+  const db = await getDb();
+  if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+  return db.transaction(async tx => {
+    // Share the closure lock so concurrent edits/closures cannot remove every admin.
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtext('account-closures'))`);
+    const [current] = await tx.select().from(users).where(eq(users.id, id)).for("update");
+    if (!current) throw new TRPCError({ code: "NOT_FOUND" });
+    const removesAdmin = current.role === "admin" && current.status === "active"
+      && ((patch.role !== undefined && patch.role !== "admin") || patch.status === "suspended");
+    if (removesAdmin) {
+      const admins = await tx.select({ id: users.id }).from(users).where(and(eq(users.role, "admin"), eq(users.status, "active")));
+      if (admins.length <= 1) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Un administrateur actif doit être conservé." });
+    }
+    if (!Object.keys(patch).length) return current;
+    return (await tx.update(users).set(patch).where(eq(users.id, id)).returning())[0];
+  });
 }
 
 // ─── Admin: organizations (companies) + their managers (MANAGER affiliations) ──

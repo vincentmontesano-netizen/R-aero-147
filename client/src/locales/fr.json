@@ -2007,5 +2007,14 @@
   "slideDeck.answerToContinue": "Répondez correctement à la question pour continuer.",
   "theme.light": "Mode clair",
   "theme.switchLight": "Activer le mode clair",
-  "theme.switchDark": "Activer le mode sombre"
+  "theme.switchDark": "Activer le mode sombre",
+  "userFormDialog.roleHelp.user": "Apprenant : suit ses formations et consulte ses résultats et certificats. Aucun droit de création sans affiliation MANAGER.",
+  "userFormDialog.roleHelp.instructor": "Formateur : crée et modifie ses formations dans le catalogue opérateur. La publication exige une revue approuvée par un autre administrateur.",
+  "userFormDialog.roleHelp.company_manager": "Responsable entreprise : une affiliation MANAGER active dans Organisations est nécessaire. Elle autorise la gestion des salariés et la création des formations internes de cette organisation. Ce rôle global seul ne donne aucun accès entreprise.",
+  "userFormDialog.roleHelp.admin": "Administrateur : gère les utilisateurs, les organisations et toutes les formations. Il ne peut pas approuver sa propre revue pédagogique. Un administrateur actif doit toujours être conservé.",
+  "companyDashboard.selectOrganization": "Organisation à gérer",
+  "companyDashboard.chooseOrganization": "Choisissez une organisation",
+  "companyDashboard.organizationUnavailable": "Cette organisation est indisponible ou vous ne disposez plus des droits nécessaires. Choisissez une organisation autorisée.",
+  "companyDashboard.scopeUnavailable": "Le choix d’organisation n’est pas disponible dans cette version. Actualisez la page avant de continuer.",
+  "companyDashboard.reloadPage": "Actualiser la page"
 }

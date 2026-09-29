@@ -18,6 +18,12 @@ describe.skipIf(!url)("durable subscription checkout · PostgreSQL", () => {
     const openSession = (payload: Stripe.Checkout.SessionCreateParams) => ({ id: `cs_${randomUUID()}`, status: "open", mode: "subscription", customer: payload.customer, client_reference_id: payload.client_reference_id, metadata: payload.metadata, url: "https://checkout.stripe.test/session" });
     return { db, company, input, create, retrieve, sub, stripe, openSession, expire, actor };
   }
+  it("keeps the selected organization in company dashboard return URLs", async () => {
+    const { company, input } = await fixture();
+    const attempt = await prepareSubscriptionCheckout({ ...input, billingPage: false }, "price_fixture");
+    expect(attempt.payload.success_url).toBe(`${input.origin}/entreprise?orgId=${company.id}&subscription=success`);
+    expect(attempt.payload.cancel_url).toBe(`${input.origin}/entreprise?orgId=${company.id}&subscription=cancelled`);
+  });
   it("persists once under concurrency and retries a lost response with the identical payload/key despite roster changes", async () => {
     const { db, company, input, create, retrieve, stripe, openSession } = await fixture();
     const [a, b] = await Promise.all([prepareSubscriptionCheckout(input, "price_fixture"), prepareSubscriptionCheckout(input, "price_fixture")]);

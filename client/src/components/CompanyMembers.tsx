@@ -14,29 +14,29 @@ const GREEN = "var(--success)";
 
 /** Manager-scoped module: list the org's affiliations (managers + members),
  *  affiliate a Person by email, change their role, or detach them. */
-export default function CompanyMembers({ meId }: { meId?: number }) {
+export default function CompanyMembers({ meId, orgId }: { meId?: number; orgId?: number }) {
   const { t } = useI18n();
   const utils = trpc.useUtils();
-  const { data: affiliates = [], isLoading } = trpc.company.affiliates.useQuery();
+  const { data: affiliates = [], isLoading } = trpc.companyWorkspace.affiliates.useQuery({ orgId });
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"MEMBER" | "MANAGER">("MEMBER");
-  const invalidate = () => utils.company.affiliates.invalidate();
+  const invalidate = () => utils.companyWorkspace.affiliates.invalidate();
 
-  const add = trpc.company.addAffiliate.useMutation({
+  const add = trpc.companyWorkspace.addAffiliate.useMutation({
     onSuccess: () => { toast.success(t("companyMembers.added")); setEmail(""); invalidate(); },
     onError: (e) => toast.error(e.message),
   });
-  const setRoleM = trpc.company.setAffiliateRole.useMutation({
+  const setRoleM = trpc.companyWorkspace.setAffiliateRole.useMutation({
     onSuccess: () => { toast.success(t("companyMembers.roleUpdated")); invalidate(); },
     onError: (e) => toast.error(e.message),
   });
-  const remove = trpc.company.removeAffiliate.useMutation({
+  const remove = trpc.companyWorkspace.removeAffiliate.useMutation({
     onSuccess: () => { toast.success(t("companyMembers.removed")); invalidate(); },
     onError: (e) => toast.error(e.message),
   });
 
   const active = (affiliates as any[]).filter((a) => a.status === "ACTIVE");
-  const submit = () => { if (email.trim()) add.mutate({ email: email.trim(), role }); };
+  const submit = () => { if (email.trim()) add.mutate({ orgId, email: email.trim(), role }); };
 
   return (
     <div className="rounded-2xl p-6" style={{ background: "var(--card)", border: `1px solid ${"var(--border)"}` }}>
@@ -83,12 +83,12 @@ export default function CompanyMembers({ meId }: { meId?: number }) {
               {!isSelf && (
                 <div className="flex items-center gap-1 shrink-0">
                   <button
-                    onClick={() => setRoleM.mutate({ affiliationId: a.affiliationId, role: isManager ? "MEMBER" : "MANAGER" })}
+                    onClick={() => setRoleM.mutate({ orgId, affiliationId: a.affiliationId, role: isManager ? "MEMBER" : "MANAGER" })}
                     className="text-sm px-2 py-1 rounded hover:underline" style={{ color: "var(--foreground)" }}
                     title={isManager ? t("companyMembers.demote") : t("companyMembers.promote")}>
                     {isManager ? t("companyMembers.demote") : t("companyMembers.promote")}
                   </button>
-                  <button onClick={() => remove.mutate({ affiliationId: a.affiliationId })}
+                  <button onClick={() => remove.mutate({ orgId, affiliationId: a.affiliationId })}
                     className="text-destructive p-1" title={t("companyMembers.remove")}>
                     <Trash2 className="w-4 h-4" />
                   </button>

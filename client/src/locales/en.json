@@ -2007,5 +2007,14 @@
   "slideDeck.answerToContinue": "Answer the question correctly to continue.",
   "theme.light": "Light mode",
   "theme.switchLight": "Switch to light mode",
-  "theme.switchDark": "Switch to dark mode"
+  "theme.switchDark": "Switch to dark mode",
+  "userFormDialog.roleHelp.user": "Learner: takes assigned or purchased courses and views personal results and certificates. Authoring requires an active MANAGER affiliation.",
+  "userFormDialog.roleHelp.instructor": "Instructor: creates and edits their own courses in the operator catalogue. Publication requires approval by another administrator.",
+  "userFormDialog.roleHelp.company_manager": "Company manager: an active MANAGER affiliation in Organizations is required. It grants employee management and internal course creation for that organization. This global role alone grants no company access.",
+  "userFormDialog.roleHelp.admin": "Administrator: manages users, organizations and all courses. Administrators cannot approve their own pedagogical review. At least one active administrator must remain.",
+  "companyDashboard.selectOrganization": "Organization to manage",
+  "companyDashboard.chooseOrganization": "Choose an organization",
+  "companyDashboard.organizationUnavailable": "This organization is unavailable or you no longer have the required access. Choose an authorized organization.",
+  "companyDashboard.scopeUnavailable": "Organization selection is unavailable in this version. Reload the page before continuing.",
+  "companyDashboard.reloadPage": "Reload page"
 }

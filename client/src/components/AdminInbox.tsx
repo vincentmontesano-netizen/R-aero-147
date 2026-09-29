@@ -62,7 +62,13 @@ export default function AdminInbox({ configured }: { configured: boolean }) {
                 {message.error && <p className="text-sm" style={{ color: "var(--destructive)" }}>{message.error.message}</p>}
                 {message.data && (
                   message.data.html
-                    ? <div className="text-sm prose max-w-none" style={{ color: "var(--foreground)" }} dangerouslySetInnerHTML={{ __html: message.data.html }} />
+                    ? <iframe
+                        title={m.subject || t("adminInbox.title")}
+                        className="w-full min-h-80 rounded border-0 bg-white"
+                        sandbox=""
+                        referrerPolicy="no-referrer"
+                        srcDoc={`<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'"><style>body{font:14px system-ui;color:#172033;overflow-wrap:anywhere}img{max-width:100%;height:auto}</style></head><body>${message.data.html}</body></html>`}
+                      />
                     : <div className="text-sm whitespace-pre-wrap" style={{ color: "var(--foreground)" }}>{message.data.text || t("adminInbox.empty")}</div>
                 )}
               </div>

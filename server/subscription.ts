@@ -61,7 +61,7 @@ export async function createBillingPortalSession(companyId: number, origin: stri
   }
   const session = await stripe.billingPortal.sessions.create({
     customer: company.stripeCustomerId,
-    return_url: `${paymentOrigin(origin)}${billingPage ? `/abonnements?companyId=${companyId}` : "/entreprise"}`,
+    return_url: `${paymentOrigin(origin)}${billingPage ? `/abonnements?companyId=${companyId}` : `/entreprise?orgId=${companyId}`}`,
   });
   return { url: session.url };
 }

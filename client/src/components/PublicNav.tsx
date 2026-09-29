@@ -144,10 +144,9 @@ export default function PublicNav() {
                   <span className="hidden sm:inline">{t("nav.login")}</span>
                 </Button>
               </Link>
-              <Link href="/devis">
+              <Link href="/devis" className="hidden sm:inline-flex">
                 <Button
                   size="sm"
-                  className="hidden sm:inline-flex"
                   style={{
                     background: "var(--primary)",
                     color: "var(--primary-foreground)",

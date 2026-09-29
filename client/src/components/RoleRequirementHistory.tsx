@@ -3,11 +3,11 @@ import {trpc} from '@/lib/trpc';
 import {useI18n} from '@/i18n';
 import {Button} from '@/components/ui/button';
 
-export default function RoleRequirementHistory(){
+export default function RoleRequirementHistory({orgId}:{orgId?:number}){
  const {t,lang}=useI18n();
  const [open,setOpen]=useState(false);
  const [beforeId,setBeforeId]=useState<number>();
- const query=trpc.company.roleRequirementHistory.useQuery({beforeId},{enabled:open});
+ const query=trpc.companyWorkspace.roleRequirementHistory.useQuery({orgId,beforeId},{enabled:open});
  return <section className="mt-6 rounded-xl border bg-card p-4 space-y-3">
   <Button variant="outline" aria-expanded={open} onClick={()=>setOpen(!open)}>{t('companyDashboard.ruleHistoryTitle')}</Button>
   {open&&<>

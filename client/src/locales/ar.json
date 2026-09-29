@@ -2007,5 +2007,14 @@
   "slideDeck.answerToContinue": "أجب عن السؤال إجابة صحيحة للمتابعة.",
   "theme.light": "الوضع الفاتح",
   "theme.switchLight": "تفعيل الوضع الفاتح",
-  "theme.switchDark": "تفعيل الوضع الداكن"
+  "theme.switchDark": "تفعيل الوضع الداكن",
+  "userFormDialog.roleHelp.user": "متعلم: يتابع دوراته ويطّلع على نتائجه وشهاداته. يتطلب إنشاء الدورات انتسابًا نشطًا بصفة MANAGER.",
+  "userFormDialog.roleHelp.instructor": "مدرب: ينشئ دوراته ويعدلها في كتالوج المشغّل. يتطلب النشر موافقة مسؤول آخر على المراجعة التربوية.",
+  "userFormDialog.roleHelp.company_manager": "مسؤول الشركة: يلزم انتساب نشط بصفة MANAGER في قسم المؤسسات لإدارة الموظفين وإنشاء الدورات الداخلية للمؤسسة. هذا الدور العام وحده لا يمنح صلاحية الوصول إلى الشركة.",
+  "userFormDialog.roleHelp.admin": "مسؤول النظام: يدير المستخدمين والمؤسسات وجميع الدورات. لا يمكنه الموافقة على مراجعته التربوية الخاصة. يجب الإبقاء على مسؤول نظام نشط واحد على الأقل.",
+  "companyDashboard.selectOrganization": "المؤسسة المراد إدارتها",
+  "companyDashboard.chooseOrganization": "اختر مؤسسة",
+  "companyDashboard.organizationUnavailable": "هذه المؤسسة غير متاحة أو لم تعد تملك الصلاحيات المطلوبة. اختر مؤسسة مسموحًا لك بإدارتها.",
+  "companyDashboard.scopeUnavailable": "اختيار المؤسسة غير متاح في هذا الإصدار. أعد تحميل الصفحة قبل المتابعة.",
+  "companyDashboard.reloadPage": "إعادة تحميل الصفحة"
 }

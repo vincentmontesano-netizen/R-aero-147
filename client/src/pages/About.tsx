@@ -73,7 +73,7 @@ export default function About() {
         <div className="text-center">
           <h2 className="font-sans text-2xl font-bold mb-3" style={{ color: "var(--foreground)" }}>{t("about.ctaTitle")}</h2>
           <p className="text-sm mb-5" style={{ color: "var(--muted-foreground)" }}>{t("about.ctaSubtitle")}</p>
-          <div className="flex items-center justify-center gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-3">
             <Link href="/catalogue"><Button style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>{t("about.ctaCatalogue")}</Button></Link>
             <Link href="/devis"><Button variant="outline" style={{ borderColor: "var(--link)", color: "var(--foreground)" }}>{t("about.ctaDemo")}</Button></Link>
           </div>

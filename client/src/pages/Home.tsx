@@ -70,16 +70,56 @@ export default function Home() {
   // Section links from other pages (e.g. the "Entreprises" nav entry → /#entreprises) arrive
   // before the section is laid out, so the browser's native anchor scroll misses it.
   useEffect(() => {
-    const id = decodeURIComponent(window.location.hash.slice(1));
-    // "instant" overrides the global smooth scroll-behavior, which would otherwise animate from the top.
-    if (id)
-      setTimeout(
-        () =>
-          document
-            .getElementById(id)
-            ?.scrollIntoView({ block: "start", behavior: "instant" }),
-        0
-      );
+    let disposed = false;
+    let stopAlignment = () => {};
+    const followAnchor = (hash: string) => {
+      stopAlignment();
+      let id: string;
+      try { id = decodeURIComponent(hash.slice(1)); } catch { return; }
+      const target = id ? document.getElementById(id) : null;
+      const main = target?.closest("main");
+      if (!target || !main) return;
+      let stopped = false, frame = 0;
+      const align = () => {
+        if (stopped || window.location.hash !== hash) return;
+        cancelAnimationFrame(frame);
+        frame = requestAnimationFrame(() => target.scrollIntoView({ block: "start", behavior: "instant" }));
+      };
+      // Keep both direct and clicked anchors stable while fonts/course cards load.
+      // Any subsequent user interaction ends alignment until another anchor is chosen.
+      const observer = new ResizeObserver(align);
+      const events = ["wheel", "touchstart", "pointerdown", "keydown"] as const;
+      const stop = () => {
+        stopped = true;
+        cancelAnimationFrame(frame);
+        observer.disconnect();
+        for (const event of events) window.removeEventListener(event, stop, true);
+      };
+      stopAlignment = stop;
+      observer.observe(main);
+      for (const event of events) window.addEventListener(event, stop, { capture: true, passive: true });
+      align();
+      void document.fonts.ready.then(align);
+    };
+    const onHashChange = () => followAnchor(window.location.hash);
+    const onClick = (event: MouseEvent) => {
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const link = event.target instanceof Element ? event.target.closest("a[href]") : null;
+      if (!(link instanceof HTMLAnchorElement) || link.hasAttribute("download") || (link.target && link.target !== "_self")) return;
+      const url = new URL(link.href);
+      if (url.origin !== window.location.origin || url.pathname !== window.location.pathname || !url.hash) return;
+      // SPA links use replaceState, which does not emit hashchange.
+      queueMicrotask(() => { if (!disposed && window.location.hash === url.hash) followAnchor(url.hash); });
+    };
+    followAnchor(window.location.hash);
+    window.addEventListener("hashchange", onHashChange);
+    window.addEventListener("click", onClick);
+    return () => {
+      disposed = true;
+      stopAlignment();
+      window.removeEventListener("hashchange", onHashChange);
+      window.removeEventListener("click", onClick);
+    };
   }, []);
   const roleIcons = [BookOpen, Building2, Sparkles];
   const roleLinks = [
