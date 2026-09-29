@@ -62,7 +62,13 @@ await suite('landing-anchors', async ({ page, step }) => {
   await atCompany();
   step('company anchor stays in view after a delayed featured-course response');
   step('same-page company navigation bypasses the introductory tour');
-  await p.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
+  // Returning is a user action: it must end the anchor's layout alignment.
+  // A programmatic jump leaves alignment active and can be undone by late fonts.
+  // Repeat for browsers that cap wheel travel to one viewport per event.
+  for (let attempt = 0; attempt < 20 && await p.evaluate(() => scrollY > 0); attempt++) {
+    await p.mouse.wheel(0, -20000);
+    await p.waitForTimeout(50);
+  }
   await p.waitForFunction(() => scrollY === 0);
   await p.getByRole('link', { name: t['nav.companies'], exact: true }).click();
   await atCompany();
