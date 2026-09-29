@@ -18,7 +18,7 @@ type ProfileForm = { name: string; jobTitle: string; preferredLanguage: string }
 export default function UserProfile() {
   const queryClient = useQueryClient();
   const { t, setLang, lang } = useI18n();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth({ redirectOnUnauthenticated: true });
   const utils = trpc.useUtils();
   const [saved, setSaved] = useState(false);
   const [sessionPassword, setSessionPassword] = useState("");

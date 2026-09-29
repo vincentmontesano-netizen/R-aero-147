@@ -1,5 +1,13 @@
 import fs from 'node:fs';import assert from 'node:assert/strict';import {suite,origin,output,t,credentials} from './harness.mjs';
 await suite('services',async({page,step})=>{
+ const guest=await page();await guest.goto(origin+'/profil');
+ await guest.waitForURL(url=>url.pathname==='/login'&&url.searchParams.get('returnTo')==='/profil');
+ await guest.locator('#login-password').waitFor();await guest.close();
+ const expired=await page('learner');await expired.goto(origin+'/profil');
+ await expired.locator('#profile-field-2').waitFor();await expired.context().clearCookies();await expired.reload();
+ await expired.waitForURL(url=>url.pathname==='/login'&&url.searchParams.get('returnTo')==='/profil');
+ await expired.locator('#login-password').waitFor();await expired.close();
+ step('anonymous and expired profile sessions return to login with the requested destination');
  const p=await page('learner'),a=await page('admin');
  await p.goto(origin+'/profil');
  const jobTitle='Technicien de maintenance — recette',field=p.locator('#profile-field-2');
