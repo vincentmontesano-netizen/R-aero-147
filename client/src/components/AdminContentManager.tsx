@@ -4,7 +4,7 @@ import { requestId as createRequestId } from "@/lib/requestId";
 import { prepareChoiceAnswers, prepareMatchingAnswers, removeMatchingOption } from "../../../shared/questionEditor";
 import { useDraftExitGuard } from "@/hooks/useDraftExitGuard";
 import PrivateMediaUpload from "@/components/PrivateMediaUpload";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useId } from "react";
 import { trpc } from "@/lib/trpc";
 import { useI18n } from "@/i18n";
 import { Button } from "@/components/ui/button";
@@ -65,6 +65,7 @@ function ModuleDialog({ trainingId, module, nextOrder, onClose, onSaved }: {
   trainingId: number; module: Module | null; nextOrder: number; onClose: () => void; onSaved: () => void;
 }) {
   const { t } = useI18n();
+  const fieldId = useId();
   const utils=trpc.useUtils();
   const [form,setForm]=useState(()=>moduleDraft(module,nextOrder));
   const baseline=useRef(moduleDraft(module,nextOrder));
@@ -118,35 +119,35 @@ function ModuleDialog({ trainingId, module, nextOrder, onClose, onSaved }: {
         <DialogHeader><DialogTitle>{module ? t("adminContentManager.moduleDialogEditTitle") : t("adminContentManager.moduleDialogNewTitle")}</DialogTitle></DialogHeader>
         <fieldset disabled={pending} className="space-y-3 mt-2">
           <div>
-            <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.moduleTitleLabel")}</label>
-            <Input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} placeholder={t("adminContentManager.moduleTitlePlaceholder")} />
+            <label htmlFor={`${fieldId}-moduleTitleLabel`} className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.moduleTitleLabel")}</label>
+            <Input id={`${fieldId}-moduleTitleLabel`} value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} placeholder={t("adminContentManager.moduleTitlePlaceholder")} />
           </div>
           <div>
-            <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.moduleShortDescriptionLabel")}</label>
-            <Input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
+            <label htmlFor={`${fieldId}-moduleShortDescriptionLabel`} className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.moduleShortDescriptionLabel")}</label>
+            <Input id={`${fieldId}-moduleShortDescriptionLabel`} value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
           </div>
           <div>
-            <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.moduleContentLabel")}</label>
-            <textarea value={form.content} onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))} className="w-full rounded-md border px-3 py-2 text-sm h-36 resize-y" style={{ borderColor: "var(--border)" }} placeholder={t("adminContentManager.moduleContentPlaceholder")} />
+            <label htmlFor={`${fieldId}-moduleContentLabel`} className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.moduleContentLabel")}</label>
+            <textarea id={`${fieldId}-moduleContentLabel`} value={form.content} onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))} className="w-full rounded-md border px-3 py-2 text-sm h-36 resize-y" style={{ borderColor: "var(--border)" }} placeholder={t("adminContentManager.moduleContentPlaceholder")} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.moduleVideoLabel")}</label>
+              <label htmlFor={`${fieldId}-moduleVideoLabel`} className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.moduleVideoLabel")}</label>
               <PrivateMediaUpload disabled={pending} onStart={startImport} onFinish={finishImport} trainingId={trainingId} kind="video" onUploaded={url => setForm(f => ({ ...f, videoUrl: url }))} />
-              <Input value={form.videoUrl} onChange={(e) => setForm((f) => ({ ...f, videoUrl: e.target.value }))} placeholder="https://…" />
+              <Input id={`${fieldId}-moduleVideoLabel`} value={form.videoUrl} onChange={(e) => setForm((f) => ({ ...f, videoUrl: e.target.value }))} placeholder="https://…" />
             </div>
             <div>
-              <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.modulePdfLabel")}</label>
+              <label htmlFor={`${fieldId}-modulePdfLabel`} className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.modulePdfLabel")}</label>
               <PrivateMediaUpload disabled={pending} onStart={startImport} onFinish={finishImport} trainingId={trainingId} kind="pdf" onUploaded={url => setForm(f => ({ ...f, pdfUrl: url }))} />
-              <Input value={form.pdfUrl} onChange={(e) => setForm((f) => ({ ...f, pdfUrl: e.target.value }))} placeholder="https://…" />
+              <Input id={`${fieldId}-modulePdfLabel`} value={form.pdfUrl} onChange={(e) => setForm((f) => ({ ...f, pdfUrl: e.target.value }))} placeholder="https://…" />
             </div>
             <div>
-              <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.moduleDurationLabel")}</label>
-              <Input type="number" value={form.durationMinutes} onChange={(e) => setForm((f) => ({ ...f, durationMinutes: Number(e.target.value) }))} />
+              <label htmlFor={`${fieldId}-moduleDurationLabel`} className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.moduleDurationLabel")}</label>
+              <Input id={`${fieldId}-moduleDurationLabel`} type="number" value={form.durationMinutes} onChange={(e) => setForm((f) => ({ ...f, durationMinutes: Number(e.target.value) }))} />
             </div>
             <div>
-              <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.orderLabel")}</label>
-              <Input type="number" value={form.sortOrder} onChange={(e) => setForm((f) => ({ ...f, sortOrder: Number(e.target.value) }))} />
+              <label htmlFor={`${fieldId}-orderLabel`} className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.orderLabel")}</label>
+              <Input id={`${fieldId}-orderLabel`} type="number" value={form.sortOrder} onChange={(e) => setForm((f) => ({ ...f, sortOrder: Number(e.target.value) }))} />
             </div>
           </div>
           <div className="grid sm:grid-cols-3 gap-3">
@@ -189,6 +190,7 @@ function QuestionDialog({ trainingId, modules, objectives, question, nextOrder, 
   trainingId: number; modules: Module[]; objectives: Objective[]; question: Question | null; nextOrder: number; onClose: () => void; onSaved: () => void;
 }) {
   const { t } = useI18n();
+  const fieldId = useId();
   const utils = trpc.useUtils();
   const [type, setType] = useState<string>(question?.type ?? "qcu");
   const [text, setText] = useState(question?.question ?? "");
@@ -292,29 +294,29 @@ function QuestionDialog({ trainingId, modules, objectives, question, nextOrder, 
         <fieldset disabled={busy} className="space-y-3 mt-2">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.questionTypeLabel")}</label>
-              <select value={type} onChange={(e) => changeType(e.target.value)} className={selectCls} style={{ borderColor: "var(--border)" }}>
+              <label htmlFor={`${fieldId}-questionTypeLabel`} className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.questionTypeLabel")}</label>
+              <select id={`${fieldId}-questionTypeLabel`} value={type} onChange={(e) => changeType(e.target.value)} className={selectCls} style={{ borderColor: "var(--border)" }}>
                 {Object.entries(QUESTION_TYPE_KEYS).map(([v, k]) => <option key={v} value={v}>{t(k)}</option>)}
               </select>
             </div>
             <div>
-              <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.questionModuleLabel")}</label>
-              <select value={moduleId} onChange={(e) => setModuleId(e.target.value === "" ? "" : Number(e.target.value))} className={selectCls} style={{ borderColor: "var(--border)" }}>
+              <label htmlFor={`${fieldId}-questionModuleLabel`} className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.questionModuleLabel")}</label>
+              <select id={`${fieldId}-questionModuleLabel`} value={moduleId} onChange={(e) => setModuleId(e.target.value === "" ? "" : Number(e.target.value))} className={selectCls} style={{ borderColor: "var(--border)" }}>
                 <option value="">{t("adminContentManager.questionModuleFinalExam")}</option>
                 {modules.map((m) => <option key={m.id} value={m.id}>{m.title}</option>)}
               </select>
             </div>
           </div>
           <div>
-            <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.questionObjectiveLabel")}</label>
-            <select value={objectiveId} onChange={(e) => setObjectiveId(e.target.value === "" ? "" : Number(e.target.value))} className={selectCls} style={{ borderColor: "var(--border)" }}>
+            <label htmlFor={`${fieldId}-questionObjectiveLabel`} className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.questionObjectiveLabel")}</label>
+            <select id={`${fieldId}-questionObjectiveLabel`} value={objectiveId} onChange={(e) => setObjectiveId(e.target.value === "" ? "" : Number(e.target.value))} className={selectCls} style={{ borderColor: "var(--border)" }}>
               <option value="">{t("adminContentManager.questionObjectiveNone")}</option>
               {objectives.map((o) => <option key={o.id} value={o.id}>{o.code ? `${o.code} · ` : ""}{o.title}</option>)}
             </select>
           </div>
           <div>
-            <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.questionTextLabel")}</label>
-            <textarea value={text} onChange={(e) => setText(e.target.value)} className="w-full rounded-md border px-3 py-2 text-sm h-20 resize-y" style={{ borderColor: "var(--border)" }} />
+            <label htmlFor={`${fieldId}-questionTextLabel`} className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.questionTextLabel")}</label>
+            <textarea id={`${fieldId}-questionTextLabel`} value={text} onChange={(e) => setText(e.target.value)} className="w-full rounded-md border px-3 py-2 text-sm h-20 resize-y" style={{ borderColor: "var(--border)" }} />
           </div>
           {(type === "qcm" || type === "qcu" || type === "true_false") && (
             <div>
@@ -324,12 +326,12 @@ function QuestionDialog({ trainingId, modules, objectives, question, nextOrder, 
               <div className="space-y-2">
                 {options.map((opt, idx) => (
                   <div key={idx} className="flex items-center gap-2">
-                    <button type="button" onClick={() => toggleCorrect(idx)} title={t("adminContentManager.markCorrectAnswerTitle")} className="w-6 h-6 rounded-full border flex items-center justify-center shrink-0" style={{ borderColor: correct.includes(idx) ? "var(--success)" : "var(--border)", background: correct.includes(idx) ? "color-mix(in srgb, var(--success) 18%, transparent)" : "transparent" }}>
+                    <button type="button" onClick={() => toggleCorrect(idx)} aria-pressed={correct.includes(idx)} aria-label={`${t("adminContentManager.markCorrectAnswerTitle")} ${t("adminContentManager.answerPlaceholder", { n: idx + 1 })}`} title={t("adminContentManager.markCorrectAnswerTitle")} className="w-6 h-6 rounded-full border flex items-center justify-center shrink-0" style={{ borderColor: correct.includes(idx) ? "var(--success)" : "var(--border)", background: correct.includes(idx) ? "color-mix(in srgb, var(--success) 18%, transparent)" : "transparent" }}>
                       {correct.includes(idx) && <Check className="w-3.5 h-3.5 text-background" />}
                     </button>
-                    <Input value={opt} onChange={(e) => setOptions((o) => o.map((x, i) => (i === idx ? e.target.value : x)))} placeholder={t("adminContentManager.answerPlaceholder", { n: idx + 1 })} />
+                    <Input aria-label={t("adminContentManager.answerPlaceholder", { n: idx + 1 })} value={opt} onChange={(e) => setOptions((o) => o.map((x, i) => (i === idx ? e.target.value : x)))} placeholder={t("adminContentManager.answerPlaceholder", { n: idx + 1 })} />
                     {type !== "true_false" && options.length > 2 && (
-                      <button type="button" onClick={() => { setOptions((o) => o.filter((_, i) => i !== idx)); setCorrect((c) => c.filter((i) => i !== idx).map((i) => (i > idx ? i - 1 : i))); }} className="text-destructive shrink-0"><Trash2 className="w-4 h-4" /></button>
+                      <button type="button" aria-label={`${t("common.delete")} ${t("adminContentManager.answerPlaceholder", { n: idx + 1 })}`} onClick={() => { setOptions((o) => o.filter((_, i) => i !== idx)); setCorrect((c) => c.filter((i) => i !== idx).map((i) => (i > idx ? i - 1 : i))); }} className="text-destructive shrink-0"><Trash2 className="w-4 h-4" /></button>
                     )}
                   </div>
                 ))}
@@ -342,8 +344,8 @@ function QuestionDialog({ trainingId, modules, objectives, question, nextOrder, 
 
           {type === "free_text" && (
             <div className="space-y-2">
-              <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.keywordsLabel")}</label>
-              <Input value={keywords} onChange={(e) => setKeywords(e.target.value)} placeholder={t("adminContentManager.keywordsPlaceholder")} />
+              <label htmlFor={`${fieldId}-keywordsLabel`} className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.keywordsLabel")}</label>
+              <Input id={`${fieldId}-keywordsLabel`} value={keywords} onChange={(e) => setKeywords(e.target.value)} placeholder={t("adminContentManager.keywordsPlaceholder")} />
               <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.keywordGradingHint")}</p>
               {legacyRegex && <div className="rounded border border-warning/30 bg-warning/10 p-3 space-y-2">
                 <p className="text-sm">{t("adminContentManager.legacyRegexHint")}</p>
@@ -360,7 +362,7 @@ function QuestionDialog({ trainingId, modules, objectives, question, nextOrder, 
                 {options.map((opt, idx) => (
                   <div key={idx} className="flex items-center gap-2 mb-1">
                     <Input value={opt} onChange={(e) => setOptions((o) => o.map((x, i) => (i === idx ? e.target.value : x)))} placeholder={t("adminContentManager.itemPlaceholder", { n: idx + 1 })} />
-                    <button type="button" onClick={() => { setOptions((o) => o.filter((_, i) => i !== idx)); setPairs((p) => removeMatchingOption(p, idx, 0)); }} className="text-destructive shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    <button type="button" aria-label={`${t("common.delete")} ${t("adminContentManager.itemPlaceholder", { n: idx + 1 })}`} onClick={() => { setOptions((o) => o.filter((_, i) => i !== idx)); setPairs((p) => removeMatchingOption(p, idx, 0)); }} className="text-destructive shrink-0"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 ))}
                 <button type="button" onClick={() => setOptions((o) => [...o, ""])} className="text-sm flex items-center gap-1" style={{ color: "var(--link)" }}><Plus className="w-3 h-3" /> {t("adminContentManager.addLeftItemButton")}</button>
@@ -370,7 +372,7 @@ function QuestionDialog({ trainingId, modules, objectives, question, nextOrder, 
                 {optionsRight.map((opt, idx) => (
                   <div key={idx} className="flex items-center gap-2 mb-1">
                     <Input value={opt} onChange={(e) => setOptionsRight((o) => o.map((x, i) => (i === idx ? e.target.value : x)))} placeholder={t("adminContentManager.answerPlaceholder", { n: idx + 1 })} />
-                    <button type="button" onClick={() => { setOptionsRight((o) => o.filter((_, i) => i !== idx)); setPairs(p => removeMatchingOption(p, idx, 1)); }} className="text-destructive shrink-0"><Trash2 className="w-4 h-4" /></button>
+                    <button type="button" aria-label={`${t("common.delete")} ${t("adminContentManager.answerPlaceholder", { n: idx + 1 })}`} onClick={() => { setOptionsRight((o) => o.filter((_, i) => i !== idx)); setPairs(p => removeMatchingOption(p, idx, 1)); }} className="text-destructive shrink-0"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 ))}
                 <button type="button" onClick={() => setOptionsRight((o) => [...o, ""])} className="text-sm flex items-center gap-1" style={{ color: "var(--link)" }}><Plus className="w-3 h-3" /> {t("adminContentManager.addRightItemButton")}</button>
@@ -383,7 +385,7 @@ function QuestionDialog({ trainingId, modules, objectives, question, nextOrder, 
                     <div key={li} className="flex items-center gap-2 mb-1">
                       <span className="text-sm flex-1 min-w-0 truncate" style={{ color: "var(--foreground)" }}>{left || t("adminContentManager.itemPlaceholder", { n: li + 1 })}</span>
                       <span style={{ color: "var(--muted-foreground)" }}>→</span>
-                      <select value={cur ?? ""} onChange={(e) => setPairs((p) => { const others = p.filter((x) => x[0] !== li); return e.target.value === "" ? others : [...others, [li, Number(e.target.value)]]; })} className={selectCls} style={{ borderColor: "var(--border)" }}>
+                      <select aria-label={`${t("adminContentManager.matchingCorrectPairsLabel")} ${left || t("adminContentManager.itemPlaceholder", { n: li + 1 })}`} value={cur ?? ""} onChange={(e) => setPairs((p) => { const others = p.filter((x) => x[0] !== li); return e.target.value === "" ? others : [...others, [li, Number(e.target.value)]]; })} className={selectCls} style={{ borderColor: "var(--border)" }}>
                         <option value="">—</option>
                         {optionsRight.map((r, ri) => <option key={ri} value={ri}>{r || t("adminContentManager.answerPlaceholder", { n: ri + 1 })}</option>)}
                       </select>
@@ -395,13 +397,13 @@ function QuestionDialog({ trainingId, modules, objectives, question, nextOrder, 
           )}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.pointsLabel")}</label>
-              <Input type="number" min={1} value={points} onChange={(e) => setPoints(Number(e.target.value))} />
+              <label htmlFor={`${fieldId}-pointsLabel`} className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.pointsLabel")}</label>
+              <Input id={`${fieldId}-pointsLabel`} type="number" min={1} value={points} onChange={(e) => setPoints(Number(e.target.value))} />
             </div>
           </div>
           <div>
-            <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.explanationLabel")}</label>
-            <textarea value={explanation} onChange={(e) => setExplanation(e.target.value)} className="w-full rounded-md border px-3 py-2 text-sm h-16 resize-y" style={{ borderColor: "var(--border)" }} />
+            <label htmlFor={`${fieldId}-explanationLabel`} className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.explanationLabel")}</label>
+            <textarea id={`${fieldId}-explanationLabel`} value={explanation} onChange={(e) => setExplanation(e.target.value)} className="w-full rounded-md border px-3 py-2 text-sm h-16 resize-y" style={{ borderColor: "var(--border)" }} />
           </div>
         </fieldset>
         {(create.isPending || update.isPending) && <p role="status" className="text-sm mt-3">{t('adminContentManager.questionSaving')}</p>}
@@ -431,6 +433,7 @@ function ObjectiveDialog({ trainingId, modules, objective, nextOrder, onClose, o
   trainingId: number; modules: Module[]; objective: Objective | null; nextOrder: number; onClose: () => void; onSaved: () => void;
 }) {
   const { t } = useI18n();
+  const fieldId = useId();
   const utils = trpc.useUtils();
   const expectedRevision = useRef(objective?.revision);
   const [form,setForm]=useState(()=>objectiveDraft(objective,nextOrder));
@@ -484,12 +487,12 @@ function ObjectiveDialog({ trainingId, modules, objective, nextOrder, onClose, o
         <fieldset disabled={comparing||!!comparison||create.isPending||update.isPending} className="space-y-3 mt-2">
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.objectiveCodeLabel")}</label>
-              <Input value={form.code} onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))} placeholder="9.1" />
+              <label htmlFor={`${fieldId}-objectiveCodeLabel`} className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.objectiveCodeLabel")}</label>
+              <Input id={`${fieldId}-objectiveCodeLabel`} value={form.code} onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))} placeholder="9.1" />
             </div>
             <div className="col-span-2">
-              <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.knowledgeLevelLabel")}</label>
-              <select value={form.knowledgeLevel} onChange={(e) => setForm((f) => ({ ...f, knowledgeLevel: e.target.value as "1" | "2" | "3" }))} className={selectCls} style={{ borderColor: "var(--border)" }}>
+              <label htmlFor={`${fieldId}-knowledgeLevelLabel`} className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.knowledgeLevelLabel")}</label>
+              <select id={`${fieldId}-knowledgeLevelLabel`} value={form.knowledgeLevel} onChange={(e) => setForm((f) => ({ ...f, knowledgeLevel: e.target.value as "1" | "2" | "3" }))} className={selectCls} style={{ borderColor: "var(--border)" }}>
                 <option value="1">{t("adminContentManager.knowledgeLevel1")}</option>
                 <option value="2">{t("adminContentManager.knowledgeLevel2")}</option>
                 <option value="3">{t("adminContentManager.knowledgeLevel3")}</option>
@@ -497,24 +500,24 @@ function ObjectiveDialog({ trainingId, modules, objective, nextOrder, onClose, o
             </div>
           </div>
           <div>
-            <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.objectiveTitleLabel")}</label>
-            <Input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} placeholder={t("adminContentManager.objectiveTitlePlaceholder")} />
+            <label htmlFor={`${fieldId}-objectiveTitleLabel`} className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.objectiveTitleLabel")}</label>
+            <Input id={`${fieldId}-objectiveTitleLabel`} value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} placeholder={t("adminContentManager.objectiveTitlePlaceholder")} />
           </div>
           <div>
-            <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.descriptionLabel")}</label>
-            <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} className="w-full rounded-md border px-3 py-2 text-sm h-20 resize-y" style={{ borderColor: "var(--border)" }} />
+            <label htmlFor={`${fieldId}-descriptionLabel`} className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.descriptionLabel")}</label>
+            <textarea id={`${fieldId}-descriptionLabel`} value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} className="w-full rounded-md border px-3 py-2 text-sm h-20 resize-y" style={{ borderColor: "var(--border)" }} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.objectiveSubmoduleLabel")}</label>
-              <select value={form.moduleId} onChange={(e) => setForm((f) => ({ ...f, moduleId: e.target.value === "" ? "" : Number(e.target.value) }))} className={selectCls} style={{ borderColor: "var(--border)" }}>
+              <label htmlFor={`${fieldId}-objectiveSubmoduleLabel`} className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.objectiveSubmoduleLabel")}</label>
+              <select id={`${fieldId}-objectiveSubmoduleLabel`} value={form.moduleId} onChange={(e) => setForm((f) => ({ ...f, moduleId: e.target.value === "" ? "" : Number(e.target.value) }))} className={selectCls} style={{ borderColor: "var(--border)" }}>
                 <option value="">{t("adminContentManager.objectiveSubmoduleNone")}</option>
                 {modules.map((m) => <option key={m.id} value={m.id}>{m.title}</option>)}
               </select>
             </div>
             <div>
-              <label className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.orderLabel")}</label>
-              <Input type="number" value={form.sortOrder} onChange={(e) => setForm((f) => ({ ...f, sortOrder: Number(e.target.value) }))} />
+              <label htmlFor={`${fieldId}-orderLabel`} className={labelCls} style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.orderLabel")}</label>
+              <Input id={`${fieldId}-orderLabel`} type="number" value={form.sortOrder} onChange={(e) => setForm((f) => ({ ...f, sortOrder: Number(e.target.value) }))} />
             </div>
           </div>
           <label className="flex items-center gap-2 text-sm" style={{ color: "var(--muted-foreground)" }}>
