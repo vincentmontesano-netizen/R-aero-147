@@ -70,7 +70,8 @@ await suite('landing-scroll',async({page,step})=>{
    assert.equal(await p.locator('.flight-view-logo').evaluate(img=>img.complete&&img.naturalWidth>0),true);
    assert.equal(await p.locator('.flight-view-note > span').count(),0);
    const samples=await p.evaluate(()=>window.__tour),moving=samples.filter(row=>row.y>100&&row.step<4);
-   assert.ok(moving.length>10);
+   // A software renderer can delay timers; verify coverage of every moving view.
+   assert.deepEqual([...new Set(moving.map(row=>row.step))],[0,1,2,3]);
    assert.ok(moving.every(row=>row.pinned&&row.top>=0));
    assert.deepEqual([...new Set(samples.map(row=>row.step))],[0,1,2,3,4]);
    const duration=samples.find(row=>row.step===4).time-samples.find(row=>row.y>100).time;
