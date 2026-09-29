@@ -9,9 +9,10 @@ export const initialCockpitPlayback = (): CockpitPlayback => ({
   finalHold: 0,
   released: false,
 });
-// Slow visible frames keep wall-clock timing. A suspended tab resumes with a small step.
+// Visibility handlers pause the clock. Bound visible slow frames to a 0.15 step
+// (below the narrowest intermediate view) so every view remains observable.
 export const cockpitFrameSeconds = (elapsed: number) =>
-  elapsed > 1 ? 0.05 : Math.max(0, elapsed);
+  Math.max(0, Math.min(elapsed, 0.75));
 export function advanceCockpitPlayback(
   state: CockpitPlayback,
   target: number,

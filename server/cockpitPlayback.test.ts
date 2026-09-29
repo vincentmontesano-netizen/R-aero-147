@@ -23,7 +23,7 @@ describe("cockpit scroll release", () => {
       state = advanceCockpitPlayback(state, 1, 1 / 60, true, false);
     expect(state.released).toBe(true);
   });
-  it("cannot skip the tour after a background-tab delay or release on an unfinished view", () => {
+  it("bounds a long frame to less than a view and never releases an unfinished view", () => {
     const state = advanceCockpitPlayback(
       initialCockpitPlayback(),
       1,
@@ -31,7 +31,7 @@ describe("cockpit scroll release", () => {
       true,
       false
     );
-    expect(state.progress).toBeCloseTo(0.01);
+    expect(state.progress).toBeCloseTo(0.15);
     expect(state.released).toBe(false);
     let final = { progress: 1, finalHold: 0.6, released: false };
     final = advanceCockpitPlayback(final, 0.5, 0.05, true, false);
@@ -64,6 +64,21 @@ describe("cockpit scroll release", () => {
     expect(state.released).toBe(false);
     for (let frame = 0; frame < Math.ceil(0.85 * fps); frame++)
       state = advanceCockpitPlayback(state, 1, 1 / fps, true, false);
+    expect(state.released).toBe(true);
+  });
+  it.each([0.5, 1])("still visits every view at %s frames per second", fps => {
+    let state = initialCockpitPlayback();
+    const visited = new Set([0]);
+    for (let frame = 0; frame < 7; frame++) {
+      state = advanceCockpitPlayback(state, 1, 1 / fps, false, false);
+      visited.add(cockpitViewAtProgress(state.progress));
+    }
+    expect([...visited]).toEqual([0, 1, 2, 3, 4]);
+    expect(state.progress).toBe(1);
+    expect(state.released).toBe(false);
+    state = advanceCockpitPlayback(state, 1, 1 / fps, true, false);
+    expect(state.released).toBe(false);
+    state = advanceCockpitPlayback(state, 1, 1 / fps, true, false);
     expect(state.released).toBe(true);
   });
 });
