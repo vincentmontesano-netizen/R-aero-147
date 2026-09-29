@@ -119,6 +119,7 @@ export default function CockpitExperience({
     }
     const update = (time: number) => {
       frame = 0;
+      if (document.hidden) { lastTime = 0; return; }
       if (!section.current || !stage.current) return;
       const { top, end, distance } = bounds();
       const y = window.scrollY;
@@ -162,16 +163,24 @@ export default function CockpitExperience({
         frame = requestAnimationFrame(update);
     };
     const schedule = () => {
-      if (!frame) {
+      if (!frame && !document.hidden) {
         lastTime = 0;
-        frame = requestAnimationFrame(update);
+        // Clamp the first scroll before a slow rendering frame can expose the section end.
+        update(performance.now());
       }
+    };
+    const onVisibility = () => {
+      cancelAnimationFrame(frame);
+      frame = 0;
+      lastTime = 0;
+      if (!document.hidden) schedule();
     };
     window.addEventListener("scroll", schedule, { passive: true });
     window.addEventListener("click", onAnchorClick, true);
     window.addEventListener("hashchange", onHashChange);
     window.addEventListener("resize", schedule);
     motion.addEventListener("change", schedule);
+    document.addEventListener("visibilitychange", onVisibility);
     schedule();
     return () => {
       window.removeEventListener("scroll", schedule);
@@ -179,6 +188,7 @@ export default function CockpitExperience({
       window.removeEventListener("hashchange", onHashChange);
       window.removeEventListener("resize", schedule);
       motion.removeEventListener("change", schedule);
+      document.removeEventListener("visibilitychange", onVisibility);
       cancelAnimationFrame(frame);
     };
   }, [status]);

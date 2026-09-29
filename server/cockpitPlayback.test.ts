@@ -52,4 +52,18 @@ describe("cockpit scroll release", () => {
       state = advanceCockpitPlayback(state, 1, 0.05, true, true);
     expect(state.released).toBe(true);
   });
+  it.each([3, 5, 10])("keeps the five-second tour at %i frames per second", fps => {
+    let state = initialCockpitPlayback();
+    const visited = new Set([0]);
+    for (let frame = 0; frame < Math.ceil(5.1 * fps); frame++) {
+      state = advanceCockpitPlayback(state, 1, 1 / fps, false, false);
+      visited.add(cockpitViewAtProgress(state.progress));
+    }
+    expect(state.progress).toBe(1);
+    expect([...visited]).toEqual([0, 1, 2, 3, 4]);
+    expect(state.released).toBe(false);
+    for (let frame = 0; frame < Math.ceil(0.85 * fps); frame++)
+      state = advanceCockpitPlayback(state, 1, 1 / fps, true, false);
+    expect(state.released).toBe(true);
+  });
 });

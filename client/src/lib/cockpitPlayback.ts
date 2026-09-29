@@ -9,6 +9,9 @@ export const initialCockpitPlayback = (): CockpitPlayback => ({
   finalHold: 0,
   released: false,
 });
+// Slow visible frames keep wall-clock timing. A suspended tab resumes with a small step.
+export const cockpitFrameSeconds = (elapsed: number) =>
+  elapsed > 1 ? 0.05 : Math.max(0, elapsed);
 export function advanceCockpitPlayback(
   state: CockpitPlayback,
   target: number,
@@ -16,7 +19,7 @@ export function advanceCockpitPlayback(
   settled: boolean,
   reducedMotion: boolean
 ): CockpitPlayback {
-  const dt = Math.max(0, Math.min(elapsed, 0.05)); // Background tabs must not skip the tour.
+  const dt = cockpitFrameSeconds(elapsed);
   const requested = Math.max(0, Math.min(1, target));
   const step = dt * 0.2;
   const difference = requested - state.progress;

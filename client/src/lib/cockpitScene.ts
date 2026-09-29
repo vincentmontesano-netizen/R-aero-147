@@ -9,6 +9,7 @@ import {
 } from "./cockpitCamera";
 
 import { neutralizeCockpitDecals } from "./cockpitMaterials";
+import { cockpitFrameSeconds } from "./cockpitPlayback";
 
 type Pose = {
   position: readonly number[];
@@ -115,7 +116,7 @@ export function mountCockpit(
   let previousTime = 0;
   const draw = (time: number) => {
     const delta = previousTime
-      ? Math.min((time - previousTime) / 1000, 0.05)
+      ? cockpitFrameSeconds((time - previousTime) / 1000)
       : 0.016;
     previousTime = time;
     const moving =
