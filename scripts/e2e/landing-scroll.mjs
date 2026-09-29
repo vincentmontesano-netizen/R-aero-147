@@ -4,6 +4,10 @@ import {suite,origin,output} from './harness.mjs';
 
 await suite('landing-scroll',async({page,step})=>{
  for(const frameDelay of [0,333,2000]) for(const size of (frameDelay===2000?[{width:1440,height:1000}]:[{width:1440,height:1000},{width:390,height:844}])){
+  // Seven capped playback frames can take 14 seconds at injected 0.5 fps.
+  // Give those deliberate waits their own budget plus 5 seconds for browser work;
+  // the native-cadence limit stays at 15 seconds.
+  const durationBudgetMs=Math.max(15000,7*frameDelay+5000);
   const p=await page();await p.setViewportSize(size);p.setDefaultTimeout(30000);
   if(frameDelay)await p.addInitScript(delay=>{
    // Exercise the real scene/playback at a controlled low frame rate.
@@ -75,14 +79,14 @@ await suite('landing-scroll',async({page,step})=>{
    assert.ok(moving.every(row=>row.pinned&&row.top>=0));
    assert.deepEqual([...new Set(samples.map(row=>row.step))],[0,1,2,3,4]);
    const duration=samples.find(row=>row.step===4).time-samples.find(row=>row.y>100).time;
-   assert.ok(duration>2500&&duration<15000,`Five views took ${duration}ms`);
+   assert.ok(duration>2500&&duration<durationBudgetMs,`Five views took ${duration}ms (budget ${durationBudgetMs}ms)`);
    await p.mouse.wheel(0,1800);
    await p.waitForFunction(()=>!document.querySelector('.flight-experience')?.classList.contains('is-pinned'));
    step(`${size.width}px tour visits all five views and releases at ${frameDelay===2000?'0.5fps':frameDelay?'3fps':'native cadence'}`);
    await p.screenshot({path:`${output}/scroll-release-${size.width}-${frameDelay}.png`});
   }finally{
    const evidence=await p.evaluate(()=>{clearInterval(window.__tourTimer);window.__tourObserver.disconnect();return {samples:window.__tour,transitions:window.__tourTransitions,renderer:window.__tourRenderer};}).catch(()=>({samples:[],renderer:null}));
-   fs.writeFileSync(`${output}/landing-scroll-${size.width}-${frameDelay}-results.json`,JSON.stringify({viewport:size,frameDelay,...evidence},null,2));
+   fs.writeFileSync(`${output}/landing-scroll-${size.width}-${frameDelay}-results.json`,JSON.stringify({viewport:size,frameDelay,durationBudgetMs,...evidence},null,2));
   }
   await p.close();
  }
