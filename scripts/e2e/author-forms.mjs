@@ -10,15 +10,22 @@ await suite('author-forms',async({page,step})=>{
  await d.getByRole('button',{name:t['maker.create'],exact:true}).click();
  const raw=await(await created).json(),{trainingId}=(Array.isArray(raw)?raw[0]:raw).result.data.json;
  await d.waitFor({state:'hidden'});step('instructor creates a separate draft for all question formats');
+ assert.equal(await p.getByRole('combobox',{name:t['adminContentManager.selectTraining'],exact:true}).inputValue(),String(trainingId));
  for(const [button,keys] of [
   [t['adminContentManager.moduleButton'],['moduleTitleLabel','moduleShortDescriptionLabel','moduleContentLabel','moduleVideoLabel','modulePdfLabel','moduleDurationLabel','orderLabel']],
   [t['adminContentManager.objectiveButton'],['objectiveCodeLabel','knowledgeLevelLabel','objectiveTitleLabel','descriptionLabel','objectiveSubmoduleLabel','orderLabel']],
  ]){
   await p.getByRole('button',{name:button,exact:true}).click();d=p.getByRole('dialog');
   for(const key of keys)assert.equal(await d.getByLabel(t['adminContentManager.'+key],{exact:true}).count(),1,key);
+  const titleKey=button===t['adminContentManager.moduleButton']?'moduleTitleLabel':'objectiveTitleLabel';
+  const title='Recette '+button;
+  await d.getByLabel(t['adminContentManager.'+titleKey],{exact:true}).fill(title);
+  await d.getByRole('button',{name:t['adminContentManager.saveButton'],exact:true}).click();await d.waitFor({state:'hidden'});
+  await p.getByRole('button',{name:t['adminDashboard.btnEdit']+' '+title,exact:true}).click();d=p.getByRole('dialog');
+  assert.equal(await d.getByLabel(t['adminContentManager.'+titleKey],{exact:true}).inputValue(),title);
   await d.getByRole('button',{name:t['adminContentManager.cancelButton'],exact:true}).click();
  }
- step('module and objective fields expose their visible labels');
+ step('module and objective fields expose labels; saved contents reopen through named actions');
  await p.getByRole('button',{name:t['maker.addSlide'],exact:true}).click();
  await p.getByRole('button',{name:text('courseMaker.editSlide',1),exact:true}).click();d=p.getByRole('dialog');
  assert.equal(await d.getByLabel(t['maker.slideTitle'],{exact:true}).count(),1);
@@ -51,7 +58,13 @@ await suite('author-forms',async({page,step})=>{
  }
  step('all five question formats save through named form controls');
  await p.goto(origin+'/maker/'+trainingId);
- for(const type of types)await p.getByText('Recette '+type,{exact:true}).waitFor();
+ for(const type of types){
+  await p.getByText('Recette '+type,{exact:true}).waitFor();
+  await p.getByRole('button',{name:t['adminDashboard.btnEdit']+' Recette '+type,exact:true}).click();d=p.getByRole('dialog');
+  assert.equal(await d.getByLabel(t['adminContentManager.questionTypeLabel'],{exact:true}).inputValue(),type);
+  assert.equal(await d.getByLabel(t['adminContentManager.questionTextLabel'],{exact:true}).inputValue(),'Recette '+type);
+  await d.getByRole('button',{name:t['adminContentManager.cancelButton'],exact:true}).click();
+ }
  const response=await p.context().request.get(origin+'/api/trpc/maker.content.questions.list?input='+encodeURIComponent(JSON.stringify({json:{trainingId}})));
  assert.equal(response.status(),200);const rows=(await response.json()).result.data.json;
  assert.deepEqual(rows.map(q=>q.type).sort(),[...types].sort());

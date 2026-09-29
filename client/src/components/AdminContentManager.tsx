@@ -589,6 +589,7 @@ export default function AdminContentManager({ trainings }: { trainings: { id: nu
       <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
         <h2 className="font-semibold" style={{ color: "var(--foreground)" }}>{t("adminContentManager.heading")}</h2>
         <select
+          aria-label={t("adminContentManager.selectTraining")}
           value={trainingId ?? ""}
           onChange={(e) => setTrainingId(Number(e.target.value))}
           className="h-9 rounded-md border px-3 text-sm min-w-72"
@@ -629,7 +630,7 @@ export default function AdminContentManager({ trainings }: { trainings: { id: nu
                       {t("adminContentManager.objectiveLevelPrefix", { level: o.knowledgeLevel ?? "1" })} · {moduleName(o.moduleId)}{o.isRequired ? ` · ${t("adminContentManager.requiredSuffix")}` : ""}
                     </div>
                   </div>
-                  <button onClick={() => setObjectiveDialog({ objective: o })} className="p-1.5 rounded hover:bg-foreground/5" style={{ color: "var(--muted-foreground)" }}><Pencil className="w-4 h-4" /></button>
+                  <button aria-label={`${t("adminDashboard.btnEdit")} ${o.title}`} onClick={() => setObjectiveDialog({ objective: o })} className="p-1.5 rounded hover:bg-foreground/5" style={{ color: "var(--muted-foreground)" }}><Pencil className="w-4 h-4" /></button>
                   <button title={t("contentArchive.action")} onClick={() => { if (confirm(t("contentArchive.confirm"))) archiveObjective.mutate({ id: o.id }); }} className="p-1.5 rounded hover:bg-foreground/5"><Trash2 className="w-4 h-4" /></button>
                 </div>
               ))}
@@ -659,7 +660,7 @@ export default function AdminContentManager({ trainings }: { trainings: { id: nu
                     <div className="text-sm font-medium truncate" style={{ color: "var(--foreground)" }}>{m.sortOrder}. {m.title}</div>
                     <div className="text-xs" style={{ color: "var(--muted-foreground)" }}>{t("adminContentManager.moduleDurationMinutes", { minutes: m.durationMinutes ?? 0 })}{m.isRequired ? ` · ${t("adminContentManager.requiredModuleSuffix")}` : ""}</div>
                   </div>
-                  <button onClick={() => setModuleDialog({ module: m })} className="p-1.5 rounded hover:bg-foreground/5" style={{ color: "var(--muted-foreground)" }}><Pencil className="w-4 h-4" /></button>
+                  <button aria-label={`${t("adminDashboard.btnEdit")} ${m.title}`} onClick={() => setModuleDialog({ module: m })} className="p-1.5 rounded hover:bg-foreground/5" style={{ color: "var(--muted-foreground)" }}><Pencil className="w-4 h-4" /></button>
                   <button title={t("contentArchive.action")} onClick={() => { if (confirm(t("contentArchive.confirm"))) archiveModule.mutate({ id: m.id }); }} className="p-1.5 rounded hover:bg-foreground/5"><Trash2 className="w-4 h-4" /></button>
                 </div>
               ))}
@@ -687,7 +688,7 @@ export default function AdminContentManager({ trainings }: { trainings: { id: nu
                       {t(QUESTION_TYPE_KEYS[q.type])} · {t("adminContentManager.pointsAbbrev", { points: q.points ?? 1 })} · {moduleName(q.moduleId)}
                     </div>
                   </div>
-                  <button onClick={() => setQuestionDialog({ question: q })} className="p-1.5 rounded hover:bg-foreground/5" style={{ color: "var(--muted-foreground)" }}><Pencil className="w-4 h-4" /></button>
+                  <button aria-label={`${t("adminDashboard.btnEdit")} ${q.question}`} onClick={() => setQuestionDialog({ question: q })} className="p-1.5 rounded hover:bg-foreground/5" style={{ color: "var(--muted-foreground)" }}><Pencil className="w-4 h-4" /></button>
                   <button title={t("contentArchive.action")} onClick={() => { if (confirm(t("contentArchive.confirm"))) archiveQuestion.mutate({ id: q.id }); }} className="p-1.5 rounded hover:bg-foreground/5"><Trash2 className="w-4 h-4" /></button>
                 </div>
               ))}
