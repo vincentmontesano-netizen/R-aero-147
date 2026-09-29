@@ -27,6 +27,10 @@ services:
       # ── First admin (existing accounts are never overwritten) ──
       SEED_DEMO_DATA: ${SEED_DEMO_DATA:-false}
       PUBLIC_APP_URL: ${PUBLIC_APP_URL:-}
+      LIVE_VIDEO_PROVIDER: ${LIVE_VIDEO_PROVIDER:-jaas}
+      JITSI_DOMAIN: ${JITSI_DOMAIN:-}
+      JITSI_APP_ID: ${JITSI_APP_ID:-}
+      JITSI_APP_SECRET: ${JITSI_APP_SECRET:-}
       JAAS_APP_ID: ${JAAS_APP_ID:-}
       JAAS_API_KEY_ID: ${JAAS_API_KEY_ID:-}
       JAAS_PRIVATE_KEY: ${JAAS_PRIVATE_KEY:-}
