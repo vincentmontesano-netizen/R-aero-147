@@ -27,7 +27,8 @@ await suite('landing-scroll',async({page,step})=>{
   });
   try{
    assert.equal(await p.locator('.flight-stops, .flight-controls').count(),0);
-   await p.mouse.wheel(0,20000);
+   // Firefox caps each wheel event to roughly one viewport; repeat the fling.
+   for(let i=0;i<8;i++){await p.mouse.wheel(0,20000);await p.waitForTimeout(50);}
    await p.waitForFunction(()=>document.querySelector('.flight-experience')?.dataset.view==='5');
    await p.locator('.flight-view-note a').waitFor();
    assert.equal(await p.locator('.flight-view-logo').evaluate(img=>img.complete&&img.naturalWidth>0),true);
