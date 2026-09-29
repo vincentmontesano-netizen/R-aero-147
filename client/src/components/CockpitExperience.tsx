@@ -37,10 +37,17 @@ export default function CockpitExperience({
   const [pinned, setPinned] = useState(false);
   const [complete, setComplete] = useState(false);
   useEffect(() => {
-    let cancelled = false;
+    let cancelled = false, started = false;
     setStatus("loading");
     setProgress(0);
-    void import("@/lib/cockpitScene")
+    // Deep links below the introduction must not wait for WebGL initialization.
+    // Observe the document section: its fixed stage can still be visible briefly
+    // while React commits the scroll/anchor state.
+    const observer = new IntersectionObserver(entries => {
+      if (started || cancelled || !entries.some(entry => entry.isIntersecting)) return;
+      started = true;
+      observer.disconnect();
+      void import("@/lib/cockpitScene")
       .then(({ mountCockpit }) => {
         if (cancelled || !host.current) return;
         scene.current = mountCockpit(host.current, {
@@ -58,8 +65,11 @@ export default function CockpitExperience({
       .catch(() => {
         if (!cancelled) setStatus("error");
       });
+    });
+    if (section.current) observer.observe(section.current);
     return () => {
       cancelled = true;
+      observer.disconnect();
       scene.current?.dispose();
       scene.current = null;
     };

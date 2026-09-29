@@ -98,6 +98,8 @@ export default function Home() {
       stopAlignment = stop;
       observer.observe(main);
       for (const event of events) window.addEventListener(event, stop, { capture: true, passive: true });
+      // Position direct links before offscreen widgets start expensive work.
+      target.scrollIntoView({ block: "start", behavior: "instant" });
       align();
       void document.fonts.ready.then(align);
     };
