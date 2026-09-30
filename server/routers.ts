@@ -1,3 +1,4 @@
+import { emailTransport, emailTransportSchema, emailTransportSetting, emailTransportStatus, hostingerMailConfigured } from "./emailTransport";
 import { establishSession } from "./_core/sessionTransport";
 import {notifySupport,listSupportNotifications,supportNotificationListInput,sendPendingSupportNotification,supportNotificationSendInput} from "./supportNotifications";
 import {supportMessageInput} from "../shared/supportMessageInput";
@@ -1140,6 +1141,7 @@ export const appRouter = router({
         const mistral = (process.env.MISTRAL_API_KEY ?? "").trim();
         const pass = (process.env.SMTP_PASS ?? "").trim();
         return {
+          emailTransport: emailTransportStatus(),
           ai: aiProviderStatus(),
           mistral: { configured: !!mistral, masked: mistral ? `••••••••${mistral.slice(-4)}` : null },
           smtp: {
@@ -1176,6 +1178,26 @@ export const appRouter = router({
       setMistralKey: adminProcedure
         .input(z.object({ key: z.string() }))
         .mutation(async ({ input }) => { await setSetting("MISTRAL_API_KEY", input.key.trim() || null); return { ok: true }; }),
+      setEmailTransport: adminProcedure
+        .input(emailTransportSchema.omit({ token: true }).extend({
+          token: emailTransportSchema.shape.token.optional(), clearToken: z.boolean().optional(),
+        }))
+        .mutation(async ({ input }) => {
+          const config = { provider: input.provider, mailboxId: input.mailboxId, mailboxEmail: input.mailboxEmail,
+            token: input.clearToken ? "" : input.token || emailTransport()?.token || "" };
+          if (input.clearToken && input.token) throw new TRPCError({ code: "BAD_REQUEST", message: "Choisissez remplacer ou effacer le jeton." });
+          if (config.provider === "hostinger" && !input.clearToken && !hostingerMailConfigured(config)) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Renseignez le jeton Mail API, l’identifiant et l’adresse de la boîte." });
+          }
+          try {
+            const result = await setSetting(emailTransportSetting, JSON.stringify(config));
+            if (!result.ok) throw new Error("settings_unavailable");
+          } catch {
+            // Database errors can contain query parameters, including the token.
+            throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Enregistrement de la configuration e-mail impossible." });
+          }
+          return { ok: true };
+        }),
       // SMTP / email configuration. Password is only overwritten when a non-empty value
       // is provided, so saving other fields doesn't wipe a stored password.
       setSmtp: adminProcedure
@@ -1199,9 +1221,9 @@ export const appRouter = router({
       sendTestEmail: adminProcedure
         .input(z.object({ to: z.string().email() }))
         .mutation(async ({ input }) => {
-          if (!isEmailConfigured()) throw new TRPCError({ code: "BAD_REQUEST", message: "SMTP non configuré (renseignez serveur, identifiant et mot de passe)." });
-          const { html } = simpleEmail("Test email", "<p>Votre configuration SMTP R-AERO fonctionne ✅</p>");
-          const r = await sendEmail({ to: input.to, subject: "R-AERO — Test SMTP", html });
+          if (!isEmailConfigured()) throw new TRPCError({ code: "BAD_REQUEST", message: "E-mail non configuré (vérifiez le fournisseur sélectionné)." });
+          const { html } = simpleEmail("Test email", "<p>Votre configuration e-mail R-AERO fonctionne ✅</p>");
+          const r = await sendEmail({ to: input.to, subject: "R-AERO — Test e-mail", html });
           if (!r.sent) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Échec de l'envoi : ${r.error ?? "voir logs serveur"}` });
           return { ok: true };
         }),
@@ -1210,13 +1232,13 @@ export const appRouter = router({
     // ── Inbox (read-only IMAP reception) ──
     inbox: router({
       list: adminProcedure
-        .input(z.object({ limit: z.number().min(1).max(50).optional() }))
+        .input(z.object({ limit: z.number().int().min(1).max(50).optional() }))
         .query(async ({ input }) => {
           try { return await fetchInbox(input.limit ?? 25); }
           catch (e: any) { throw new TRPCError({ code: "BAD_REQUEST", message: e?.message ?? "Lecture IMAP impossible." }); }
         }),
       message: adminProcedure
-        .input(z.object({ uid: z.number() }))
+        .input(z.object({ uid: z.number().int().positive().max(Number.MAX_SAFE_INTEGER) }))
         .query(async ({ input }) => {
           try { return await fetchMessage(input.uid); }
           catch (e: any) { throw new TRPCError({ code: "BAD_REQUEST", message: e?.message ?? "Lecture du message impossible." }); }

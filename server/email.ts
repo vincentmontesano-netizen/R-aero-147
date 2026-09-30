@@ -1,5 +1,7 @@
-/** SMTP acceptance is not proof of inbox delivery. No automatic retries. */
+/** Provider acceptance is not proof of inbox delivery. No automatic retries. */
 import nodemailer, { type Transporter } from "nodemailer";
+import { emailTransport, hostingerMailConfigured } from "./emailTransport";
+import { sendHostingerEmail } from "./hostingerMail";
 
 // SMTP config is read LAZILY from process.env (populated from .env AND from the admin
 // Settings UI via app_settings → setSetting writes process.env). The transporter is
@@ -29,17 +31,24 @@ function getTransport(): Transporter | null {
 }
 
 export function isEmailConfigured(): boolean {
+  const config = emailTransport();
+  if (!config) return false;
+  if (config.provider === "hostinger") return hostingerMailConfigured(config);
   const { host, port, user, pass } = smtpConfig();
   return !!(host && user && pass && Number.isInteger(port) && port >= 1 && port <= 65535);
 }
 
 /** Address that receives event alerts (new quote, ticket, reply, signup).
- *  Defaults to ADMIN_NOTIFY_EMAIL, else the SMTP user. */
+ *  Defaults to ADMIN_NOTIFY_EMAIL, else the selected mailbox. */
 export function adminNotifyEmail(): string | null {
-  return process.env.ADMIN_NOTIFY_EMAIL?.trim() || smtpConfig().user || null;
+  const config = emailTransport();
+  return process.env.ADMIN_NOTIFY_EMAIL?.trim() || (config?.provider === "hostinger" ? config.mailboxEmail : smtpConfig().user) || null;
 }
 
 export async function sendEmail(opts: { to: string; subject: string; html: string; text?: string }): Promise<{ sent: boolean; error?: string }> {
+  const config = emailTransport();
+  if (!config) return { sent: false, error: "Configuration e-mail invalide." };
+  if (config.provider === "hostinger") return sendHostingerEmail(opts);
   try {
     const tx = getTransport();
     if (!tx) return { sent: false, error: "Configuration SMTP absente ou invalide." };

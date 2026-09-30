@@ -272,6 +272,7 @@ export default function AdminDashboard() {
   // SMTP / email config (password left empty = keep the stored one).
   const [smtp, setSmtp] = useState({ host: "", port: "587", user: "", password: "", from: "", notifyEmail: "", imapHost: "", imapPort: "993" });
   const [smtpLoaded, setSmtpLoaded] = useState(false);
+  const [emailTransport, setEmailTransport] = useState({ provider: "smtp" as "smtp" | "hostinger", mailboxId: "", mailboxEmail: "", token: "", clearToken: false });
   useEffect(() => {
     if (settings?.smtp && !smtpLoaded) {
       setSmtp({
@@ -279,13 +280,31 @@ export default function AdminDashboard() {
         from: settings.smtp.from ?? "", notifyEmail: settings.smtp.notifyEmail ?? "",
         imapHost: (settings as any).imap?.host ?? "imap.hostinger.com", imapPort: (settings as any).imap?.port ?? "993",
       });
+      if (settings.emailTransport) setEmailTransport({
+        provider: settings.emailTransport.provider === "smtp" ? "smtp" : "hostinger",
+        mailboxId: settings.emailTransport.mailboxId, mailboxEmail: settings.emailTransport.mailboxEmail,
+        token: "", clearToken: false,
+      });
       setSmtpLoaded(true);
     }
   }, [settings, smtpLoaded]);
   const [testTo, setTestTo] = useState("");
   const saveSmtp = trpc.admin.settings.setSmtp.useMutation({
-    onSuccess: () => { toast.success(t("adminDashboard.toastSmtpSaved")); setSmtp((s) => ({ ...s, password: "" })); utils.admin.settings.get.invalidate(); }, onError: (e) => toast.error(e.message),
+    onSuccess: () => { setSmtp((s) => ({ ...s, password: "" })); utils.admin.settings.get.invalidate(); }, onError: (e) => toast.error(e.message),
   });
+  const saveTransport = trpc.admin.settings.setEmailTransport.useMutation({
+    onSuccess: () => { toast.success(t("adminDashboard.toastSmtpSaved")); setEmailTransport(s => ({ ...s, token: "", clearToken: false })); utils.admin.settings.get.invalidate(); },
+    onError: e => toast.error(e.message),
+  });
+  const saveEmailSettings = async () => {
+    try {
+      if (emailTransport.provider === "smtp") await saveSmtp.mutateAsync(smtp);
+      await saveTransport.mutateAsync(emailTransport);
+    } catch { /* The mutation reports its error. Preserve the draft for correction. */ }
+  };
+  const emailTransportDirty = !settings?.emailTransport || emailTransport.provider !== settings.emailTransport.provider
+    || emailTransport.mailboxId !== settings.emailTransport.mailboxId || emailTransport.mailboxEmail !== settings.emailTransport.mailboxEmail
+    || !!emailTransport.token || emailTransport.clearToken;
   const sendTest = trpc.admin.settings.sendTestEmail.useMutation({
     onSuccess: () => toast.success(t("adminDashboard.toastTestSent")), onError: (e) => toast.error(e.message),
   });
@@ -865,7 +884,7 @@ export default function AdminDashboard() {
 
             <BroadcastHistory />
 
-            {/* SMTP configuration */}
+            {/* Email provider and mailbox configuration */}
             <div className="rounded-xl p-5 max-w-2xl" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
               <div className="flex items-center gap-2 mb-1"><Mail className="w-4 h-4" style={{ color: "var(--link)" }} /><h3 className="font-semibold text-sm" style={{ color: "var(--foreground)" }}>{t("adminDashboard.smtpTitle")}</h3></div>
               <p className="text-xs mb-3" style={{ color: "var(--muted-foreground)" }}>
@@ -874,6 +893,21 @@ export default function AdminDashboard() {
                   ? <span style={{ color: "var(--success)" }}>{t("adminDashboard.smtpConfigured")}</span>
                   : <span style={{ color: "var(--destructive)" }}>{t("adminDashboard.smtpNotConfigured")}</span>}
               </p>
+              <div className="mb-3">
+                <label htmlFor="email-provider" className="text-sm">{t("adminDashboard.emailProvider")}</label>
+                <select id="email-provider" className="w-full h-10 rounded-md border px-2 text-sm" value={emailTransport.provider} disabled={!smtpLoaded || saveTransport.isPending || saveSmtp.isPending} onChange={e => setEmailTransport(s => ({ ...s, provider: e.target.value as "smtp" | "hostinger" }))}>
+                  <option value="smtp">SMTP / IMAP</option><option value="hostinger">Hostinger Mail API</option>
+                </select>
+                <p className="text-xs mt-1">{t("adminDashboard.emailProviderSaveNote")}</p>
+              </div>
+              <fieldset className="min-w-0" disabled={saveTransport.isPending || saveSmtp.isPending}>
+              {emailTransport.provider === "hostinger" ? <div className="space-y-3">
+                <div><label htmlFor="hostinger-mailbox" className="text-sm">{t("adminDashboard.hostingerMailbox")}</label><Input id="hostinger-mailbox" value={emailTransport.mailboxId} onChange={e => setEmailTransport(s => ({ ...s, mailboxId: e.target.value }))} autoComplete="off" /></div>
+                <div><label htmlFor="hostinger-address" className="text-sm">{t("adminDashboard.hostingerAddress")}</label><Input id="hostinger-address" type="email" value={emailTransport.mailboxEmail} onChange={e => setEmailTransport(s => ({ ...s, mailboxEmail: e.target.value }))} autoComplete="off" /></div>
+                <div><label htmlFor="hostinger-token" className="text-sm">{t("adminDashboard.hostingerToken")}</label><Input id="hostinger-token" type="password" autoComplete="new-password" value={emailTransport.token} disabled={emailTransport.clearToken} placeholder={settings?.emailTransport?.tokenSet ? "••••••••" : ""} onChange={e => setEmailTransport(s => ({ ...s, token: e.target.value }))} aria-describedby="hostinger-token-note" /></div>
+                <p id="hostinger-token-note" className="text-xs">{t("adminDashboard.hostingerTokenNote")}</p>
+                {settings?.emailTransport?.tokenSet && <label className="flex items-start gap-2 text-sm"><input type="checkbox" className="mt-1" checked={emailTransport.clearToken} onChange={e => setEmailTransport(s => ({ ...s, clearToken: e.target.checked, token: "" }))} />{t("adminDashboard.hostingerClearToken")}</label>}
+              </div> : <>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div className="sm:col-span-2"><label className="text-sm" style={{ color: "var(--muted-foreground)" }}>{t("adminDashboard.smtpHost")}</label><Input value={smtp.host} onChange={(e) => setSmtp((s) => ({ ...s, host: e.target.value }))} placeholder="smtp.r-aero-academy.com" /></div>
                 <div><label className="text-sm" style={{ color: "var(--muted-foreground)" }}>{t("adminDashboard.smtpPort")}</label><Input value={smtp.port} onChange={(e) => setSmtp((s) => ({ ...s, port: e.target.value }))} placeholder="587" /></div>
@@ -885,13 +919,15 @@ export default function AdminDashboard() {
                 <div><label className="text-sm" style={{ color: "var(--muted-foreground)" }}>{t("adminDashboard.imapPort")}</label><Input value={smtp.imapPort} onChange={(e) => setSmtp((s) => ({ ...s, imapPort: e.target.value }))} placeholder="993" /></div>
               </div>
               <p className="text-xs mt-2" style={{ color: "var(--muted-foreground)" }}>{t("adminDashboard.imapNote")}</p>
+              </>}
+              </fieldset>
               <div className="flex flex-wrap gap-2 mt-3">
-                <Button disabled={saveSmtp.isPending} onClick={() => saveSmtp.mutate(smtp)} style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>{t("adminDashboard.btnSaveSetting")}</Button>
+                <Button disabled={!smtpLoaded || saveTransport.isPending || saveSmtp.isPending} onClick={saveEmailSettings} style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>{t("adminDashboard.btnSaveSetting")}</Button>
               </div>
-              <p className="text-xs mt-2" style={{ color: "var(--muted-foreground)" }}>{t("adminDashboard.smtpStorageNote")}</p>
+              <p className="text-xs mt-2" style={{ color: "var(--muted-foreground)" }}>{t(emailTransport.provider === "smtp" ? "adminDashboard.smtpStorageNote" : "adminDashboard.hostingerStorageNote")}</p>
               <div className="mt-4 pt-4 flex flex-wrap gap-2 items-end" style={{ borderTop: "1px solid var(--border)" }}>
-                <div className="flex-1 min-w-[200px]"><label className="text-sm" style={{ color: "var(--muted-foreground)" }}>{t("adminDashboard.smtpTestLabel")}</label><Input type="email" value={testTo} onChange={(e) => setTestTo(e.target.value)} placeholder="vous@example.com" /></div>
-                <Button variant="outline" disabled={!testTo.trim() || sendTest.isPending} onClick={() => sendTest.mutate({ to: testTo })}>{t("adminDashboard.smtpTestButton")}</Button>
+                <div className="flex-1 min-w-[200px]"><label htmlFor="email-test-recipient" className="text-sm" style={{ color: "var(--muted-foreground)" }}>{t("adminDashboard.smtpTestLabel")}</label><Input id="email-test-recipient" type="email" value={testTo} onChange={(e) => setTestTo(e.target.value)} placeholder="vous@example.com" /></div>
+                <Button variant="outline" disabled={!testTo.trim() || sendTest.isPending || saveTransport.isPending || saveSmtp.isPending || emailTransportDirty || !settings?.smtp.configured} onClick={() => sendTest.mutate({ to: testTo })}>{t("adminDashboard.smtpTestButton")}</Button>
               </div>
             </div>
             </>)}
