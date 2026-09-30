@@ -23,7 +23,7 @@ export async function prepareSubscriptionCheckout(params: Input, price: string) 
     const roster = await tx.select({ id: employees.id }).from(employees).where(and(eq(employees.companyId, company.id), eq(employees.isActive, true)));
     const quantity = params.plan === "standard" ? Math.max(1, roster.length) : 1;
     const id = randomUUID();
-    const destination = params.billingPage ? `/abonnements?companyId=${company.id}&` : "/entreprise?";
+    const destination = params.billingPage ? `/abonnements?companyId=${company.id}&` : `/entreprise?orgId=${company.id}&`;
     const metadata = { company_id: String(company.id), plan: params.plan, checkout_attempt_id: id };
     const payload: Stripe.Checkout.SessionCreateParams = {
       mode: "subscription", line_items: [{ price, quantity }],

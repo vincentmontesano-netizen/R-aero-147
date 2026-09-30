@@ -15,7 +15,7 @@ export async function dispatchSupportNotification(key:string|number, review?:{ac
    if(review&&item.state!=='accepted')throw new TRPCError({code:'PRECONDITION_FAILED',message:'Une tentative existe déjà. Vérifiez son résultat auprès du fournisseur.'});
    return null;
   }
-  if(!isEmailConfigured()){if(review)throw new TRPCError({code:'PRECONDITION_FAILED',message:'Configuration SMTP indisponible.'});return null;}
+  if(!isEmailConfigured()){if(review)throw new TRPCError({code:'PRECONDITION_FAILED',message:'Configuration e-mail indisponible.'});return null;}
   let recipient:string|null=null;
   if(item.audience==='admin')recipient=adminNotifyEmail();
   else{

@@ -5,7 +5,7 @@ import { affiliations, companies, employees, externalTrainings, users } from '..
 import { getDb } from './db';
 
 export const archiveExternalTrainingInput = z.object({id:z.number().int().positive(),reason:z.string().trim().min(3).max(1000)});
-export async function archiveExternalTraining(actorId:number,input:z.infer<typeof archiveExternalTrainingInput>) {
+export async function archiveExternalTraining(actorId:number,input:z.infer<typeof archiveExternalTrainingInput>,selectedCompanyId?:number) {
   const {id,reason}=archiveExternalTrainingInput.parse(input);
   const db=(await getDb())!;
   return db.transaction(async tx=>{
@@ -13,6 +13,7 @@ export async function archiveExternalTraining(actorId:number,input:z.infer<typeo
     if(actor?.status!=='active') throw new TRPCError({code:'FORBIDDEN'});
     const [record]=await tx.select().from(externalTrainings).where(eq(externalTrainings.id,id)).for('update');
     if(!record) throw new TRPCError({code:'NOT_FOUND'});
+    if(selectedCompanyId !== undefined && record.companyId !== selectedCompanyId) throw new TRPCError({code:'FORBIDDEN'});
     if(actor.role!=='admin') {
       // Both historical organization and current employee must agree: ambiguous
       // or reassigned evidence requires an administrator, never a companyId fallback.

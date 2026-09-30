@@ -16,3 +16,7 @@ pnpm-debug.log*
 coverage
 tmp
 .vscode
+
+# Native artifacts and raw 3D sources are not used by the web runtime.
+mobile
+a320_cockpit_2

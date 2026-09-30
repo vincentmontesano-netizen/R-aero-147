@@ -37,10 +37,17 @@ export default function CockpitExperience({
   const [pinned, setPinned] = useState(false);
   const [complete, setComplete] = useState(false);
   useEffect(() => {
-    let cancelled = false;
+    let cancelled = false, started = false;
     setStatus("loading");
     setProgress(0);
-    void import("@/lib/cockpitScene")
+    // Deep links below the introduction must not wait for WebGL initialization.
+    // Observe the document section: its fixed stage can still be visible briefly
+    // while React commits the scroll/anchor state.
+    const observer = new IntersectionObserver(entries => {
+      if (started || cancelled || !entries.some(entry => entry.isIntersecting)) return;
+      started = true;
+      observer.disconnect();
+      void import("@/lib/cockpitScene")
       .then(({ mountCockpit }) => {
         if (cancelled || !host.current) return;
         scene.current = mountCockpit(host.current, {
@@ -58,8 +65,11 @@ export default function CockpitExperience({
       .catch(() => {
         if (!cancelled) setStatus("error");
       });
+    });
+    if (section.current) observer.observe(section.current);
     return () => {
       cancelled = true;
+      observer.disconnect();
       scene.current?.dispose();
       scene.current = null;
     };
@@ -72,7 +82,38 @@ export default function CockpitExperience({
     let frame = 0,
       lastTime = 0;
     let playback = initialCockpitPlayback();
+    let previousY = window.scrollY;
     const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const releaseForAnchor = (hash: string) => {
+      let id: string;
+      try {
+        id = decodeURIComponent(hash.slice(1));
+      } catch {
+        return;
+      }
+      const target = id ? document.getElementById(id) : null;
+      if (
+        target && section.current &&
+        !section.current.contains(target) &&
+        (section.current.compareDocumentPosition(target) & Node.DOCUMENT_POSITION_FOLLOWING)
+      ) {
+        playback = { progress: 1, finalHold: 1, released: true };
+        setComplete(true);
+        setPinned(false);
+      }
+    };
+    // Anchor navigation is intentional, including while the model is loading.
+    // The click listener also covers same-hash links and SPA history.replaceState.
+    const onAnchorClick = (event: MouseEvent) => {
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const link = event.target instanceof Element ? event.target.closest("a[href]") : null;
+      if (!(link instanceof HTMLAnchorElement) || link.hasAttribute("download") || (link.target && link.target !== "_self")) return;
+      const url = new URL(link.href);
+      if (url.origin === window.location.origin && url.pathname === window.location.pathname)
+        releaseForAnchor(url.hash);
+    };
+    const onHashChange = () => releaseForAnchor(window.location.hash);
+    releaseForAnchor(window.location.hash);
     const bounds = () => {
       const top = window.scrollY + section.current!.getBoundingClientRect().top;
       // The sticky element releases when its bottom reaches the section bottom.
@@ -88,9 +129,16 @@ export default function CockpitExperience({
     }
     const update = (time: number) => {
       frame = 0;
+      if (document.hidden) { lastTime = 0; return; }
       if (!section.current || !stage.current) return;
       const { top, end, distance } = bounds();
       const y = window.scrollY;
+      const returnedToTop = y <= top + 1 && previousY > top + 1;
+      previousY = y;
+      if (returnedToTop && playback.released) {
+        playback = initialCockpitPlayback();
+        setComplete(false);
+      }
       // Keep the introduction in place while its model loads; an error releases it.
       if (status === "loading" || !scene.current) {
         setPinned(y >= top && (y <= end || !playback.released));
@@ -99,10 +147,6 @@ export default function CockpitExperience({
         return;
       }
       const requested = Math.max(0, Math.min(1, (y - top) / distance));
-      if (y <= top + 1 && playback.released) {
-        playback = initialCockpitPlayback();
-        setComplete(false);
-      }
       const dt = lastTime ? (time - lastTime) / 1000 : 1 / 60;
       lastTime = time;
       playback = advanceCockpitPlayback(
@@ -129,19 +173,32 @@ export default function CockpitExperience({
         frame = requestAnimationFrame(update);
     };
     const schedule = () => {
-      if (!frame) {
+      if (!frame && !document.hidden) {
         lastTime = 0;
-        frame = requestAnimationFrame(update);
+        // Clamp the first scroll before a slow rendering frame can expose the section end.
+        update(performance.now());
       }
     };
+    const onVisibility = () => {
+      cancelAnimationFrame(frame);
+      frame = 0;
+      lastTime = 0;
+      if (!document.hidden) schedule();
+    };
     window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("click", onAnchorClick, true);
+    window.addEventListener("hashchange", onHashChange);
     window.addEventListener("resize", schedule);
     motion.addEventListener("change", schedule);
+    document.addEventListener("visibilitychange", onVisibility);
     schedule();
     return () => {
       window.removeEventListener("scroll", schedule);
+      window.removeEventListener("click", onAnchorClick, true);
+      window.removeEventListener("hashchange", onHashChange);
       window.removeEventListener("resize", schedule);
       motion.removeEventListener("change", schedule);
+      document.removeEventListener("visibilitychange", onVisibility);
       cancelAnimationFrame(frame);
     };
   }, [status]);

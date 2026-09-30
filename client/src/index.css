@@ -149,6 +149,8 @@
     @apply border-border;
   }
   html {
+    /* Keep viewport breakpoints stable when dashboard height changes in WebKit. */
+    overflow-y: scroll;
     scroll-behavior: smooth;
     scroll-padding-top: 5rem;
   }

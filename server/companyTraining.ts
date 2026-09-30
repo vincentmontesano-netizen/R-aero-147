@@ -1,11 +1,12 @@
 import { and, eq, inArray, desc } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
-import { getDb } from "./db";
+import { getDb, getUserCompanyId } from "./db";
 import { affiliations, companies, users, trainings, enrollments, employees } from "../drizzle/schema";
 import { requireAuthorCourse } from "./makerAccess";
 type Actor = { id: number; role: string; companyId?: number | null };
 export async function requireManagedCompany(actor: Actor, companyId = actor.companyId) {
   const db = (await getDb())!;
+  companyId ??= await getUserCompanyId(actor.id);
   if (!companyId) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Sélectionnez une compagnie." });
   const [company] = await db.select().from(companies).where(eq(companies.id, companyId));
   if (!company || company.status !== "ACTIVE") throw new TRPCError({ code: "FORBIDDEN" });
@@ -15,10 +16,11 @@ export async function requireManagedCompany(actor: Actor, companyId = actor.comp
   }
   return companyId;
 }
-export async function requireManagedEmployee(actor: Actor, employeeId: number) {
+export async function requireManagedEmployee(actor: Actor, employeeId: number, selectedCompanyId?: number) {
   const db = (await getDb())!;
   const [employee] = await db.select().from(employees).where(eq(employees.id, employeeId));
   if (!employee) throw new TRPCError({ code: "NOT_FOUND" });
+  if (selectedCompanyId !== undefined && employee.companyId !== selectedCompanyId) throw new TRPCError({ code: "FORBIDDEN" });
   await requireManagedCompany(actor, employee.companyId);
   return employee;
 }

@@ -1,8 +1,34 @@
 import fs from 'node:fs';import assert from 'node:assert/strict';import {suite,origin,output,t,credentials} from './harness.mjs';
 await suite('services',async({page,step})=>{
+ const guest=await page();await guest.goto(origin+'/profil');
+ await guest.waitForURL(url=>url.pathname==='/login'&&url.searchParams.get('returnTo')==='/profil');
+ await guest.locator('#login-password').waitFor();await guest.close();
+ const expired=await page('learner');await expired.goto(origin+'/profil');
+ await expired.locator('#profile-field-2').waitFor();await expired.context().clearCookies();await expired.reload();
+ await expired.waitForURL(url=>url.pathname==='/login'&&url.searchParams.get('returnTo')==='/profil');
+ await expired.locator('#login-password').waitFor();await expired.close();
+ step('anonymous and expired profile sessions return to login with the requested destination');
  const p=await page('learner'),a=await page('admin');
- await p.goto(origin+'/profil');await p.locator('#profile-field-2').fill('Technicien de maintenance — recette');await p.getByRole('button',{name:t['userProfile.saveButton'],exact:true}).click();await p.getByText(t['userProfile.toastUpdateSuccess'],{exact:true}).waitFor();await p.reload();assert.equal(await p.locator('#profile-field-2').inputValue(),'Technicien de maintenance — recette');step('profile edit persists after reload');
- const marketing=p.getByRole('checkbox').last();const previous=await marketing.isChecked();const changed=p.waitForResponse(r=>r.url().includes('me.setConsents')&&r.request().method()==='POST');await marketing.click();await changed;await p.reload();assert.equal(await marketing.isChecked(),!previous);const reverted=p.waitForResponse(r=>r.url().includes('me.setConsents')&&r.request().method()==='POST');await marketing.click();await reverted;step('consent grant and withdrawal persist');
+ await p.goto(origin+'/profil');
+ const jobTitle='Technicien de maintenance — recette',field=p.locator('#profile-field-2');
+ await field.fill(jobTitle);
+ const marketing=p.getByRole('checkbox').last(),previous=await marketing.isChecked();
+ const setMarketing=async value=>{
+  const changed=p.waitForResponse(r=>r.url().includes('me.setConsents')&&r.request().method()==='POST');
+  await marketing.click();assert.equal((await changed).ok(),true);
+  await p.waitForFunction(value=>[...document.querySelectorAll('input[type=checkbox]')].at(-1)?.checked===value,value);
+ };
+ await setMarketing(!previous);
+ assert.equal(await field.inputValue(),jobTitle);
+ step('consent refresh preserves unsaved profile edits');
+ await p.getByRole('button',{name:t['userProfile.saveButton'],exact:true}).click();
+ await p.getByText(t['userProfile.toastUpdateSuccess'],{exact:true}).waitFor();
+ await p.reload();
+ await p.waitForFunction(value=>document.querySelector('#profile-field-2')?.value===value,jobTitle);
+ assert.equal(await field.inputValue(),jobTitle);step('profile edit persists after reload');
+ assert.equal(await marketing.isChecked(),!previous);await setMarketing(previous);
+ await p.reload();await field.waitFor();assert.equal(await marketing.isChecked(),previous);
+ step('consent grant and withdrawal persist');
  const download=p.waitForEvent('download');await p.getByRole('button',{name:'Télécharger mes données',exact:true}).click();const file=await download;await file.saveAs(`${output}/personal-export.json`);const exported=JSON.parse(fs.readFileSync(`${output}/personal-export.json`,'utf8'));assert.ok(JSON.stringify(exported).includes(credentials.learnerEmail));step('personal data export downloads valid account JSON');
  await p.goto(origin+'/support');await p.getByRole('button',{name:t['support.newRequest'],exact:true}).click();await p.locator('#support-subject').fill('Recette E2E — suivi de formation');await p.locator('#support-message').fill('Demande de recette : merci de vérifier le suivi du parcours.');
  const created=p.waitForResponse(r=>r.url().includes('support.create')&&r.request().method()==='POST');await p.locator('form button[type=submit]').click();const raw=await(await created).json();const ticket=(Array.isArray(raw)?raw[0]:raw).result.data.json;fs.writeFileSync(`${output}/ticket.json`,JSON.stringify(ticket));await p.getByText('Demande de recette : merci de vérifier le suivi du parcours.',{exact:true}).waitFor();step('learner opens support ticket with initial message');

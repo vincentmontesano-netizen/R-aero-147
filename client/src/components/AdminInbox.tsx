@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useI18n } from "@/i18n";
 import { Button } from "@/components/ui/button";
@@ -10,12 +10,17 @@ const MUTED = "var(--muted-foreground)";
 const BORDER = "var(--border)";
 const dt = (v: any) => (v ? new Date(v).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }) : "");
 
-/** Read-only IMAP inbox (admin → Emails → Réception). */
-export default function AdminInbox({ configured }: { configured: boolean }) {
+/** Inbox viewer (admin → Emails → Réception). Hostinger marks opened mail read. */
+export default function AdminInbox({ configured, marksReadOnOpen = false }: { configured: boolean; marksReadOnOpen?: boolean }) {
   const { t } = useI18n();
   const [openUid, setOpenUid] = useState<number | null>(null);
+  const utils = trpc.useUtils();
   const list = trpc.admin.inbox.list.useQuery({ limit: 25 }, { enabled: configured, retry: false });
-  const message = trpc.admin.inbox.message.useQuery({ uid: openUid! }, { enabled: openUid != null, retry: false });
+  const message = trpc.admin.inbox.message.useQuery({ uid: openUid! }, { enabled: openUid != null, retry: false, refetchOnWindowFocus: false, refetchOnReconnect: false });
+  useEffect(() => {
+    // A failed/aborted body download may still have marked the provider message read.
+    if (marksReadOnOpen && (message.dataUpdatedAt || message.errorUpdatedAt)) void utils.admin.inbox.list.invalidate();
+  }, [marksReadOnOpen, message.dataUpdatedAt, message.errorUpdatedAt, utils]);
 
   if (!configured) {
     return <p className="text-sm py-6" style={{ color: "var(--destructive)" }}>{t("adminInbox.notConfigured")}</p>;
@@ -30,6 +35,7 @@ export default function AdminInbox({ configured }: { configured: boolean }) {
         </Button>
       </div>
 
+      {marksReadOnOpen && <p className="text-xs mb-3" style={{ color: "var(--muted-foreground)" }}>{t("adminInbox.marksReadOnOpen")}</p>}
       {list.isLoading && <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>{t("adminInbox.loading")}</p>}
       {list.error && <p className="text-sm" style={{ color: "var(--destructive)" }}>{list.error.message}</p>}
       {list.data && list.data.length === 0 && <p className="text-sm" style={{ color: "var(--muted-foreground)" }}>{t("adminInbox.empty")}</p>}
@@ -62,7 +68,13 @@ export default function AdminInbox({ configured }: { configured: boolean }) {
                 {message.error && <p className="text-sm" style={{ color: "var(--destructive)" }}>{message.error.message}</p>}
                 {message.data && (
                   message.data.html
-                    ? <div className="text-sm prose max-w-none" style={{ color: "var(--foreground)" }} dangerouslySetInnerHTML={{ __html: message.data.html }} />
+                    ? <iframe
+                        title={m.subject || t("adminInbox.title")}
+                        className="w-full min-h-80 rounded border-0 bg-white"
+                        sandbox=""
+                        referrerPolicy="no-referrer"
+                        srcDoc={`<!doctype html><html><head><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'"><style>body{font:14px system-ui;color:#172033;overflow-wrap:anywhere}img{max-width:100%;height:auto}</style></head><body>${message.data.html}</body></html>`}
+                      />
                     : <div className="text-sm whitespace-pre-wrap" style={{ color: "var(--foreground)" }}>{message.data.text || t("adminInbox.empty")}</div>
                 )}
               </div>

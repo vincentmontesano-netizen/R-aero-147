@@ -1,3 +1,4 @@
+import { emailTransport, emailTransportSchema, emailTransportSetting, emailTransportStatus, hostingerMailConfigured } from "./emailTransport";
 import { establishSession } from "./_core/sessionTransport";
 import {notifySupport,listSupportNotifications,supportNotificationListInput,sendPendingSupportNotification,supportNotificationSendInput} from "./supportNotifications";
 import {supportMessageInput} from "../shared/supportMessageInput";
@@ -150,14 +151,24 @@ const moderatorProcedure = protectedProcedure.use(({ ctx, next }) => {
 });
 
 // Organization access derives from current active memberships, not the global role.
-const orgManagerProcedure = protectedProcedure.use(async ({ctx,next}) => {
+const companyScopeFields = { orgId: z.number().int().positive().max(2147483647).optional() };
+const companyScopedProcedure = protectedProcedure.input(z.object(companyScopeFields).optional()).use(async ({ ctx, input, next }) => {
+  const companyScope = input?.orgId;
+  if (companyScope !== undefined) await requireManagedCompany(ctx.user, companyScope);
+  return next({ ctx: { ...ctx, companyScope, user: companyScope === undefined ? ctx.user : { ...ctx.user, companyId: companyScope } } });
+});
+const orgManagerProcedure = companyScopedProcedure.use(async ({ctx,next}) => {
   const effective = await getActiveAffiliations(ctx.user.id);
   if (ctx.user.role !== "admin" && !effective.some(a=>a.role === "MANAGER"))
     throw new TRPCError({code:"FORBIDDEN",message:"Une affiliation active de responsable est requise."});
-  return next({ctx:{...ctx,affiliations:effective}});
+  const managed = effective.filter(a => a.role === "MANAGER");
+  const companyId = ctx.user.companyId ?? (ctx.user.role !== "admin" && managed.length === 1 ? managed[0].orgId : null);
+  return next({ctx:{...ctx,user:{...ctx.user,companyId},affiliations:effective}});
 });
 function managerOrgId(ctx: any): number {
-  const aff = (ctx.affiliations ?? []).find((a:any)=>a.role === "MANAGER" && a.status === "ACTIVE");
+  if (ctx.companyScope !== undefined) return ctx.companyScope;
+  const managed = (ctx.affiliations ?? []).filter((a:any)=>a.role === "MANAGER" && a.status === "ACTIVE");
+  const aff = managed.find((a:any) => a.orgId === ctx.user.companyId) ?? (managed.length === 1 ? managed[0] : null);
   const orgId = aff?.orgId ?? (ctx.user.role === "admin" ? ctx.user.companyId : null);
   if (!orgId) throw new TRPCError({code:"FORBIDDEN",message:"Aucune organisation active rattachée à votre compte."});
   return orgId;
@@ -190,6 +201,242 @@ function aiErr<T>(fn: () => Promise<T>): Promise<T> {
     throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: e?.message ?? "Erreur IA" });
   });
 }
+
+// Shared handlers retain the legacy API while new clients use a distinct scoped contract.
+const companyRouter = router({
+    get: companyScopedProcedure.query(async ({ ctx }) => {
+      if (ctx.user.companyId && ctx.user.role !== "admin") await assertActiveAffiliation(ctx.user.id, ctx.user.companyId);
+      const company = await getUserCompany(ctx.user.id, ctx.companyScope);
+      return company && ctx.companyScope !== undefined ? { ...company, selectedOrgId: ctx.companyScope } : company;
+    }),
+    upsert: companyScopedProcedure
+      .input(z.object({
+        name: z.string(),
+        siret: z.string().optional(),
+        vatNumber: z.string().optional(),
+        address: z.string().optional(),
+        country: z.string().optional(),
+        contactName: z.string().optional(),
+        contactEmail: z.string().optional(),
+        contactPhone: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => { if(ctx.user.companyId) await requireManagedCompany(ctx.user); const { orgId, ...data } = input; return createOrUpdateCompany(ctx.user.id, data, ctx.companyScope); }),
+
+    // ── Membres / affiliations (manager-scoped) ──
+    // A MANAGER manages the affiliations of THEIR OWN org. The org is resolved from the
+    // manager's own ACTIVE MANAGER affiliation; any affiliation acted upon must belong to it.
+    affiliates: orgManagerProcedure.query(({ ctx }) => {
+      const orgId = managerOrgId(ctx);
+      return getOrganizationAffiliates(orgId);
+    }),
+    addAffiliate: orgManagerProcedure
+      .input(z.object({ email: z.string().email(), role: z.enum(["MANAGER", "MEMBER"]).default("MEMBER") }))
+      .mutation(async ({ ctx, input }) => {
+        const orgId = managerOrgId(ctx);
+        const r = await addOrganizationAffiliate(orgId, input.email, input.role);
+        if (!r.ok) throw new TRPCError({ code: "BAD_REQUEST", message: r.reason === "no_user" ? "Aucun compte avec cet email. La personne doit d'abord créer un compte." : "Échec de l'ajout." });
+        return r;
+      }),
+    setAffiliateRole: orgManagerProcedure
+      .input(z.object({ affiliationId: z.number(), role: z.enum(["MANAGER", "MEMBER"]) }))
+      .mutation(async ({ ctx, input }) => {
+        const orgId = managerOrgId(ctx);
+        const aff = await getAffiliationById(input.affiliationId);
+        if (!aff || aff.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN" });
+        return setAffiliationRole(input.affiliationId, input.role);
+      }),
+    removeAffiliate: orgManagerProcedure
+      .input(z.object({ affiliationId: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const orgId = managerOrgId(ctx);
+        const aff = await getAffiliationById(input.affiliationId);
+        if (!aff || aff.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN" });
+        if (aff.personId === ctx.user.id) throw new TRPCError({ code: "BAD_REQUEST", message: "Vous ne pouvez pas retirer votre propre affiliation." });
+        return removeOrganizationManager(input.affiliationId);
+      }),
+
+    employees: orgManagerProcedure.query(async ({ ctx }) => { await requireManagedCompany(ctx.user); return getCompanyEmployees(ctx.user.id, ctx.companyScope); }),
+    createEmployee: orgManagerProcedure
+      .input(z.object({
+        firstName: z.string(),
+        lastName: z.string(),
+        email: z.string().email(),
+        jobTitle: z.string().optional(),
+        licenseNumber: z.string().optional(),
+        licenseCategories: z.string().optional(),
+        typeRatings: z.string().optional(),
+        department: z.string().optional(),
+        base: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => { await requireManagedCompany(ctx.user); const { orgId, ...data } = input; return createEmployee(ctx.user.id, data, ctx.companyScope); }),
+    updateEmployee: orgManagerProcedure
+      .input(z.object({ id: z.number().int().positive(), firstName: z.string().min(1).max(128).optional(), lastName: z.string().min(1).max(128).optional(), email: z.string().email().optional(), jobTitle: z.string().max(128).optional(), licenseNumber: z.string().max(64).optional(), licenseCategories: z.string().max(128).optional(), typeRatings: z.string().max(255).optional(), department: z.string().max(128).optional(), base: z.string().max(128).optional(), isActive: z.boolean().optional() }).extend(companyScopeFields).strict())
+      .mutation(async ({ ctx, input }) => { const { id, orgId, ...data } = input; const employee = await requireManagedEmployee(ctx.user, id, ctx.companyScope); return updateEmployee(id, data, employee.companyId); }),
+
+    importCSV: orgManagerProcedure
+      .input(z.object({ csvData: z.string() }))
+      .mutation(async ({ ctx, input }) => { const companyId = await requireManagedCompany(ctx.user); return importEmployeesCSV(ctx.user.id, input.csvData, companyId, ctx.companyScope); }),
+
+    recurrencies: orgManagerProcedure.query(async ({ ctx }) => {
+      await requireManagedCompany(ctx.user);
+      const rows = await getCompanyRecurrencies(ctx.user.id, ctx.companyScope);
+      // INV-8: a manager reading the recurrency deadlines of the org's roster.
+      await logAccess({
+        actorId: ctx.user.id, actorRole: "AFFILIATION:MANAGER", action: "READ_COMPANY_RECURRENCIES",
+        targetOrgId: ctx.user.companyId ?? null,
+        dataAccessed: { scope: "ORG", count: rows.length, employeeIds: rows.map((r: any) => r.employeeId) },
+        ip: ipFromReq(ctx.req),
+      });
+      return rows;
+    }),
+
+    // ── Subscription (conformité-as-a-subscription) ──
+    subscription: companyScopedProcedure.query(async ({ ctx }) => { await requireManagedCompany(ctx.user); return getCompanySubscriptionView(ctx.user.id, ctx.companyScope); }),
+    createSubscription: orgManagerProcedure
+      .input(z.object({ plan: z.enum(["standard", "all_inclusive"]), origin: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        await requireManagedCompany(ctx.user);
+        if (!ctx.user.companyId) throw new TRPCError({ code: "FORBIDDEN" });
+        try {
+          return await createSubscriptionCheckoutSession({ companyId: ctx.user.companyId, plan: input.plan, origin: input.origin, userId: ctx.user.id, userEmail: ctx.user.email ?? undefined });
+        } catch (err: any) {
+          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err.message });
+        }
+      }),
+    createPortalSession: orgManagerProcedure
+      .input(z.object({ origin: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        await requireManagedCompany(ctx.user);
+        if (!ctx.user.companyId) throw new TRPCError({ code: "FORBIDDEN" });
+        try {
+          return await createBillingPortalSession(ctx.user.companyId, input.origin);
+        } catch (err: any) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
+        }
+      }),
+    confirmSubscription: orgManagerProcedure.mutation(async ({ ctx }) => {
+      await requireManagedCompany(ctx.user);
+      if (!ctx.user.companyId) throw new TRPCError({ code: "FORBIDDEN", message: "Compte entreprise requis." });
+      return confirmSubscription(ctx.user.companyId);
+    }),
+
+    // ── Technician file (V2.2) ──
+    technicianFile: companyScopedProcedure
+      .input(z.object({ employeeId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        await requireManagedEmployee(ctx.user,input.employeeId,ctx.companyScope);
+        const file = await getTechnicianFile(input.employeeId);
+        if (!file) throw new TRPCError({ code: "NOT_FOUND", message: "Technicien introuvable." });
+        const orgId = file.employee.companyId;
+        const subjectUserId = file.employee.userId;
+        const isAdmin = ctx.user.role === "admin";
+        await logAccess({
+          actorId: ctx.user.id, actorRole: isAdmin ? "admin" : "AFFILIATION:MANAGER",
+          subjectPersonId: subjectUserId ?? null, action: "READ_TECHNICIAN_FILE",
+          targetOrgId: orgId, dataAccessed: { scope: "ORG", employeeId: input.employeeId },
+          ip: ipFromReq(ctx.req),
+        });
+        // INV-3: a Person's dossier is reduced to the bounded org-scoped view (required
+        // modules + Part-66 coverage + deadlines). Roster-only records (no login account)
+        // keep the org's own recurrency tracking. Raw enrollments/certs/personal email are
+        // never forwarded — the personal login email is never even loaded here.
+        const e = file.employee;
+        const employee = {
+          id: e.id, firstName: e.firstName, lastName: e.lastName, jobTitle: e.jobTitle,
+          licenseNumber: e.licenseNumber, licenseCategories: e.licenseCategories, typeRatings: e.typeRatings,
+          department: e.department, base: e.base, companyId: e.companyId, userId: e.userId, email: e.email,
+        };
+        const scoped = subjectUserId ? await orgScopedViewForSubject(orgId, subjectUserId) : null;
+        // Viewing a dossier does not establish reliance on every shared proof.
+        // createSignoff retains only the explicitly validated credential.
+        // ID module (passport documents) is shared with the org ONLY if the person opted in.
+        let passportDocuments: any[] = [];
+        if (subjectUserId) {
+          const subject = await getUserById(subjectUserId);
+          if (subject?.passportShared) passportDocuments = await getPassportDocuments(subjectUserId);
+        }
+        return { employee, scoped, recurrencies: file.recurrencies, externalTrainings: file.externalTrainings, passportDocuments };
+      }),
+    addExternalTraining: companyScopedProcedure
+      .input(z.object({
+        employeeId: z.number(), title: z.string().min(1), provider: z.string().optional(),
+        category: z.string().optional(), completedAt: z.string().optional(), expiresAt: z.string().optional(),
+        certNumber: z.string().optional(), docUrl: z.string().optional(),
+      }))
+      .mutation(async ({ ctx, input }) => {
+        // INV-5: external/prior qualifications are surfaced by the PERSON (« Mon dossier »),
+        // never added by the manager. Kept admin-only for support/back-office.
+        if (ctx.user.role !== "admin")
+          throw new TRPCError({ code: "FORBIDDEN", message: "Les acquis externes sont déclarés par la personne elle-même (« Mon dossier »)." });
+        if (ctx.companyScope !== undefined) await requireManagedEmployee(ctx.user, input.employeeId, ctx.companyScope);
+        const file = await getTechnicianFile(input.employeeId);
+        if (!file) throw new TRPCError({ code: "NOT_FOUND" });
+        return createExternalTraining({
+          employeeId: input.employeeId, userId: file.employee.userId ?? null, companyId: file.employee.companyId,
+          title: input.title, provider: input.provider, category: input.category,
+          completedAt: input.completedAt ? new Date(input.completedAt) : null,
+          expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
+          certNumber: input.certNumber, docUrl: input.docUrl,
+        });
+      }),
+    archiveExternalTraining: orgManagerProcedure
+      .input(archiveExternalTrainingInput.extend(companyScopeFields))
+      .mutation(({ctx,input}) => archiveExternalTraining(ctx.user.id,{id:input.id,reason:input.reason},ctx.companyScope)),
+    deleteExternalTraining: orgManagerProcedure
+      .input(z.object({ id: z.number().int().positive() }))
+      .mutation(() => { throw new TRPCError({code:"PRECONDITION_FAILED",message:"Archivez la formation avec un motif pour conserver son justificatif."}); }),
+
+    // ── Sign-off (INV-4): the HUMAN determination of compliance by a manager ──
+    signoff: orgManagerProcedure
+      .input(z.object({ requestId:z.string().uuid(), employeeId: z.number().int().positive(), trainingId: z.number().int().positive().optional(), credentialId: z.number().int().positive().optional(), scope: z.enum(["COMPETENCE","RECURRENCY"]).optional(), decision: z.enum(["VALIDATED", "REJECTED"]).optional(), note: z.string().trim().max(2000).optional() }))
+      .mutation(async ({ ctx, input }) => {
+        await requireManagedEmployee(ctx.user,input.employeeId,ctx.companyScope);
+        const file = await getTechnicianFile(input.employeeId);
+        if (!file?.employee.userId) throw new TRPCError({ code: "BAD_REQUEST", message: "Le sign-off requiert un technicien rattaché à un compte personne." });
+        const orgId = file.employee.companyId;
+        const subjectPersonId = file.employee.userId;
+        const isAdmin = ctx.user.role === "admin";
+        const subjectAff = await assertActiveAffiliation(subjectPersonId,orgId);
+        const so = await createSignoff({
+          requestId:input.requestId,employeeId:input.employeeId,managerPersonId: ctx.user.id, subjectPersonId, orgId, affiliationId: subjectAff?.id ?? null,
+          credentialId: input.credentialId, trainingId: input.trainingId, scope: input.scope, decision: input.decision, note: input.note,
+        });
+        // Retention of an explicitly used proof is committed with the decision.
+        await logAccess({ actorId: ctx.user.id, actorRole: isAdmin ? "admin" : "AFFILIATION:MANAGER", subjectPersonId, action: "SIGNOFF", targetOrgId: orgId, dataAccessed: { trainingId: input.trainingId ?? null, decision: input.decision ?? "VALIDATED" }, ip: ipFromReq(ctx.req) });
+        return so;
+      }),
+    signoffs: orgManagerProcedure
+      .input(z.object({ employeeId: z.number() }))
+      .query(async ({ ctx, input }) => {
+        await requireManagedEmployee(ctx.user,input.employeeId,ctx.companyScope);
+        const file = await getTechnicianFile(input.employeeId);
+        if (!file?.employee.userId) return [];
+        return getSignoffsForSubject(file.employee.userId, file.employee.companyId);
+      }),
+
+    // ── Consolidated view + TNA (V2.3) ──
+    consolidated: orgManagerProcedure.query(async ({ ctx }) => { await requireManagedCompany(ctx.user); return getCompanyConsolidated(ctx.user.id, ctx.companyScope); }),
+    roleRequirements: orgManagerProcedure.query(async ({ ctx }) => { if(ctx.user.companyId != null || ctx.user.role !== "admin") await requireManagedCompany(ctx.user); return getRoleRequirements(ctx.user.companyId ?? null); }),
+    roleRequirementCourses: orgManagerProcedure.query(({ctx})=>roleRequirementCourses(ctx.user.id, ctx.companyScope)),
+    roleRequirementHistory: orgManagerProcedure
+      .input(z.object({beforeId:z.number().int().positive().max(2147483647).optional()}))
+      .query(({ctx,input})=>roleRequirementHistory(ctx.user.id,input.beforeId,ctx.companyScope)),
+    createRoleRequirement: orgManagerProcedure
+      .input(roleRequirementInput.extend(companyScopeFields))
+      .mutation(async ({ ctx, input }) => {
+        if (ctx.user.companyId || ctx.user.role !== "admin") await requireManagedCompany(ctx.user);
+        const { orgId, ...data } = input;
+        return createRoleRequirement({ ...data, companyId: ctx.user.companyId ?? null }, ctx.user.id, ctx.companyScope);
+      }),
+    deleteRoleRequirement: orgManagerProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => { if(ctx.user.role !== "admin") await requireManagedCompany(ctx.user); return deleteRoleRequirement(input.id, ctx.user.id, ctx.companyScope); }),
+    runTNA: orgManagerProcedure.mutation(async ({ ctx }) => {
+      await requireManagedCompany(ctx.user);
+      if (!ctx.user.companyId) throw new TRPCError({ code: "FORBIDDEN", message: "Compte entreprise requis." });
+      return runTNA(ctx.user.companyId, ctx.user.id, ctx.companyScope);
+    }),
+  });
 
 export const appRouter = router({
   billing: billingRouter,
@@ -460,6 +707,7 @@ export const appRouter = router({
           });
           return result;
         } catch (err: any) {
+          if (err instanceof TRPCError) throw err;
           throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err.message });
         }
       }),
@@ -596,235 +844,9 @@ export const appRouter = router({
       }),
   }),
 
-  // ─── Company (B2B) ─────────────────────────────────────────────────────────
-  company: router({
-    get: protectedProcedure.query(async ({ ctx }) => { if(ctx.user.companyId && ctx.user.role !== "admin") await assertActiveAffiliation(ctx.user.id,ctx.user.companyId); return getUserCompany(ctx.user.id); }),
-    upsert: protectedProcedure
-      .input(z.object({
-        name: z.string(),
-        siret: z.string().optional(),
-        vatNumber: z.string().optional(),
-        address: z.string().optional(),
-        country: z.string().optional(),
-        contactName: z.string().optional(),
-        contactEmail: z.string().optional(),
-        contactPhone: z.string().optional(),
-      }))
-      .mutation(async ({ ctx, input }) => { if(ctx.user.companyId) await requireManagedCompany(ctx.user); return createOrUpdateCompany(ctx.user.id, input); }),
-
-    // ── Membres / affiliations (manager-scoped) ──
-    // A MANAGER manages the affiliations of THEIR OWN org. The org is resolved from the
-    // manager's own ACTIVE MANAGER affiliation; any affiliation acted upon must belong to it.
-    affiliates: orgManagerProcedure.query(({ ctx }) => {
-      const orgId = managerOrgId(ctx);
-      return getOrganizationAffiliates(orgId);
-    }),
-    addAffiliate: orgManagerProcedure
-      .input(z.object({ email: z.string().email(), role: z.enum(["MANAGER", "MEMBER"]).default("MEMBER") }))
-      .mutation(async ({ ctx, input }) => {
-        const orgId = managerOrgId(ctx);
-        const r = await addOrganizationAffiliate(orgId, input.email, input.role);
-        if (!r.ok) throw new TRPCError({ code: "BAD_REQUEST", message: r.reason === "no_user" ? "Aucun compte avec cet email. La personne doit d'abord créer un compte." : "Échec de l'ajout." });
-        return r;
-      }),
-    setAffiliateRole: orgManagerProcedure
-      .input(z.object({ affiliationId: z.number(), role: z.enum(["MANAGER", "MEMBER"]) }))
-      .mutation(async ({ ctx, input }) => {
-        const orgId = managerOrgId(ctx);
-        const aff = await getAffiliationById(input.affiliationId);
-        if (!aff || aff.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN" });
-        return setAffiliationRole(input.affiliationId, input.role);
-      }),
-    removeAffiliate: orgManagerProcedure
-      .input(z.object({ affiliationId: z.number() }))
-      .mutation(async ({ ctx, input }) => {
-        const orgId = managerOrgId(ctx);
-        const aff = await getAffiliationById(input.affiliationId);
-        if (!aff || aff.orgId !== orgId) throw new TRPCError({ code: "FORBIDDEN" });
-        if (aff.personId === ctx.user.id) throw new TRPCError({ code: "BAD_REQUEST", message: "Vous ne pouvez pas retirer votre propre affiliation." });
-        return removeOrganizationManager(input.affiliationId);
-      }),
-
-    employees: orgManagerProcedure.query(async ({ ctx }) => { await requireManagedCompany(ctx.user); return getCompanyEmployees(ctx.user.id); }),
-    createEmployee: orgManagerProcedure
-      .input(z.object({
-        firstName: z.string(),
-        lastName: z.string(),
-        email: z.string().email(),
-        jobTitle: z.string().optional(),
-        licenseNumber: z.string().optional(),
-        licenseCategories: z.string().optional(),
-        typeRatings: z.string().optional(),
-        department: z.string().optional(),
-        base: z.string().optional(),
-      }))
-      .mutation(async ({ ctx, input }) => { await requireManagedCompany(ctx.user); return createEmployee(ctx.user.id, input); }),
-    updateEmployee: orgManagerProcedure
-      .input(z.object({ id: z.number().int().positive(), firstName: z.string().min(1).max(128).optional(), lastName: z.string().min(1).max(128).optional(), email: z.string().email().optional(), jobTitle: z.string().max(128).optional(), licenseNumber: z.string().max(64).optional(), licenseCategories: z.string().max(128).optional(), typeRatings: z.string().max(255).optional(), department: z.string().max(128).optional(), base: z.string().max(128).optional(), isActive: z.boolean().optional() }).strict())
-      .mutation(async ({ ctx, input }) => { const { id, ...data } = input; const employee = await requireManagedEmployee(ctx.user, id); return updateEmployee(id, data, employee.companyId); }),
-
-    importCSV: orgManagerProcedure
-      .input(z.object({ csvData: z.string() }))
-      .mutation(async ({ ctx, input }) => { const companyId = await requireManagedCompany(ctx.user); return importEmployeesCSV(ctx.user.id, input.csvData, companyId); }),
-
-    recurrencies: orgManagerProcedure.query(async ({ ctx }) => {
-      await requireManagedCompany(ctx.user);
-      const rows = await getCompanyRecurrencies(ctx.user.id);
-      // INV-8: a manager reading the recurrency deadlines of the org's roster.
-      await logAccess({
-        actorId: ctx.user.id, actorRole: "AFFILIATION:MANAGER", action: "READ_COMPANY_RECURRENCIES",
-        targetOrgId: ctx.user.companyId ?? null,
-        dataAccessed: { scope: "ORG", count: rows.length, employeeIds: rows.map((r: any) => r.employeeId) },
-        ip: ipFromReq(ctx.req),
-      });
-      return rows;
-    }),
-
-    // ── Subscription (conformité-as-a-subscription) ──
-    subscription: protectedProcedure.query(async ({ ctx }) => { await requireManagedCompany(ctx.user); return getCompanySubscriptionView(ctx.user.id); }),
-    createSubscription: orgManagerProcedure
-      .input(z.object({ plan: z.enum(["standard", "all_inclusive"]), origin: z.string() }))
-      .mutation(async ({ ctx, input }) => {
-        await requireManagedCompany(ctx.user);
-        if (!ctx.user.companyId) throw new TRPCError({ code: "FORBIDDEN" });
-        try {
-          return await createSubscriptionCheckoutSession({ companyId: ctx.user.companyId, plan: input.plan, origin: input.origin, userId: ctx.user.id, userEmail: ctx.user.email ?? undefined });
-        } catch (err: any) {
-          throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: err.message });
-        }
-      }),
-    createPortalSession: orgManagerProcedure
-      .input(z.object({ origin: z.string() }))
-      .mutation(async ({ ctx, input }) => {
-        await requireManagedCompany(ctx.user);
-        if (!ctx.user.companyId) throw new TRPCError({ code: "FORBIDDEN" });
-        try {
-          return await createBillingPortalSession(ctx.user.companyId, input.origin);
-        } catch (err: any) {
-          throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
-        }
-      }),
-    confirmSubscription: orgManagerProcedure.mutation(async ({ ctx }) => {
-      await requireManagedCompany(ctx.user);
-      if (!ctx.user.companyId) throw new TRPCError({ code: "FORBIDDEN", message: "Compte entreprise requis." });
-      return confirmSubscription(ctx.user.companyId);
-    }),
-
-    // ── Technician file (V2.2) ──
-    technicianFile: protectedProcedure
-      .input(z.object({ employeeId: z.number() }))
-      .query(async ({ ctx, input }) => {
-        await requireManagedEmployee(ctx.user,input.employeeId);
-        const file = await getTechnicianFile(input.employeeId);
-        if (!file) throw new TRPCError({ code: "NOT_FOUND", message: "Technicien introuvable." });
-        const orgId = file.employee.companyId;
-        const subjectUserId = file.employee.userId;
-        const isAdmin = ctx.user.role === "admin";
-        await logAccess({
-          actorId: ctx.user.id, actorRole: isAdmin ? "admin" : "AFFILIATION:MANAGER",
-          subjectPersonId: subjectUserId ?? null, action: "READ_TECHNICIAN_FILE",
-          targetOrgId: orgId, dataAccessed: { scope: "ORG", employeeId: input.employeeId },
-          ip: ipFromReq(ctx.req),
-        });
-        // INV-3: a Person's dossier is reduced to the bounded org-scoped view (required
-        // modules + Part-66 coverage + deadlines). Roster-only records (no login account)
-        // keep the org's own recurrency tracking. Raw enrollments/certs/personal email are
-        // never forwarded — the personal login email is never even loaded here.
-        const e = file.employee;
-        const employee = {
-          id: e.id, firstName: e.firstName, lastName: e.lastName, jobTitle: e.jobTitle,
-          licenseNumber: e.licenseNumber, licenseCategories: e.licenseCategories, typeRatings: e.typeRatings,
-          department: e.department, base: e.base, companyId: e.companyId, userId: e.userId, email: e.email,
-        };
-        const scoped = subjectUserId ? await orgScopedViewForSubject(orgId, subjectUserId) : null;
-        // Viewing a dossier does not establish reliance on every shared proof.
-        // createSignoff retains only the explicitly validated credential.
-        // ID module (passport documents) is shared with the org ONLY if the person opted in.
-        let passportDocuments: any[] = [];
-        if (subjectUserId) {
-          const subject = await getUserById(subjectUserId);
-          if (subject?.passportShared) passportDocuments = await getPassportDocuments(subjectUserId);
-        }
-        return { employee, scoped, recurrencies: file.recurrencies, externalTrainings: file.externalTrainings, passportDocuments };
-      }),
-    addExternalTraining: protectedProcedure
-      .input(z.object({
-        employeeId: z.number(), title: z.string().min(1), provider: z.string().optional(),
-        category: z.string().optional(), completedAt: z.string().optional(), expiresAt: z.string().optional(),
-        certNumber: z.string().optional(), docUrl: z.string().optional(),
-      }))
-      .mutation(async ({ ctx, input }) => {
-        // INV-5: external/prior qualifications are surfaced by the PERSON (« Mon dossier »),
-        // never added by the manager. Kept admin-only for support/back-office.
-        if (ctx.user.role !== "admin")
-          throw new TRPCError({ code: "FORBIDDEN", message: "Les acquis externes sont déclarés par la personne elle-même (« Mon dossier »)." });
-        const file = await getTechnicianFile(input.employeeId);
-        if (!file) throw new TRPCError({ code: "NOT_FOUND" });
-        return createExternalTraining({
-          employeeId: input.employeeId, userId: file.employee.userId ?? null, companyId: file.employee.companyId,
-          title: input.title, provider: input.provider, category: input.category,
-          completedAt: input.completedAt ? new Date(input.completedAt) : null,
-          expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
-          certNumber: input.certNumber, docUrl: input.docUrl,
-        });
-      }),
-    archiveExternalTraining: orgManagerProcedure
-      .input(archiveExternalTrainingInput)
-      .mutation(({ctx,input}) => archiveExternalTraining(ctx.user.id,input)),
-    deleteExternalTraining: orgManagerProcedure
-      .input(z.object({ id: z.number().int().positive() }))
-      .mutation(() => { throw new TRPCError({code:"PRECONDITION_FAILED",message:"Archivez la formation avec un motif pour conserver son justificatif."}); }),
-
-    // ── Sign-off (INV-4): the HUMAN determination of compliance by a manager ──
-    signoff: orgManagerProcedure
-      .input(z.object({ requestId:z.string().uuid(), employeeId: z.number().int().positive(), trainingId: z.number().int().positive().optional(), credentialId: z.number().int().positive().optional(), scope: z.enum(["COMPETENCE","RECURRENCY"]).optional(), decision: z.enum(["VALIDATED", "REJECTED"]).optional(), note: z.string().trim().max(2000).optional() }))
-      .mutation(async ({ ctx, input }) => {
-        await requireManagedEmployee(ctx.user,input.employeeId);
-        const file = await getTechnicianFile(input.employeeId);
-        if (!file?.employee.userId) throw new TRPCError({ code: "BAD_REQUEST", message: "Le sign-off requiert un technicien rattaché à un compte personne." });
-        const orgId = file.employee.companyId;
-        const subjectPersonId = file.employee.userId;
-        const isAdmin = ctx.user.role === "admin";
-        const subjectAff = await assertActiveAffiliation(subjectPersonId,orgId);
-        const so = await createSignoff({
-          requestId:input.requestId,employeeId:input.employeeId,managerPersonId: ctx.user.id, subjectPersonId, orgId, affiliationId: subjectAff?.id ?? null,
-          credentialId: input.credentialId, trainingId: input.trainingId, scope: input.scope, decision: input.decision, note: input.note,
-        });
-        // Retention of an explicitly used proof is committed with the decision.
-        await logAccess({ actorId: ctx.user.id, actorRole: isAdmin ? "admin" : "AFFILIATION:MANAGER", subjectPersonId, action: "SIGNOFF", targetOrgId: orgId, dataAccessed: { trainingId: input.trainingId ?? null, decision: input.decision ?? "VALIDATED" }, ip: ipFromReq(ctx.req) });
-        return so;
-      }),
-    signoffs: orgManagerProcedure
-      .input(z.object({ employeeId: z.number() }))
-      .query(async ({ ctx, input }) => {
-        await requireManagedEmployee(ctx.user,input.employeeId);
-        const file = await getTechnicianFile(input.employeeId);
-        if (!file?.employee.userId) return [];
-        return getSignoffsForSubject(file.employee.userId, file.employee.companyId);
-      }),
-
-    // ── Consolidated view + TNA (V2.3) ──
-    consolidated: orgManagerProcedure.query(async ({ ctx }) => { await requireManagedCompany(ctx.user); return getCompanyConsolidated(ctx.user.id); }),
-    roleRequirements: orgManagerProcedure.query(async ({ ctx }) => { if(ctx.user.companyId != null || ctx.user.role !== "admin") await requireManagedCompany(ctx.user); return getRoleRequirements(ctx.user.companyId ?? null); }),
-    roleRequirementCourses: orgManagerProcedure.query(({ctx})=>roleRequirementCourses(ctx.user.id)),
-    roleRequirementHistory: orgManagerProcedure
-      .input(z.object({beforeId:z.number().int().positive().max(2147483647).optional()}))
-      .query(({ctx,input})=>roleRequirementHistory(ctx.user.id,input.beforeId)),
-    createRoleRequirement: orgManagerProcedure
-      .input(roleRequirementInput)
-      .mutation(async ({ ctx, input }) => {
-        if (ctx.user.companyId || ctx.user.role !== "admin") await requireManagedCompany(ctx.user);
-        return createRoleRequirement({ ...input, companyId: ctx.user.companyId ?? null }, ctx.user.id);
-      }),
-    deleteRoleRequirement: orgManagerProcedure
-      .input(z.object({ id: z.number() }))
-      .mutation(async ({ ctx, input }) => { if(ctx.user.role !== "admin") await requireManagedCompany(ctx.user); return deleteRoleRequirement(input.id, ctx.user.id); }),
-    runTNA: orgManagerProcedure.mutation(async ({ ctx }) => {
-      await requireManagedCompany(ctx.user);
-      if (!ctx.user.companyId) throw new TRPCError({ code: "FORBIDDEN", message: "Compte entreprise requis." });
-      return runTNA(ctx.user.companyId, ctx.user.id);
-    }),
-  }),
+  // The dedicated namespace prevents older servers from silently ignoring orgId.
+  company: companyRouter,
+  companyWorkspace: companyRouter,
 
   // ─── Me (person-centric self-service: INV-5 surfacing, INV-9 self view) ──────
   me: router({
@@ -1119,6 +1141,7 @@ export const appRouter = router({
         const mistral = (process.env.MISTRAL_API_KEY ?? "").trim();
         const pass = (process.env.SMTP_PASS ?? "").trim();
         return {
+          emailTransport: emailTransportStatus(),
           ai: aiProviderStatus(),
           mistral: { configured: !!mistral, masked: mistral ? `••••••••${mistral.slice(-4)}` : null },
           smtp: {
@@ -1155,6 +1178,26 @@ export const appRouter = router({
       setMistralKey: adminProcedure
         .input(z.object({ key: z.string() }))
         .mutation(async ({ input }) => { await setSetting("MISTRAL_API_KEY", input.key.trim() || null); return { ok: true }; }),
+      setEmailTransport: adminProcedure
+        .input(emailTransportSchema.omit({ token: true }).extend({
+          token: emailTransportSchema.shape.token.optional(), clearToken: z.boolean().optional(),
+        }))
+        .mutation(async ({ input }) => {
+          const config = { provider: input.provider, mailboxId: input.mailboxId, mailboxEmail: input.mailboxEmail,
+            token: input.clearToken ? "" : input.token || emailTransport()?.token || "" };
+          if (input.clearToken && input.token) throw new TRPCError({ code: "BAD_REQUEST", message: "Choisissez remplacer ou effacer le jeton." });
+          if (config.provider === "hostinger" && !input.clearToken && !hostingerMailConfigured(config)) {
+            throw new TRPCError({ code: "BAD_REQUEST", message: "Renseignez le jeton Mail API, l’identifiant et l’adresse de la boîte." });
+          }
+          try {
+            const result = await setSetting(emailTransportSetting, JSON.stringify(config));
+            if (!result.ok) throw new Error("settings_unavailable");
+          } catch {
+            // Database errors can contain query parameters, including the token.
+            throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Enregistrement de la configuration e-mail impossible." });
+          }
+          return { ok: true };
+        }),
       // SMTP / email configuration. Password is only overwritten when a non-empty value
       // is provided, so saving other fields doesn't wipe a stored password.
       setSmtp: adminProcedure
@@ -1178,9 +1221,9 @@ export const appRouter = router({
       sendTestEmail: adminProcedure
         .input(z.object({ to: z.string().email() }))
         .mutation(async ({ input }) => {
-          if (!isEmailConfigured()) throw new TRPCError({ code: "BAD_REQUEST", message: "SMTP non configuré (renseignez serveur, identifiant et mot de passe)." });
-          const { html } = simpleEmail("Test email", "<p>Votre configuration SMTP R-AERO fonctionne ✅</p>");
-          const r = await sendEmail({ to: input.to, subject: "R-AERO — Test SMTP", html });
+          if (!isEmailConfigured()) throw new TRPCError({ code: "BAD_REQUEST", message: "E-mail non configuré (vérifiez le fournisseur sélectionné)." });
+          const { html } = simpleEmail("Test email", "<p>Votre configuration e-mail R-AERO fonctionne ✅</p>");
+          const r = await sendEmail({ to: input.to, subject: "R-AERO — Test e-mail", html });
           if (!r.sent) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Échec de l'envoi : ${r.error ?? "voir logs serveur"}` });
           return { ok: true };
         }),
@@ -1189,13 +1232,13 @@ export const appRouter = router({
     // ── Inbox (read-only IMAP reception) ──
     inbox: router({
       list: adminProcedure
-        .input(z.object({ limit: z.number().min(1).max(50).optional() }))
+        .input(z.object({ limit: z.number().int().min(1).max(50).optional() }))
         .query(async ({ input }) => {
           try { return await fetchInbox(input.limit ?? 25); }
           catch (e: any) { throw new TRPCError({ code: "BAD_REQUEST", message: e?.message ?? "Lecture IMAP impossible." }); }
         }),
       message: adminProcedure
-        .input(z.object({ uid: z.number() }))
+        .input(z.object({ uid: z.number().int().positive().max(Number.MAX_SAFE_INTEGER) }))
         .query(async ({ input }) => {
           try { return await fetchMessage(input.uid); }
           catch (e: any) { throw new TRPCError({ code: "BAD_REQUEST", message: e?.message ?? "Lecture du message impossible." }); }

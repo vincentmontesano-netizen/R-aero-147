@@ -2,7 +2,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { clearSessionCache } from '@/lib/sessionCache';
 import { announceSessionChange } from '@/lib/sessionChange';
 import TwoFactorSettings from "@/components/TwoFactorSettings";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import BackButton from "@/components/BackButton";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -13,10 +13,12 @@ import { toast } from "sonner";
 import { useI18n } from "@/i18n";
 import PublicNav from "@/components/PublicNav";
 
+type ProfileForm = { name: string; jobTitle: string; preferredLanguage: string };
+
 export default function UserProfile() {
   const queryClient = useQueryClient();
   const { t, setLang, lang } = useI18n();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth({ redirectOnUnauthenticated: true });
   const utils = trpc.useUtils();
   const [saved, setSaved] = useState(false);
   const [sessionPassword, setSessionPassword] = useState("");
@@ -40,24 +42,25 @@ export default function UserProfile() {
   };
   // Part-66 licence/categories now live in the ID module (Passport › Qualification),
   // so the profile form no longer manages them.
-  const [form, setForm] = useState({
-    name: "",
-    jobTitle: "",
-    preferredLanguage: "fr",
-  });
-
-  useEffect(() => {
-    if (user) {
-      setForm({
-        name: (user as any).name ?? "",
-        jobTitle: (user as any).jobTitle ?? "",
-        preferredLanguage: (user as any).preferredLanguage ?? "fr",
-      });
-    }
-  }, [user]);
+  const [draft, setDraft] = useState<{ userId: number; form: ProfileForm } | null>(null);
+  // Render loaded values immediately. A consent/session refetch must not replace edits.
+  const form: ProfileForm = draft && draft.userId === user?.id ? draft.form : {
+    name: user?.name ?? "",
+    jobTitle: user?.jobTitle ?? "",
+    preferredLanguage: user?.preferredLanguage ?? "fr",
+  };
+  const editForm = (patch: Partial<ProfileForm>) => {
+    if (user) setDraft({ userId: user.id, form: { ...form, ...patch } });
+  };
 
   const updateProfile = trpc.auth.updateProfile.useMutation({
-    onSuccess: () => {
+    onSuccess: (updated, submitted) => {
+      if (updated) utils.auth.me.setData(undefined, updated);
+      // Keep edits made while the save was in flight.
+      setDraft(current => current &&
+        current.form.name === submitted.name &&
+        current.form.jobTitle === submitted.jobTitle &&
+        current.form.preferredLanguage === submitted.preferredLanguage ? null : current);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
       toast.success(t("userProfile.toastUpdateSuccess"));
@@ -107,17 +110,17 @@ export default function UserProfile() {
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
                 <label htmlFor="profile-field-1" className="text-sm font-semibold mb-1.5 block" style={{ color: "var(--muted-foreground)" }}>{t("userProfile.fullNameLabel")}</label>
-                <Input id="profile-field-1" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder={t("userProfile.fullNamePlaceholder")} />
+                <Input id="profile-field-1" value={form.name} onChange={(e) => editForm({ name: e.target.value })} placeholder={t("userProfile.fullNamePlaceholder")} />
               </div>
               <div>
                 <label htmlFor="profile-field-2" className="text-sm font-semibold mb-1.5 block" style={{ color: "var(--muted-foreground)" }}>{t("userProfile.jobTitleLabel")}</label>
-                <Input id="profile-field-2" value={form.jobTitle} onChange={(e) => setForm((f) => ({ ...f, jobTitle: e.target.value }))} placeholder={t("userProfile.jobTitlePlaceholder")} />
+                <Input id="profile-field-2" value={form.jobTitle} onChange={(e) => editForm({ jobTitle: e.target.value })} placeholder={t("userProfile.jobTitlePlaceholder")} />
               </div>
               <div>
                 <label htmlFor="profile-field-3" className="text-sm font-semibold mb-1.5 block" style={{ color: "var(--muted-foreground)" }}>{t("userProfile.preferredLanguageLabel")}</label>
                 <select id="profile-field-3"
                   value={form.preferredLanguage}
-                  onChange={(e) => { const v = e.target.value; setForm((f) => ({ ...f, preferredLanguage: v })); if (v === "fr" || v === "en") setLang(v); }}
+                  onChange={(e) => { const v = e.target.value; editForm({ preferredLanguage: v }); if (v === "fr" || v === "en") setLang(v); }}
                   className="w-full h-9 rounded-md border px-3 text-sm"
                   style={{ borderColor: "var(--border)" }}
                 >

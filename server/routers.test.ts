@@ -8,6 +8,8 @@ vi.mock("./email", async importOriginal => ({
   adminNotifyEmail: vi.fn().mockReturnValue("admin@example.com"),
   sendEmail: vi.fn().mockResolvedValue(undefined),
 }));
+import { TRPCError } from "@trpc/server";
+import { createCheckoutSession } from "./stripe";
 import { COOKIE_NAME } from "../shared/const";
 import type { TrpcContext } from "./_core/context";
 
@@ -182,7 +184,9 @@ describe("cart", () => {
 describe("checkout", () => {
   it("checkout.createSession throws when Stripe is not configured", async () => {
     const caller = appRouter.createCaller(createUserContext());
-    await expect(caller.checkout.createSession({ origin: "https://example.com" })).rejects.toThrow();
+    vi.mocked(db.getCartItems).mockResolvedValueOnce([{ id: 1, trainingId: 1 }] as any);
+    vi.mocked(createCheckoutSession).mockRejectedValueOnce(new TRPCError({ code: "PRECONDITION_FAILED", message: "Paiement indisponible." }));
+    await expect(caller.checkout.createSession({ origin: "https://example.com" })).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
   });
 });
 

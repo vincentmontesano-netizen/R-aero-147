@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ export default function UserFormDialog({ mode, user, defaultRole, onClose, onSav
   mode: "new" | "edit"; user?: any; defaultRole?: string; onClose: () => void; onSaved: () => void;
 }) {
   const { t } = useI18n();
+  const roleId = useId();
   const ROLES: [string, string][] = [["user", t("userFormDialog.roleUser")], ["company_manager", t("userFormDialog.roleManager")], ["instructor", t("userFormDialog.roleInstructor")], ["admin", t("userFormDialog.roleAdmin")]];
   const [form, setForm] = useState({
     email: user?.email ?? "", password: "", name: user?.name ?? "",
@@ -54,8 +55,8 @@ export default function UserFormDialog({ mode, user, defaultRole, onClose, onSav
           )}
           <div className="grid grid-cols-2 gap-3">
             <div className={form.role === "admin" ? "col-span-2" : ""}>
-              <label className={lbl} style={{ color: "var(--muted-foreground)" }}>{t("userFormDialog.labelRole")}</label>
-              <select value={form.role} onChange={(e) => set("role", e.target.value)} className="w-full h-9 rounded-md border px-2 text-sm" style={{ borderColor: "var(--border)" }}>
+              <label htmlFor={roleId} className={lbl} style={{ color: "var(--muted-foreground)" }}>{t("userFormDialog.labelRole")}</label>
+              <select id={roleId} aria-describedby={`${roleId}-help`} value={form.role} onChange={(e) => set("role", e.target.value)} className="w-full h-9 rounded-md border px-2 text-sm" style={{ borderColor: "var(--border)" }}>
                 {ROLES.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
             </div>
@@ -63,6 +64,7 @@ export default function UserFormDialog({ mode, user, defaultRole, onClose, onSav
               <div><label className={lbl} style={{ color: "var(--muted-foreground)" }}>{t("userFormDialog.labelJobTitle")}</label><Input value={form.jobTitle} onChange={(e) => set("jobTitle", e.target.value)} placeholder={t("userFormDialog.placeholderJobTitle")} /></div>
             )}
           </div>
+          <p id={`${roleId}-help`} className="text-xs text-muted-foreground">{t(`userFormDialog.roleHelp.${form.role}`)}</p>
           {/* Part-66 / job fields are irrelevant for an admin account. */}
           {form.role !== "admin" && (
             <div><label className={lbl} style={{ color: "var(--muted-foreground)" }}>{t("userFormDialog.labelLicense")}</label><Input value={form.licenseNumber} onChange={(e) => set("licenseNumber", e.target.value)} placeholder="FR.66.XXXXXXXX" className="font-mono" /></div>

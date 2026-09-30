@@ -1,6 +1,16 @@
 # Admission aux classes vidéo privées
 
-La salle intégrée n’utilise plus `meet.jit.si`. Le bouton « Rejoindre la visioconférence privée » demande au serveur un jeton JaaS après relecture du compte et des droits de classe. Sans configuration valide, le serveur refuse l’admission et l’interface affiche l’erreur, sans ouvrir une salle publique.
+La salle intégrée n’utilise plus `meet.jit.si`. Le bouton « Rejoindre la visioconférence privée » demande au serveur un jeton après relecture du compte et des droits de classe. Sans configuration valide, le serveur refuse l’admission et l’interface affiche l’erreur, sans ouvrir une salle publique.
+
+## Jitsi auto-hébergé
+
+Choix retenu pour R-AERO le 29 septembre 2026. `LIVE_VIDEO_PROVIDER=jitsi` sélectionne le serveur privé ; `JITSI_DOMAIN` contient uniquement son nom DNS, `JITSI_APP_ID` l'émetteur autorisé et `JITSI_APP_SECRET` un secret aléatoire partagé avec Prosody (32 octets minimum). Aucune clé n'est transmise au navigateur. Un réglage incomplet refuse l'admission, même si des accès JaaS sont encore présents.
+
+Le ticket HS256 utilise l'audience `jitsi`, le domaine comme sujet, la salle littérale, le rôle issu du serveur et la même fenêtre maximale de dix minutes. L'API iframe existante charge `https://<domaine>/external_api.js`. Prosody doit imposer JWT, refuser les invités et les jetons vides, vérifier le domaine et activer `token_affiliation`. Jicofo doit désactiver l'attribution automatique du rôle propriétaire. La recette doit vérifier qu'un apprenant arrivé avant le formateur ne devient jamais modérateur.
+
+Les tests PostgreSQL couvrent signatures HS256/RS256, rôles, expiration, refus des tiers et configurations invalides. La configuration de déploiement et les contrôles du serveur sont décrits dans [Jitsi auto-hébergé](jitsi-self-hosted.md).
+
+## Compatibilité JaaS
 
 Configuration serveur : `JAAS_APP_ID`, `JAAS_API_KEY_ID` complet (`AppID/key-id`), `JAAS_PRIVATE_KEY` PEM RSA d’au moins 2048 bits, avec clé publique correspondante enregistrée dans JaaS. Les exemples d’environnement contiennent seulement des champs vides. Le choix technique de JaaS ne crée aucun compte ni engagement commercial ; la configuration et la recette fournisseur restent à réaliser.
 

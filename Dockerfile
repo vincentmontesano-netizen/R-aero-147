@@ -3,14 +3,14 @@
 #   docker build -t r-aero-academy .
 #   docker run -p 3000:3000 r-aero-academy
 # Set ADMIN_EMAIL and ADMIN_PASSWORD for the first installation.
-FROM node:20-bookworm
+FROM node:22-bookworm
 
 # Install PostgreSQL server (embedded database) + CA certs.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends postgresql postgresql-contrib ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-RUN npm install -g pnpm@10.4.1
+RUN npm install -g pnpm@10.34.6
 
 WORKDIR /app
 

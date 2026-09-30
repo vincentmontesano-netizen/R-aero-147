@@ -91,4 +91,49 @@ describe.skipIf(!url)("signed video admission · PostgreSQL", () => {
     await expect(issueLiveVideoTicket("webinar",webinar.id,f.learner.id)).rejects.toMatchObject({code:"PRECONDITION_FAILED"});
   });
 
+  it("issues private self-hosted Jitsi tickets with the same admission and moderator rules", async () => {
+    const f = await fixture();
+    const secret = "synthetic-jitsi-secret-" + randomUUID();
+    vi.stubEnv("LIVE_VIDEO_PROVIDER", "jitsi");
+    vi.stubEnv("JITSI_DOMAIN", "meet.example.test");
+    vi.stubEnv("JITSI_APP_ID", "raero");
+    vi.stubEnv("JITSI_APP_SECRET", secret);
+    for (const actor of [f.owner, f.learner]) {
+      const ticket = await issueLiveVideoTicket("session", f.room.id, actor.id);
+      const { payload, protectedHeader } = await jwtVerify(ticket.jwt, new TextEncoder().encode(secret), {
+        algorithms: ["HS256"], issuer: "raero", audience: "jitsi", subject: "meet.example.test",
+      });
+      expect(protectedHeader.alg).toBe("HS256");
+      expect(ticket.domain).toBe("meet.example.test");
+      expect(ticket.scriptUrl).toBe("https://meet.example.test/external_api.js");
+      expect(ticket.roomName).toBe(`raero-session-${f.room.id}`);
+      expect(payload.room).toBe(ticket.roomName);
+      expect(payload.context).toMatchObject({ user: { id: String(actor.id), moderator: actor.id === f.owner.id ? "true" : "false" }, room: { regex: false } });
+      expect(payload.exp! - payload.iat!).toBe(600);
+      expect(JSON.stringify(payload)).not.toContain("@example.test");
+      await expect(jwtVerify(ticket.jwt, new TextEncoder().encode(secret), { currentDate: new Date((payload.exp! + 1) * 1000) })).rejects.toThrow();
+      const [record] = await f.db.select().from(liveVideoTickets).where(eq(liveVideoTickets.id, payload.jti!));
+      expect(record.moderator).toBe(actor.id === f.owner.id);
+      expect(record).not.toHaveProperty("jwt");
+    }
+    await expect(issueLiveVideoTicket("session", f.room.id, f.outsider.id)).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await f.db.update(sessions).set({ endDate: new Date(Date.now() - 16 * 60000) }).where(eq(sessions.id, f.room.id));
+    await expect(issueLiveVideoTicket("session", f.room.id, f.owner.id)).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+  });
+
+  it("fails closed on incomplete self-hosted configuration without falling back to JaaS", async () => {
+    const f = await fixture();
+    const valid = { LIVE_VIDEO_PROVIDER: "jitsi", JITSI_DOMAIN: "meet.example.test", JITSI_APP_ID: "raero", JITSI_APP_SECRET: "synthetic-secret-" + randomUUID() };
+    for (const invalid of [
+      { JITSI_DOMAIN: "" }, { JITSI_DOMAIN: "https://meet.example.test" },
+      { JITSI_DOMAIN: "meet.example.test/elsewhere" }, { JITSI_DOMAIN: "user@meet.example.test" },
+      { JITSI_DOMAIN: "meet.example.test:443" }, { JITSI_APP_SECRET: "short" },
+      { JITSI_APP_ID: "*" }, { LIVE_VIDEO_PROVIDER: "unknown" },
+    ]) {
+      for (const [key, value] of Object.entries({ ...valid, ...invalid })) vi.stubEnv(key, value);
+      await expect(issueLiveVideoTicket("session", f.room.id, f.owner.id)).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    }
+    expect(await f.db.select().from(liveVideoTickets).where(eq(liveVideoTickets.roomId, f.room.id))).toHaveLength(0);
+  });
+
 });

@@ -13,7 +13,7 @@ import PrivateMediaUpload from "@/components/PrivateMediaUpload";
 import PedagogicalReviewPanel from "@/components/PedagogicalReviewPanel";
 import CompanyCourseAssignment from "@/components/CompanyCourseAssignment";
 import AdminContentManager from "@/components/AdminContentManager";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useId } from "react";
 import { useLocation, useRoute, Link } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -149,7 +149,7 @@ export default function CourseMaker() {
               <p className="text-muted-foreground text-xs">{t("maker.subtitle")}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <LanguageSwitcher />
             <Link href={user.role === "admin" ? "/admin" : "/dashboard"}><Button variant="ghost" size="sm" className="text-foreground/80 hover:text-foreground hover:bg-foreground/10"><ArrowLeft className="w-4 h-4 mr-1" /> {user.role === "admin" ? t("userMenu.administration") : t("userMenu.mySpace")}</Button></Link>
           </div>
@@ -439,6 +439,7 @@ function SlideEditorDialog({ slide, provider, providers, lang, courseLanguage, o
   slide: any; provider: Provider; providers: any; lang: "fr" | "en" | "ar"; courseLanguage?: string | null; onClose: () => void; onSaved: () => void;
 }) {
   const { t } = useI18n();
+  const fieldId = useId();
   const utils=trpc.useUtils();
   const expectedRevision=useRef(slide.revision);
   const [contentLanguage,setContentLanguage]=useState<ContentLanguage>(courseLanguage === "fr" || courseLanguage === "en" || courseLanguage === "ar" ? courseLanguage : lang);
@@ -542,8 +543,8 @@ function SlideEditorDialog({ slide, provider, providers, lang, courseLanguage, o
         <fieldset disabled={update.isPending || mediaBusy} className="space-y-4 mt-2">
           <ContentLanguageSelect generation value={contentLanguage} onChange={setContentLanguage} disabled={busy || !!suggestion}/>
           <div>
-            <label className={lblCls} style={{ color: "var(--muted-foreground)" }}>{t("maker.slideTitle")}</label>
-            <Input value={form.title} onChange={(e) => set("title", e.target.value)} />
+            <label htmlFor={`${fieldId}-title`} className={lblCls} style={{ color: "var(--muted-foreground)" }}>{t("maker.slideTitle")}</label>
+            <Input id={`${fieldId}-title`} value={form.title} onChange={(e) => set("title", e.target.value)} />
           </div>
           <div className="space-y-2">
             <label className="block text-sm">{t("readiness.chapter")}<select disabled={modulesQuery.isLoading || modulesQuery.isError || update.isPending} value={form.moduleId} onChange={e => set("moduleId", e.target.value === "" ? "" : Number(e.target.value))} className="w-full h-9 rounded-md border px-3 text-sm">
@@ -568,12 +569,12 @@ function SlideEditorDialog({ slide, provider, providers, lang, courseLanguage, o
           )}
           <div>
             <label className={lblCls} style={{ color: "var(--muted-foreground)" }}>
-              <span>{t("maker.slideText")}</span>
+              <span id={`${fieldId}-body-label`}>{t("maker.slideText")}</span>
               <button onClick={writeText} disabled={busy || !!suggestion} className="flex items-center gap-1 text-sm" style={{ color: "var(--link)" }}>
                 {genText.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />} {t("maker.genText")}
               </button>
             </label>
-            <textarea value={form.body} onChange={(e) => set("body", e.target.value)} className="w-full rounded-md border px-3 py-2 text-sm h-28 resize-y" style={{ borderColor: "var(--border)" }} />
+            <textarea aria-labelledby={`${fieldId}-body-label`} value={form.body} onChange={(e) => set("body", e.target.value)} className="w-full rounded-md border px-3 py-2 text-sm h-28 resize-y" style={{ borderColor: "var(--border)" }} />
           </div>
 
           {/* Image */}

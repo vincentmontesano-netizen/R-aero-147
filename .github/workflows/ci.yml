@@ -34,12 +34,13 @@ jobs:
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
       # Global test setup migrates the empty PostgreSQL service before test workers.
-      - run: pnpm test
+      - run: pnpm audit --audit-level=moderate
+      - run: pnpm test --maxWorkers=4
       - run: python3 scripts/test_backup_container.py
       - run: bash -n docker-entrypoint.sh scripts/ci-container-smoke.sh
       - run: docker compose --env-file .env.production.example config --quiet
@@ -47,3 +48,23 @@ jobs:
         run: |
           docker build -t raero-ci:validation .
           bash scripts/ci-container-smoke.sh raero-ci:validation
+      - name: Install browser for acceptance tests
+        run: pnpm exec playwright-core install --with-deps chrome
+      - name: Exercise browser journeys on the validated image
+        env:
+          RAERO_E2E_IMAGE: raero-ci:validation
+          PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH: /usr/bin/google-chrome
+        run: node scripts/e2e/run.mjs
+      - name: Preserve acceptance results without session credentials
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-acceptance-results
+          path: |
+            tmp/e2e/run-*/run.json
+            tmp/e2e/run-*/*results.json
+            tmp/e2e/run-*/*.png
+          retention-days: 14
+      - name: Remove isolated browser containers
+        if: always()
+        run: docker ps -aq --filter label=raero.e2e=1 | xargs -r docker rm -f

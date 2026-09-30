@@ -9,6 +9,8 @@ import {
 } from "./cockpitCamera";
 
 import { neutralizeCockpitDecals } from "./cockpitMaterials";
+import { cockpitFrameSeconds } from "./cockpitPlayback";
+import { sampleCockpitQuality } from "./cockpitQuality";
 
 type Pose = {
   position: readonly number[];
@@ -32,7 +34,8 @@ export function mountCockpit(
     alpha: true,
     powerPreference: "high-performance",
   });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+  let quality = { pixelRatio: Math.min(window.devicePixelRatio, 1.5), slowFrames: 0 };
+  renderer.setPixelRatio(quality.pixelRatio);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 0.95;
   host.appendChild(renderer.domElement);
@@ -112,12 +115,21 @@ export function mountCockpit(
   const observer = new ResizeObserver(resize);
   observer.observe(host);
   resize();
-  let previousTime = 0;
+  let previousTime = 0, renderedPreviousFrame = false;
   const draw = (time: number) => {
+    if (previousTime && renderedPreviousFrame && model) {
+      const next = sampleCockpitQuality(quality, time - previousTime);
+      if (next.pixelRatio !== quality.pixelRatio) {
+        renderer.setPixelRatio(next.pixelRatio);
+        invalidated = true;
+      }
+      quality = next;
+    }
     const delta = previousTime
-      ? Math.min((time - previousTime) / 1000, 0.05)
+      ? cockpitFrameSeconds((time - previousTime) / 1000)
       : 0.016;
     previousTime = time;
+    renderedPreviousFrame = false;
     const moving =
       camera.position.distanceToSquared(wantedPosition) > 0.00000001 ||
       currentTarget.distanceToSquared(wantedTarget) > 0.00000001 ||
@@ -130,10 +142,13 @@ export function mountCockpit(
     camera.lookAt(currentTarget);
     camera.updateProjectionMatrix();
     renderer.render(scene, camera);
+    renderedPreviousFrame = true;
     invalidated = false;
   };
   const sync = () => {
     previousTime = 0;
+    renderedPreviousFrame = false;
+    quality.slowFrames = 0;
     renderer.setAnimationLoop(
       visible && !document.hidden && !failed ? draw : null
     );
@@ -164,6 +179,8 @@ export function mountCockpit(
         return;
       }
       model = gltf.scene;
+      previousTime = 0;
+      renderedPreviousFrame = false;
       neutralizeCockpitDecals(model);
       scene.add(model);
       invalidated = true;

@@ -4,7 +4,7 @@ import {certificateReportLabels} from '@shared/certificateReport';
 import InvoiceRequestDialog from "@/components/InvoiceRequestDialog";
 import InstructorAgenda from "@/components/InstructorAgenda";
 import RefundHistory from "@/components/RefundHistory";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useId } from "react";
 import { Link, Redirect } from "wouter";
 import { trpc } from "@/lib/trpc";
 import { useI18n } from "@/i18n";
@@ -62,6 +62,7 @@ function FilterBar({
   onReset: () => void;
 }) {
   const { t } = useI18n();
+  const filterId = useId();
   const hasFilters = search || dateFrom || dateTo || statusFilter;
 
   return (
@@ -69,19 +70,20 @@ function FilterBar({
       <div className="flex flex-wrap gap-3 items-end">
         {/* Search */}
         <div className="flex-1 min-w-48">
-          <label className="text-sm font-semibold mb-1.5 block" style={{ color: "var(--muted-foreground)" }}>
+          <label htmlFor={`${filterId}-search`} className="text-sm font-semibold mb-1.5 block" style={{ color: "var(--muted-foreground)" }}>
             {t("dashboard.filterSearchLabel")}
           </label>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: "var(--muted-foreground)" }} />
             <Input
+              id={`${filterId}-search`}
               placeholder={t("dashboard.filterSearchPlaceholder")}
               value={search}
               onChange={(e) => onSearch(e.target.value)}
               className="pl-8 h-9 text-sm"
             />
             {search && (
-              <button onClick={() => onSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2">
+              <button aria-label={t("dashboard.filterReset")} onClick={() => onSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2">
                 <X className="w-3.5 h-3.5" style={{ color: "var(--muted-foreground)" }} />
               </button>
             )}
@@ -90,13 +92,14 @@ function FilterBar({
 
         {/* Date from */}
         <div className="min-w-36">
-          <label className="text-sm font-semibold mb-1.5 block" style={{ color: "var(--muted-foreground)" }}>
+          <label htmlFor={`${filterId}-from`} className="text-sm font-semibold mb-1.5 block" style={{ color: "var(--muted-foreground)" }}>
             {t("dashboard.filterDateFrom")}
           </label>
           <div className="relative">
             <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: "var(--muted-foreground)" }} />
             <input
               type="date"
+              id={`${filterId}-from`}
               value={dateFrom}
               onChange={(e) => onDateFrom(e.target.value)}
               className="w-full h-9 rounded-md border pl-8 pr-3 text-sm"
@@ -107,13 +110,14 @@ function FilterBar({
 
         {/* Date to */}
         <div className="min-w-36">
-          <label className="text-sm font-semibold mb-1.5 block" style={{ color: "var(--muted-foreground)" }}>
+          <label htmlFor={`${filterId}-to`} className="text-sm font-semibold mb-1.5 block" style={{ color: "var(--muted-foreground)" }}>
             {t("dashboard.filterDateTo")}
           </label>
           <div className="relative">
             <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" style={{ color: "var(--muted-foreground)" }} />
             <input
               type="date"
+              id={`${filterId}-to`}
               value={dateTo}
               onChange={(e) => onDateTo(e.target.value)}
               className="w-full h-9 rounded-md border pl-8 pr-3 text-sm"
@@ -125,10 +129,11 @@ function FilterBar({
         {/* Status filter */}
         {statusOptions && statusOptions.length > 0 && (
           <div className="min-w-36">
-            <label className="text-sm font-semibold mb-1.5 block" style={{ color: "var(--muted-foreground)" }}>
+            <label htmlFor={`${filterId}-status`} className="text-sm font-semibold mb-1.5 block" style={{ color: "var(--muted-foreground)" }}>
               {t("dashboard.filterStatusLabel")}
             </label>
             <select
+              id={`${filterId}-status`}
               value={statusFilter}
               onChange={(e) => onStatusFilter(e.target.value)}
               className="w-full h-9 rounded-md border px-3 text-sm"
@@ -142,10 +147,11 @@ function FilterBar({
 
         {/* Sort direction */}
         <div>
-          <label className="text-sm font-semibold mb-1.5 block" style={{ color: "var(--muted-foreground)" }}>
+          <label htmlFor={`${filterId}-sort`} className="text-sm font-semibold mb-1.5 block" style={{ color: "var(--muted-foreground)" }}>
             {t("dashboard.filterSortLabel")}
           </label>
           <button
+            id={`${filterId}-sort`}
             onClick={() => onSortDir(sortDir === "desc" ? "asc" : "desc")}
             className="h-9 px-3 rounded-md border flex items-center gap-1.5 text-sm transition-colors"
             style={{ borderColor: "var(--border)", color: "var(--muted-foreground)", background: "var(--card)" }}
@@ -498,7 +504,7 @@ export default function Dashboard() {
                               <span>{t("dashboard.expiresOn", { date: new Date(enrollment.expiresAt).toLocaleDateString(lang) })}</span>
                             )}
                           </div>
-                          <Progress value={enrollment.progressPercent ?? 0} className="h-1.5" />
+                          <Progress aria-label={enrollment.training?.title || t("dashboard.courseFallback")} value={enrollment.progressPercent ?? 0} className="h-1.5" />
                         </div>
                         <Link href={`/formation/${enrollment.training?.slug ?? ""}/apprendre?enrollment=${enrollment.id}`}>
                           <Button size="sm" style={{ background: "var(--primary)", color: "var(--primary-foreground)" }}>

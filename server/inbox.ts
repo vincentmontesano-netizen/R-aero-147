@@ -1,8 +1,10 @@
-// Read-only IMAP inbox for the admin "Réception" tab. Credentials are reused from the
+// Read-only inbox for the admin "Réception" tab (Hostinger Mail API or IMAP). Credentials are reused from the
 // SMTP mailbox config (Hostinger uses the same login for IMAP + SMTP). Lazy + defensive:
 // every call connects, fetches, and disconnects; failures surface as clear messages.
 import { ImapFlow } from "imapflow";
 import { simpleParser } from "mailparser";
+import { emailTransport, hostingerMailConfigured } from "./emailTransport";
+import { fetchHostingerInbox, fetchHostingerMessage } from "./hostingerMail";
 
 function imapConfig() {
   return {
@@ -14,6 +16,9 @@ function imapConfig() {
 }
 
 export function isInboxConfigured(): boolean {
+  const config = emailTransport();
+  if (!config) return false;
+  if (config.provider === "hostinger") return hostingerMailConfigured(config);
   const c = imapConfig();
   return !!(c.host && c.user && c.pass);
 }
@@ -27,7 +32,8 @@ export type InboxMessage = { uid: number; from: string; fromName: string | null;
 
 /** Fetch the latest `limit` messages from INBOX (envelope + short snippet). */
 export async function fetchInbox(limit = 25): Promise<InboxMessage[]> {
-  if (!isInboxConfigured()) throw new Error("IMAP non configuré (renseignez la boîte mail dans Emails → SMTP).");
+  if (!isInboxConfigured()) throw new Error("Réception non configurée (renseignez la boîte mail dans Emails).");
+  if (emailTransport()?.provider === "hostinger") return fetchHostingerInbox(limit);
   const client = newClient();
   const out: InboxMessage[] = [];
   await client.connect();
@@ -63,7 +69,8 @@ export async function fetchInbox(limit = 25): Promise<InboxMessage[]> {
 
 /** Full body of one message (by UID), parsed to text/html. */
 export async function fetchMessage(uid: number): Promise<{ subject: string; from: string; date: string | null; text: string; html: string | null }> {
-  if (!isInboxConfigured()) throw new Error("IMAP non configuré.");
+  if (!isInboxConfigured()) throw new Error("Réception non configurée.");
+  if (emailTransport()?.provider === "hostinger") return fetchHostingerMessage(uid);
   const client = newClient();
   await client.connect();
   try {

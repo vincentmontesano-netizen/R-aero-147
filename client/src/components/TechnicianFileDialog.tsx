@@ -45,7 +45,7 @@ function Row({ title, sub, right }: { title: string; sub?: string; right?: any }
 const d = (v: any) => (v ? new Date(v).toLocaleDateString("fr-FR") : "");
 
 /** Consolidated technician dossier (internal + external) with compliance CSV export. */
-export default function TechnicianFileDialog({ employeeId, onClose }: { employeeId: number | null; onClose: () => void }) {
+export default function TechnicianFileDialog({ employeeId, onClose, orgId }: { employeeId: number | null; onClose: () => void; orgId?: number }) {
   const { t, lang } = useI18n();
   const [archiveId,setArchiveId] = useState<number | null>(null);
   const [archiveReason,setArchiveReason] = useState("");
@@ -53,16 +53,16 @@ export default function TechnicianFileDialog({ employeeId, onClose }: { employee
   const recLabel = (status: string) =>
     status === "ok" ? "OK" : t(`technicianFileDialog.status.${status}` as any);
   const utils = trpc.useUtils();
-  const { data: file } = trpc.company.technicianFile.useQuery({ employeeId: employeeId! }, { enabled: employeeId != null });
-  const invalidate = () => utils.company.technicianFile.invalidate({ employeeId: employeeId! });
-  const archive = trpc.company.archiveExternalTraining.useMutation({
+  const { data: file } = trpc.companyWorkspace.technicianFile.useQuery({ orgId, employeeId: employeeId! }, { enabled: employeeId != null });
+  const invalidate = () => utils.companyWorkspace.technicianFile.invalidate({ orgId, employeeId: employeeId! });
+  const archive = trpc.companyWorkspace.archiveExternalTraining.useMutation({
     onSuccess: () => { invalidate(); setArchiveId(null); setArchiveReason(""); },
     onError: (e) => toast.error(e.message),
   });
-  const { data: signoffs } = trpc.company.signoffs.useQuery({ employeeId: employeeId! }, { enabled: employeeId != null });
+  const { data: signoffs } = trpc.companyWorkspace.signoffs.useQuery({ orgId, employeeId: employeeId! }, { enabled: employeeId != null });
   const signRequests=useRef(new Map<string,string>());
-  const sign = trpc.company.signoff.useMutation({
-    onSuccess: (_result,input) => { signRequests.current.delete(`${input.employeeId}:${input.trainingId}`); toast.success(t("technicianFileDialog.signoffSuccess")); utils.company.signoffs.invalidate({ employeeId: employeeId! }); },
+  const sign = trpc.companyWorkspace.signoff.useMutation({
+    onSuccess: (_result,input) => { signRequests.current.delete(`${input.employeeId}:${input.trainingId}`); toast.success(t("technicianFileDialog.signoffSuccess")); utils.companyWorkspace.signoffs.invalidate({ orgId, employeeId: employeeId! }); },
     onError: (e) => toast.error(e.message),
   });
 
@@ -122,7 +122,7 @@ export default function TechnicianFileDialog({ employeeId, onClose }: { employee
                           const key=`${employeeId}:${m.trainingId}`;
                           const requestId=signRequests.current.get(key)??createRequestId();
                           signRequests.current.set(key,requestId);
-                          sign.mutate({ requestId, employeeId: employeeId!, trainingId: m.trainingId, scope: "COMPETENCE", decision: "VALIDATED" });
+                          sign.mutate({ orgId, requestId, employeeId: employeeId!, trainingId: m.trainingId, scope: "COMPETENCE", decision: "VALIDATED" });
                         }} disabled={sign.isPending}
                           className="text-sm px-2 py-0.5 rounded" style={{ border: `1px solid ${"var(--link)"}`, color: "var(--foreground)" }}>{t("technicianFileDialog.signButton")}</button>
                       </div>} />;
@@ -156,7 +156,7 @@ export default function TechnicianFileDialog({ employeeId, onClose }: { employee
                     <Row title={x.title} sub={`${x.provider ?? "—"}${x.completedAt ? " · " + d(x.completedAt) : ""}${x.expiresAt ? " · " + t("technicianFileDialog.expiresLabel", { date: d(x.expiresAt) }) : ""}`}
                       right={x.archivedAt ? <span>{labels.archived}</span> : <Button size="sm" variant="outline" disabled={archive.isPending} onClick={() => {setArchiveId(x.id);setArchiveReason("");}}><Archive className="w-4 h-4 mr-1" />{labels.archive}</Button>} />
                     {x.archivedAt && <p className="text-xs mt-1">{d(x.archivedAt)} · #{x.archivedBy} · {x.archiveReason}</p>}
-                    {archiveId === x.id && !x.archivedAt && <form className="p-3 space-y-2" onSubmit={e => {e.preventDefault();archive.mutate({id:x.id,reason:archiveReason});}}>
+                    {archiveId === x.id && !x.archivedAt && <form className="p-3 space-y-2" onSubmit={e => {e.preventDefault();archive.mutate({orgId,id:x.id,reason:archiveReason});}}>
                       <p className="text-xs">{labels.notice}</p>
                       <label className="text-sm" htmlFor={`archive-reason-${x.id}`}>{labels.reason}</label>
                       <Input id={`archive-reason-${x.id}`} value={archiveReason} onChange={e => setArchiveReason(e.target.value)} minLength={3} maxLength={1000} required disabled={archive.isPending} />
