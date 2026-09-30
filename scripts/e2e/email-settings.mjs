@@ -43,6 +43,12 @@ await suite('email-settings', async ({ page, step }) => {
 
     for (const width of [320, 390, 768, 1280]) {
       await admin.setViewportSize({ width, height: 900 });
+      // Desktop navigation animates from its previous width when crossing md.
+      // Inspect the final layout after the actual transition, not an arbitrary sleep.
+      await admin.locator('aside').evaluate(async element => {
+        getComputedStyle(element).width;
+        await Promise.all(element.getAnimations().map(animation => animation.finished.catch(() => {})));
+      });
       for (const field of [provider, token, admin.locator('#hostinger-mailbox'), admin.locator('#hostinger-address')]) {
         const box = await field.boundingBox();
         assert.ok(box && box.x >= 0 && box.x + box.width <= width + 1, `Email field outside ${width}px viewport`);
