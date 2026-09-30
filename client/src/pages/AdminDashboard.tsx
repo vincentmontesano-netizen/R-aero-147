@@ -848,7 +848,7 @@ export default function AdminDashboard() {
             </div>
 
             {emailSubTab === "inbox" ? (
-              <AdminInbox configured={!!(settings as any)?.imap?.configured} />
+              <AdminInbox configured={!!(settings as any)?.imap?.configured} marksReadOnOpen={settings?.emailTransport?.provider === "hostinger"} />
             ) : (<>
 
             {/* Composer */}

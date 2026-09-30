@@ -81,7 +81,7 @@ it("maps inbox metadata without fetching bodies or marking messages seen", async
   expect(fetchMock.mock.calls[0][0]).toBe("https://api.mail.hostinger.com/api/v1/mailboxes/ACfixture/folders/INBOX/messages?page=1&perPage=2&sort=-uid");
 });
 
-it("reads RFC822 source rather than the /text endpoint that marks Seen", async () => {
+it("reads RFC822 source for parsing; Hostinger marks the opened message Seen", async () => {
   const source = ["From: Sender <sender@example.test>", "Subject: Test body", "Date: Wed, 30 Sep 2026 09:00:00 +0000", "Content-Type: text/html; charset=utf-8", "", "<p>Message content</p>"].join("\r\n");
   fetchMock.mockResolvedValue(new Response(source, { headers: { "Content-Type": "message/rfc822" } }));
   expect(await fetchMessage(9)).toMatchObject({ subject: "Test body", html: "<p>Message content</p>", date: "2026-09-30T09:00:00.000Z" });

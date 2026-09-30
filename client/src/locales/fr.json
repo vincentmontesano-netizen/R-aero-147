@@ -1097,6 +1097,7 @@
   "adminDashboard.imapHost": "Serveur IMAP (réception)",
   "adminDashboard.imapPort": "Port IMAP",
   "adminDashboard.imapNote": "L'IMAP réutilise l'identifiant et le mot de passe SMTP. Réception = lecture seule.",
+  "adminInbox.marksReadOnOpen": "L’ouverture d’un message le marque comme lu dans votre boîte Hostinger.",
   "adminInbox.title": "Boîte de réception",
   "adminInbox.refresh": "Actualiser",
   "adminInbox.loading": "Chargement…",

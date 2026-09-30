@@ -149,7 +149,7 @@ export default function CourseMaker() {
               <p className="text-muted-foreground text-xs">{t("maker.subtitle")}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <LanguageSwitcher />
             <Link href={user.role === "admin" ? "/admin" : "/dashboard"}><Button variant="ghost" size="sm" className="text-foreground/80 hover:text-foreground hover:bg-foreground/10"><ArrowLeft className="w-4 h-4 mr-1" /> {user.role === "admin" ? t("userMenu.administration") : t("userMenu.mySpace")}</Button></Link>
           </div>

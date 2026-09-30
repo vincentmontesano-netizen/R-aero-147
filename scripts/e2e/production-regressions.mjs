@@ -30,6 +30,15 @@ await suite('production-regressions', async ({ page, step }) => {
   step('learner filters and progress bars have accessible names');
 
   const admin = await page('admin');
+  for (const [role, author] of [['admin', admin], ['instructor', await page('author')]]) {
+    await author.setViewportSize({ width: 320, height: 844 });
+    await author.goto(origin + '/maker');
+    await author.getByRole('button', { name: t['maker.newCourse'], exact: true }).waitFor();
+    await author.evaluate(() => document.fonts.ready);
+    assert.ok(await author.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${role} maker header overflows at 320px`);
+    step(`${role} maker header wraps language and account actions at 320px`);
+  }
+  await admin.setViewportSize({ width: 1440, height: 1000 });
   const payload = `<p>Message synthétique QA</p>
     <script>document.documentElement.dataset.qaInboxXss='script';parent.document.documentElement.dataset.qaInboxXss='script'</script>
     <img src="/qa-image-absente.png" onerror="document.documentElement.dataset.qaInboxXss='event';parent.document.documentElement.dataset.qaInboxXss='event'">

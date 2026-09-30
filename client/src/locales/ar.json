@@ -1097,6 +1097,7 @@
   "adminDashboard.imapHost": "خادم IMAP (الاستقبال)",
   "adminDashboard.imapPort": "منفذ IMAP",
   "adminDashboard.imapNote": "يستخدم IMAP اسم المستخدم وكلمة المرور الخاصين بـ SMTP. صندوق الوارد للقراءة فقط.",
+  "adminInbox.marksReadOnOpen": "فتح الرسالة يضع عليها علامة مقروءة في صندوق بريد Hostinger.",
   "adminInbox.title": "صندوق الوارد",
   "adminInbox.refresh": "تحديث",
   "adminInbox.loading": "جارٍ التحميل…",

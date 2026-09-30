@@ -76,7 +76,8 @@ export async function fetchHostingerInbox(limit: number): Promise<InboxMessage[]
 export async function fetchHostingerMessage(uid: number) {
   if (!Number.isSafeInteger(uid) || uid < 1) throw new Error("Identifiant de message invalide.");
   try {
-    // /text marks messages Seen. /source preserves the inbox's read-only contract.
+    // Hostinger marks the message Seen when /source is read (verified against the
+    // real API). The inbox warns before opening and refreshes its read indicators.
     const response = await request(`/folders/INBOX/messages/${uid}/source`, { headers: { Accept: "message/rfc822" } });
     if (response.status !== 200 || !response.headers.get("content-type")?.toLowerCase().startsWith("message/rfc822")) {
       await response.body?.cancel(); throw new Error(readFailure);

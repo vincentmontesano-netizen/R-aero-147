@@ -41,6 +41,35 @@ await suite('email-settings', async ({ page, step }) => {
     assert.equal(settings.emailTransport.tokenSet, true);
     step('admin saves Hostinger settings, receives no token, and preserves a blank token after reload');
 
+    let bodyOpened = false, listRefreshesAfterOpen = 0;
+    await admin.route('**/api/trpc/**', async route => {
+      const url = new URL(route.request().url());
+      const names = url.pathname.split('/api/trpc/')[1].split(',');
+      if (!names.some(name => name.startsWith('admin.inbox.'))) return route.continue();
+      let original = [];
+      if (names.some(name => !name.startsWith('admin.inbox.'))) original = await (await route.fetch()).json();
+      const responses = names.map((name, i) => {
+        if (name === 'admin.inbox.list') {
+          if (bodyOpened) listRefreshesAfterOpen++;
+          return { result: { data: { json: [{ uid: 9012, from: 'fixture@example.test', subject: 'QA Hostinger read state', seen: bodyOpened }] } } };
+        }
+        if (name === 'admin.inbox.message') {
+          bodyOpened = true;
+          return { result: { data: { json: { text: 'QA opened body', html: null } } } };
+        }
+        return original[i];
+      });
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(url.searchParams.has('batch') ? responses : responses[0]) });
+    });
+    await admin.getByRole('button', { name: t['adminDashboard.emailTabInbox'], exact: true }).click();
+    await admin.getByText(t['adminInbox.marksReadOnOpen'], { exact: true }).waitFor();
+    await admin.getByRole('button', { name: /QA Hostinger read state/ }).click();
+    await admin.getByText('QA opened body', { exact: true }).waitFor();
+    await admin.getByRole('button', { name: /QA Hostinger read state/ }).locator('svg.lucide-mail-open').waitFor();
+    assert.ok(listRefreshesAfterOpen > 0);
+    step('Hostinger opening behavior is explained and read indicators refresh after the body loads');
+    await admin.goto(origin + '/admin?tab=emails'); await token.waitFor();
+
     for (const width of [320, 390, 768, 1280]) {
       await admin.setViewportSize({ width, height: 900 });
       // Desktop navigation animates from its previous width when crossing md.

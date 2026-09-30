@@ -1097,6 +1097,7 @@
   "adminDashboard.imapHost": "IMAP host (reception)",
   "adminDashboard.imapPort": "IMAP port",
   "adminDashboard.imapNote": "IMAP reuses the SMTP username & password. Inbox = read-only.",
+  "adminInbox.marksReadOnOpen": "Opening a message marks it as read in your Hostinger mailbox.",
   "adminInbox.title": "Inbox",
   "adminInbox.refresh": "Refresh",
   "adminInbox.loading": "Loading…",
